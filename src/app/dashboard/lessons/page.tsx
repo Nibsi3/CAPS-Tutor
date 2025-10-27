@@ -1,10 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { lessons, grades, subjects, placeholderLessons } from "@/lib/data";
+import { lessons, grades, placeholderLessons } from "@/lib/data";
+
+// Create a unique list of subjects from the available lessons
+const availableSubjects = [...new Set([...lessons, ...placeholderLessons].map(l => l.subject))].map(s => ({ value: s, label: s}));
 
 export default function LessonsPage() {
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
@@ -16,8 +20,6 @@ export default function LessonsPage() {
     return gradeMatch && subjectMatch;
   });
 
-  // Create a unique list of subjects from the available lessons
-  const availableSubjects = [...new Set([...lessons, ...placeholderLessons].map(l => l.subject))].map(s => ({ value: s, label: s}));
 
   return (
     <div className="flex-1 space-y-6">
@@ -72,7 +74,9 @@ export default function LessonsPage() {
                     </ul>
                   </CardContent>
                   <CardFooter>
-                    <Button className="w-full">Explore Subject</Button>
+                    <Button asChild className="w-full">
+                        <Link href={`/dashboard/lessons/${lesson.id}`}>Explore Subject</Link>
+                    </Button>
                   </CardFooter>
                 </Card>
               ))}
