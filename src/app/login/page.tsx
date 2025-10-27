@@ -45,6 +45,8 @@ export default function LoginPage() {
 
   const handleSocialSignIn = async (provider: 'google' | 'facebook') => {
     try {
+      // TODO: Make sure this app's domain is an authorized domain in the Firebase Console.
+      // Go to Authentication > Settings > Authorized domains.
       if (provider === 'google') {
         await signInWithGoogle(auth);
       } else {
@@ -53,10 +55,19 @@ export default function LoginPage() {
       // The onAuthStateChanged listener in the provider will handle the redirect.
     } catch (error: any) {
       console.error(`${provider} Sign-In Error:`, error);
+      
+      let description = error.message || `Could not sign in with ${provider}. Please try again.`;
+
+      if (error.code === 'auth/popup-closed-by-user') {
+          description = `The sign-in pop-up was closed before completing. If you didn't close it, please ensure pop-ups are allowed and check if your domain is authorized in Firebase settings.`;
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+          description = 'An account already exists with the same email address but different sign-in credentials. Try signing in with the original method.';
+      }
+
       toast({
         variant: "destructive",
         title: "Authentication Error",
-        description: error.message || `Could not sign in with ${provider}. Please try again.`,
+        description: description,
       });
     }
   };
@@ -70,9 +81,13 @@ export default function LoginPage() {
     } catch (error: any) {
         console.error("Email Sign-In Error:", error);
         // A more specific error could be shown if we catch specific error codes.
-        if (error.code === 'auth/user-not-found') {
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
             try {
                 await initiateEmailSignUp(auth, values.email, values.password);
+                 toast({
+                    title: "New Account Created",
+                    description: "We've created a new account for you. Welcome!",
+                });
             } catch (signupError: any) {
                  toast({
                     variant: "destructive",
@@ -174,3 +189,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
