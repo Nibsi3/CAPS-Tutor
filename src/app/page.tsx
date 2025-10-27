@@ -4,23 +4,46 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { CheckCircle2, Target, BookCopy, BarChart, FileUp, Users, Check, X, Loader } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useUser } from '@/firebase';
 
-const sampleQuestion = {
-  question: "Solve for x: 2x + 5 = 15",
-  subject: "Mathematics",
-  gradeLevel: 8
-};
+const gradeProblems: Record<string, { question: string, subject: string }> = {
+  "1": { question: "If you have 2 apples and you get 3 more, how many apples do you have?", subject: "Mathematics" },
+  "2": { question: "What is 15 - 7?", subject: "Mathematics" },
+  "3": { question: "What is 8 multiplied by 4?", subject: "Mathematics" },
+  "4": { question: "A class has 35 students. If 1/5 are absent, how many students are present?", subject: "Mathematics" },
+  "5": { question: "What is the perimeter of a rectangle with a length of 12 cm and a width of 5 cm?", subject: "Mathematics" },
+  "6": { question: "Convert 0.75 to a fraction in its simplest form.", subject: "Mathematics" },
+  "7": { question: "Find the value of x if 3x - 4 = 11.", subject: "Mathematics" },
+  "8": { question: "Calculate the area of a circle with a radius of 7 cm. (Use π ≈ 22/7)", subject: "Mathematics" },
+  "9": { question: "Simplify the expression: (2x^2)(3x^3)", subject: "Mathematics" },
+  "10": { question: "Solve the quadratic equation: x^2 - 5x + 6 = 0", subject: "Mathematics" },
+  "11": { question: "If sin(θ) = 0.5, what is the value of cos(2θ)?", subject: "Trigonometry" },
+  "12": { question: "Find the derivative of f(x) = 4x^3 - 2x^2 + 5x - 1.", subject: "Calculus" },
+}
 
 export default function LandingPage() {
+  const [selectedGrade, setSelectedGrade] = useState("8");
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<InteractiveFeedbackOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+
+  const sampleQuestion = useMemo(() => {
+    return gradeProblems[selectedGrade] || gradeProblems["8"];
+  }, [selectedGrade]);
+
+  const handleGradeChange = (grade: string) => {
+    setSelectedGrade(grade);
+    setAnswer("");
+    setFeedback(null);
+  }
 
   const handleFeedback = async () => {
     if (!answer) {
@@ -38,7 +61,7 @@ export default function LandingPage() {
         question: sampleQuestion.question,
         studentAnswer: answer,
         subject: sampleQuestion.subject,
-        gradeLevel: sampleQuestion.gradeLevel,
+        gradeLevel: parseInt(selectedGrade),
       });
       setFeedback(result);
     } catch (error) {
@@ -64,12 +87,21 @@ export default function LandingPage() {
           <span className="font-headline text-2xl font-bold">CAPS Tutor</span>
         </Link>
         <nav className="flex items-center gap-4">
-          <Button variant="ghost" asChild>
-            <Link href="/dashboard">Sign In</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/dashboard">Get Started Free</Link>
-          </Button>
+          {!isUserLoading && !user && (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="/login">Sign In</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/login">Get Started Free</Link>
+              </Button>
+            </>
+          )}
+           {!isUserLoading && user && (
+            <Button asChild>
+              <Link href="/dashboard">Go to Dashboard</Link>
+            </Button>
+          )}
         </nav>
       </header>
 
@@ -85,7 +117,7 @@ export default function LandingPage() {
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" asChild>
-                <Link href="/dashboard">Start Learning Now</Link>
+                <Link href={user ? "/dashboard" : "/login"}>Start Learning Now</Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
                 <Link href="#features">Explore Features</Link>
@@ -100,13 +132,25 @@ export default function LandingPage() {
             <div className="text-center max-w-3xl mx-auto mb-12">
               <h2 className="font-headline text-3xl md:text-4xl font-bold">See the AI in Action</h2>
               <p className="mt-4 text-lg text-muted-foreground">
-                Experience our interactive feedback system. Answer the question below and see how our AI tutor can help you learn.
+                Experience our interactive feedback system. Select a grade, answer the question, and see how our AI tutor can help you learn.
               </p>
             </div>
             <Card className="max-w-3xl mx-auto shadow-lg">
               <CardHeader>
-                <CardTitle className="font-headline text-2xl">{sampleQuestion.subject} - Grade {sampleQuestion.gradeLevel}</CardTitle>
-                <CardDescription className="text-lg">{sampleQuestion.question}</CardDescription>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="font-headline text-2xl">{sampleQuestion.subject} - Grade {selectedGrade}</CardTitle>
+                    <Select value={selectedGrade} onValueChange={handleGradeChange}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select Grade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {[...Array(12)].map((_, i) => (
+                                <SelectItem key={i + 1} value={`${i + 1}`}>Grade {i + 1}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <CardDescription className="text-lg pt-4">{sampleQuestion.question}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea 
@@ -197,7 +241,7 @@ export default function LandingPage() {
               Join thousands of students across South Africa who are using CAPS Tutor to achieve their academic goals.
             </p>
             <Button size="lg" className="mt-8" asChild>
-              <Link href="/dashboard">Get Started for Free</Link>
+              <Link href={user ? "/dashboard" : "/login"}>Get Started for Free</Link>
             </Button>
           </div>
         </section>
