@@ -1,0 +1,429 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the CAPS Tutor application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "googleId": {
+          "type": "string",
+          "description": "Google ID of the user for authentication."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the user."
+        },
+        "gradeLevel": {
+          "type": "number",
+          "description": "The current grade level of the user (1-12)."
+        },
+        "subjects": {
+          "type": "array",
+          "description": "The subjects the user is studying.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "firstName",
+        "lastName",
+        "gradeLevel"
+      ]
+    },
+    "Lesson": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Lesson",
+      "type": "object",
+      "description": "Represents a lesson within the CAPS syllabus.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the lesson entity."
+        },
+        "gradeLevel": {
+          "type": "number",
+          "description": "Grade level of the lesson (1-12)."
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject of the lesson (e.g., Mathematics)."
+        },
+        "topic": {
+          "type": "string",
+          "description": "Topic of the lesson (e.g., Algebra)."
+        },
+        "contentUrl": {
+          "type": "string",
+          "description": "URL to the lesson content (e.g., PDF, HTML)."
+        },
+        "objectiveIds": {
+          "type": "array",
+          "description": "References to LearningObjectives. (Relationship: Lesson 1:N LearningObjective)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "gradeLevel",
+        "subject",
+        "topic",
+        "contentUrl"
+      ]
+    },
+    "LearningObjective": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LearningObjective",
+      "type": "object",
+      "description": "Represents a specific learning objective within a lesson.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the learning objective entity."
+        },
+        "lessonId": {
+          "type": "string",
+          "description": "Reference to Lesson. (Relationship: Lesson 1:N LearningObjective)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the learning objective."
+        }
+      },
+      "required": [
+        "id",
+        "lessonId",
+        "description"
+      ]
+    },
+    "Question": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Question",
+      "type": "object",
+      "description": "Represents a question or exercise for a specific learning objective.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the question entity."
+        },
+        "learningObjectiveId": {
+          "type": "string",
+          "description": "Reference to LearningObjective. (Relationship: LearningObjective 1:N Question)"
+        },
+        "text": {
+          "type": "string",
+          "description": "Text of the question."
+        },
+        "answer": {
+          "type": "string",
+          "description": "Correct answer to the question."
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of question (e.g., multiple choice, free text)."
+        }
+      },
+      "required": [
+        "id",
+        "learningObjectiveId",
+        "text",
+        "answer",
+        "type"
+      ]
+    },
+    "StudentProgress": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "StudentProgress",
+      "type": "object",
+      "description": "Tracks a student's progress on a specific learning objective.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the student progress entry."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N StudentProgress)"
+        },
+        "learningObjectiveId": {
+          "type": "string",
+          "description": "Reference to LearningObjective. (Relationship: LearningObjective 1:N StudentProgress)"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Indicates if the student has completed the learning objective."
+        },
+        "masteryLevel": {
+          "type": "number",
+          "description": "Mastery level of the student for the learning objective (e.g., percentage)."
+        },
+        "lastAccessed": {
+          "type": "string",
+          "description": "Last access date and time.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "learningObjectiveId",
+        "completed",
+        "masteryLevel"
+      ]
+    },
+    "TeacherUploadedSyllabus": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TeacherUploadedSyllabus",
+      "type": "object",
+      "description": "Represents syllabus content uploaded by a teacher.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the uploaded syllabus content."
+        },
+        "teacherId": {
+          "type": "string",
+          "description": "Reference to User (the teacher uploading the content). (Relationship: User 1:N TeacherUploadedSyllabus)"
+        },
+        "fileName": {
+          "type": "string",
+          "description": "Name of the uploaded file."
+        },
+        "fileUrl": {
+          "type": "string",
+          "description": "URL where the uploaded file is stored."
+        },
+        "gradeLevel": {
+          "type": "number",
+          "description": "Grade level of the syllabus content (1-12)."
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject of the syllabus content."
+        },
+        "uploadDate": {
+          "type": "string",
+          "description": "Date and time the syllabus content was uploaded.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "teacherId",
+        "fileName",
+        "fileUrl",
+        "gradeLevel",
+        "subject",
+        "uploadDate"
+      ]
+    },
+    "PastPaper": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PastPaper",
+      "type": "object",
+      "description": "Represents a past exam paper.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the past paper entity."
+        },
+        "teacherId": {
+          "type": "string",
+          "description": "Reference to User (the teacher who uploaded the past paper). (Relationship: User 1:N PastPaper)"
+        },
+        "gradeLevel": {
+          "type": "number",
+          "description": "Grade level of the past paper (1-12)."
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject of the past paper."
+        },
+        "year": {
+          "type": "number",
+          "description": "Year the past paper was administered."
+        },
+        "fileUrl": {
+          "type": "string",
+          "description": "URL where the past paper file is stored."
+        },
+        "questionIds": {
+          "type": "array",
+          "description": "References to Questions. (Relationship: PastPaper 1:N Question)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "teacherId",
+        "gradeLevel",
+        "subject",
+        "year",
+        "fileUrl"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information. The `userId` is the Firebase Authentication UID. Includes the user's gradeLevel and preferred subjects, which will be used to filter content on the home page.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/studentProgress/{studentProgressId}",
+        "definition": {
+          "entityName": "StudentProgress",
+          "schema": {
+            "$ref": "#/backend/entities/StudentProgress"
+          },
+          "description": "Tracks a student's progress on specific learning objectives. Stored under the user's document for path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user."
+            },
+            {
+              "name": "studentProgressId",
+              "description": "Unique identifier for the student progress entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/lessons/{lessonId}",
+        "definition": {
+          "entityName": "Lesson",
+          "schema": {
+            "$ref": "#/backend/entities/Lesson"
+          },
+          "description": "Stores lesson content.  Accessible based on gradeLevel. GradeLevel will affect which data is presented on the home page based on the user.",
+          "params": [
+            {
+              "name": "lessonId",
+              "description": "Unique identifier for the lesson."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/lessons/{lessonId}/learningObjectives/{learningObjectiveId}",
+        "definition": {
+          "entityName": "LearningObjective",
+          "schema": {
+            "$ref": "#/backend/entities/LearningObjective"
+          },
+          "description": "Stores learning objectives associated with a lesson.",
+          "params": [
+            {
+              "name": "lessonId",
+              "description": "The ID of the parent Lesson."
+            },
+            {
+              "name": "learningObjectiveId",
+              "description": "Unique identifier for the learning objective."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/learningObjectives/{learningObjectiveId}/questions/{questionId}",
+        "definition": {
+          "entityName": "Question",
+          "schema": {
+            "$ref": "#/backend/entities/Question"
+          },
+          "description": "Stores questions associated with a learning objective.",
+          "params": [
+            {
+              "name": "learningObjectiveId",
+              "description": "The ID of the parent LearningObjective."
+            },
+            {
+              "name": "questionId",
+              "description": "Unique identifier for the question."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/teacherUploadedSyllabus/{teacherUploadedSyllabusId}",
+        "definition": {
+          "entityName": "TeacherUploadedSyllabus",
+          "schema": {
+            "$ref": "#/backend/entities/TeacherUploadedSyllabus"
+          },
+          "description": "Stores syllabus content uploaded by teachers. Stored under the user's document for path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the teacher (user)."
+            },
+            {
+              "name": "teacherUploadedSyllabusId",
+              "description": "Unique identifier for the uploaded syllabus content."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/pastPapers/{pastPaperId}",
+        "definition": {
+          "entityName": "PastPaper",
+          "schema": {
+            "$ref": "#/backend/entities/PastPaper"
+          },
+          "description": "Stores past exam papers uploaded by teachers. Stored under the user's document for path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the teacher (user)."
+            },
+            {
+              "name": "pastPaperId",
+              "description": "Unique identifier for the past paper."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the CAPS Tutor application's core features, including grade/subject selection, interactive practice, lesson hubs, adaptive exam generation, and progress dashboards. It incorporates Google sign-up/sign-in and adheres to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. The structure prioritizes path-based ownership for user-specific data and denormalization of authorization data to avoid hierarchical dependencies.\n\n**Authorization Independence (Denormalization):**\nThe structure utilizes denormalization to achieve authorization independence. For example, the `StudentProgress` collection is located under the user's document (`/users/{userId}/studentProgress/{studentProgressId}`), ensuring that access to a student's progress is directly tied to the user ID in the path, eliminating the need for `get()` calls to parent documents. The `gradeLevel` and `subjects` are stored in the User document, and will dictate the data presented on the home page.\n\n**Structural Segregation (Homogeneous Security Posture):**\nThe structure segregates data based on access needs. User-specific data, like `StudentProgress` and uploaded content, are stored under the `/users/{userId}` path, while global data, like `Lessons` and `LearningObjectives`, are stored in top-level collections. This segregation simplifies security rules, as each collection has a clear and consistent security posture.\n\n**Access Modeling:**\nPath-Based Ownership: User-owned data (e.g., `StudentProgress`, `TeacherUploadedSyllabus`, `PastPapers`) is stored under the `/users/{userId}` path, providing clear ownership and simplified security rules.\nMembership Map: Not explicitly used in this simplified structure, but could be added to lessons for collaborative editing by teachers if needed.\nGlobal Roles (DBAC): Not implemented directly, but could be added using a dedicated `/roles_teacher/{uid}` collection to grant teacher roles.\n\n**QAPs (Rules are not Filters):**\n\nSecure `list` operations are supported through structural segregation and path-based ownership. For example, listing student progress is secured by the `/users/{userId}/studentProgress` path, ensuring that only the logged-in user can access their own progress data, which will then affect home page data.\n\n**Invariants:**\nOwnership: Path-based ownership enforces the invariant that a user owns their data (progress, uploaded content).\nTimestamps: While not explicitly included in the schema, adding `createdAt` and `updatedAt` timestamps to documents can help maintain data integrity and track changes."
+  }
+}

@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Checks if the request is made by an authenticated user.
+     * @returns {boolean} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     * @param {string} userId - The user ID to compare against.
+     * @returns {boolean} True if the user is the owner, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user is the owner and the resource exists.
+     * @param {string} userId - The user ID to compare against.
+     * @returns {boolean} True if the user is the owner and the resource exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId));
+    }
+
+    /**
+     * @description Rules for the /users/{userId} collection.
+     * @path /users/{userId}
+     * @allow (create) Signed-in user creates their own profile with matching UID.
+     * @allow (get, update, delete) Signed-in user accesses/modifies their own profile.
+     * @deny (create) User attempts to create a profile with a mismatched UID.
+     * @deny (list) All listing requests are denied to protect user privacy.
+     * @principle Enforces document ownership for user profiles.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /users/{userId}/studentProgress/{studentProgressId} collection.
+     * @path /users/{userId}/studentProgress/{studentProgressId}
+     * @allow (create, get, update, delete, list) Signed-in user manages their own student progress entries.
+     * @deny (create, get, update, delete, list) Another user attempts to manage student progress entries.
+     * @principle Enforces document ownership for student progress data.
+     */
+    match /users/{userId}/studentProgress/{studentProgressId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /lessons/{lessonId} collection.
+     * @path /lessons/{lessonId}
+     * @allow (get, list) Any user can read lesson content.
+     * @deny (create, update, delete) No user can create, update, or delete lessons in this prototype.
+     * @principle Public read access with restricted write access for lessons.
+     */
+    match /lessons/{lessonId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Rules for the /lessons/{lessonId}/learningObjectives/{learningObjectiveId} collection.
+     * @path /lessons/{lessonId}/learningObjectives/{learningObjectiveId}
+     * @allow (get, list) Any user can read learning objectives.
+     * @deny (create, update, delete) No user can create, update, or delete learning objectives in this prototype.
+     * @principle Public read access with restricted write access for learning objectives.
+     */
+    match /lessons/{lessonId}/learningObjectives/{learningObjectiveId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Rules for the /learningObjectives/{learningObjectiveId}/questions/{questionId} collection.
+     * @path /learningObjectives/{learningObjectiveId}/questions/{questionId}
+     * @allow (get, list) Any user can read questions.
+     * @deny (create, update, delete) No user can create, update, or delete questions in this prototype.
+     * @principle Public read access with restricted write access for questions.
+     */
+    match /learningObjectives/{learningObjectiveId}/questions/{questionId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Rules for the /users/{userId}/teacherUploadedSyllabus/{teacherUploadedSyllabusId} collection.
+     * @path /users/{userId}/teacherUploadedSyllabus/{teacherUploadedSyllabusId}
+     * @allow (create, get, update, delete, list) Signed-in teacher manages their own uploaded syllabus content.
+     * @deny (create, get, update, delete, list) Another user attempts to manage teacher uploaded syllabus content.
+     * @principle Enforces document ownership for teacher uploaded syllabus content.
+     */
+    match /users/{userId}/teacherUploadedSyllabus/{teacherUploadedSyllabusId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /users/{userId}/pastPapers/{pastPaperId} collection.
+     * @path /users/{userId}/pastPapers/{pastPaperId}
+     * @allow (create, get, update, delete, list) Signed-in teacher manages their own past papers.
+     * @deny (create, get, update, delete, list) Another user attempts to manage past papers.
+     * @principle Enforces document ownership for past papers.
+     */
+    match /users/{userId}/pastPapers/{pastPaperId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+  }
+}
