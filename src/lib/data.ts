@@ -72,3 +72,106 @@ export const recentActivityData = [
     icon: Award,
   },
 ];
+
+export const grades = [
+    { value: "1", label: "Grade 1" },
+    { value: "2", label: "Grade 2" },
+    { value: "3", label: "Grade 3" },
+    { value: "4", label: "Grade 4" },
+    { value: "5", label: "Grade 5" },
+    { value: "6", label: "Grade 6" },
+    { value: "7", label: "Grade 7" },
+    { value: "8", label: "Grade 8" },
+    { value: "9", label: "Grade 9" },
+    { value: "10", label: "Grade 10" },
+    { value: "11", label: "Grade 11" },
+    { value: "12", label: "Grade 12" },
+];
+
+export const subjects = [
+    { value: "Mathematics", label: "Mathematics" },
+    { value: "Physical Sciences", label: "Physical Sciences" },
+    { value: "Life Sciences", label: "Life Sciences" },
+    { value: "Geography", label: "Geography" },
+    { value: "History", label: "History" },
+];
+
+export const lessons = [
+  {
+    id: "lesson-math-8-1",
+    gradeLevel: 8,
+    subject: "Mathematics",
+    topic: "Algebraic Expressions",
+    learningObjectives: [
+      "Understand variables and constants",
+      "Simplify expressions by collecting like terms",
+      "Apply the distributive property",
+    ],
+  },
+  {
+    id: "lesson-math-8-2",
+    gradeLevel: 8,
+    subject: "Mathematics",
+    topic: "Exponents",
+    learningObjectives: [
+      "Understand the laws of exponents (multiplication, division, power of a power)",
+      "Simplify expressions involving exponents",
+      "Solve simple exponential equations",
+    ],
+  },
+  {
+    id: "lesson-science-10-1",
+    gradeLevel: 10,
+    subject: "Physical Sciences",
+    topic: "Vectors and Scalars",
+    learningObjectives: [
+      "Define and differentiate between vectors and scalars",
+      "Represent vectors graphically",
+      "Calculate the resultant vector",
+    ],
+  },
+  {
+    id: "lesson-science-10-2",
+    gradeLevel: 10,
+    subject: "Physical Sciences",
+    topic: "Chemical Bonding",
+    learningObjectives: [
+      "Describe ionic, covalent and metallic bonding",
+      "Draw Lewis dot structures",
+      "Predict the shape of molecules",
+    ],
+  },
+  {
+    id: "lesson-lifesci-11-1",
+    gradeLevel: 11,
+    subject: "Life Sciences",
+    topic: "The Chemistry of Life",
+    learningObjectives: [
+      "Identify organic and inorganic compounds",
+      "Understand the role of carbohydrates, lipids, and proteins",
+      "Explain the importance of water for life",
+    ],
+  },
+  {
+    id: "lesson-geo-12-1",
+    gradeLevel: 12,
+    subject: "Geography",
+    topic: "Climate and Weather",
+    learningObjectives: [
+      "Analyze synoptic weather maps",
+      "Explain the causes and effects of cyclones",
+      "Discuss urban climates and their impact",
+    ],
+  },
+  {
+    id: "lesson-hist-9-1",
+    gradeLevel: 9,
+    subject: "History",
+    topic: "The Cold War",
+    learningObjectives: [
+      "Understand the origins of the Cold War",
+      "Describe key events like the Berlin Wall and Cuban Missile Crisis",
+      "Analyze the impact of the Cold War on different regions",
+    ],
+  },
+];
