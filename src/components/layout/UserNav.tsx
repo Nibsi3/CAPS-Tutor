@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth, useUser } from "@/firebase"
-import { logOut } from "@/firebase/auth/google-auth"
+import { logOut } from "@/firebase/auth/social-auth"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
