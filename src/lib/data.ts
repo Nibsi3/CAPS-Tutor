@@ -1,4 +1,4 @@
-import { Award, BookCopy, CheckCircle, Target } from 'lucide-react';
+import { Award, BookCopy, CheckCircle, Target, Clock, AlertTriangle } from 'lucide-react';
 
 export const statCardsData = [
   {
