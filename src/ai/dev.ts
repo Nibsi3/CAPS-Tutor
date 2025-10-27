@@ -1,1 +1,6 @@
-// Flows will be imported for their side effects in this file.
+import { config } from 'dotenv';
+config();
+
+import '@/ai/flows/adaptive-exam-generation.ts';
+import '@/ai/flows/teacher-syllabus-upload.ts';
+import '@/ai/flows/interactive-feedback-explanation.ts';
