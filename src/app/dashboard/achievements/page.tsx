@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from "react";
@@ -7,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 const personalAchievements = [
     {
@@ -111,23 +113,32 @@ export default function AchievementsPage() {
               You've unlocked {unlockedCount} of {totalCount} badges. Keep up the great work!
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            <Carousel opts={{ align: "start" }} className="w-full">
+              <CarouselContent>
+                {personalAchievements.map((achievement, index) => (
+                  <CarouselItem key={index} className="basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
+                    <div className="p-1">
+                      <Card className={cn("transition-all h-full", !achievement.unlocked && "opacity-50 grayscale")}>
+                        <CardHeader className="items-center text-center p-4">
+                            <div className={cn("rounded-full p-3 mb-2", achievement.unlocked ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                                <achievement.icon className="h-8 w-8" />
+                            </div>
+                          <CardTitle className="text-base">{achievement.title}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-center p-4 pt-0">
+                          <p className="text-xs text-muted-foreground">{achievement.description}</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="ml-12" />
+              <CarouselNext className="mr-12" />
+            </Carousel>
+          </CardContent>
         </Card>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-6">
-          {personalAchievements.map((achievement, index) => (
-            <Card key={index} className={cn("transition-all", !achievement.unlocked && "opacity-50 grayscale")}>
-              <CardHeader className="items-center text-center">
-                  <div className={cn("rounded-full p-4 mb-4", achievement.unlocked ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-                      <achievement.icon className="h-10 w-10" />
-                  </div>
-                <CardTitle className="text-xl">{achievement.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground">{achievement.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       </div>
       
       <div>
