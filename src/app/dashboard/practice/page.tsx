@@ -6,18 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from '@/components/ui/textarea';
 import { Loader, Target, Bot, Sparkles, AlertTriangle, User, ArrowRight, ArrowLeft } from "lucide-react";
-import { generateAdaptiveExam, AdaptiveExamOutput } from '@/ai/flows/adaptive-exam-generation';
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
 import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getFirestore } from 'firebase/firestore';
 import Link from 'next/link';
-import { askAiTutor, AiTutorOutput } from '@/ai/flows/ai-tutor-flow';
+import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
+import { getQuestionsForTopic, Question } from '@/lib/questions';
 
-// Correctly define the type for a single question
-type ExamQuestion = AdaptiveExamOutput['examQuestions'][number];
 
-interface QuestionWithFeedback extends ExamQuestion {
+interface QuestionWithFeedback extends Question {
   studentAnswer?: string;
   feedback?: InteractiveFeedbackOutput | null;
   isChecking?: boolean;
@@ -55,43 +53,28 @@ export default function PracticePage() {
   }, [user, firestore]);
   const { data: userProfile } = useDoc(userProfileRef);
 
-  const handleGenerateExam = useCallback(async (currentTopic:string, currentGrade:string, currentSubject:string) => {
-    if (!user) {
-      toast({ variant: "destructive", title: "Not Logged In", description: "You must be logged in to practice." });
-      setIsInitialLoading(false);
-      return;
-    }
-    if (!currentTopic && !userProfile) {
-      toast({ variant: "destructive", title: "No Topic Selected", description: "Go to the lessons page to pick a topic to practice!" });
-      setIsInitialLoading(false);
-      return;
-    }
-
+  const loadQuestions = useCallback((currentTopic: string, currentGrade: string, currentSubject: string) => {
     setIsLoading(true);
     setExam(null);
     setCurrentQuestionIndex(0);
+    
+    // Set up the tutor's initial message
     setTutorMessages([{ role: 'assistant', content: `Hi there! I'm ready to help you with any questions you have about **${currentTopic}**. Ask me anything!` }]);
-    try {
-      const result = await generateAdaptiveExam({
-        studentId: user.uid,
-        numQuestions: 25, // Changed to 25, but AI might be slow.
-        topic: decodeURIComponent(currentTopic),
-        gradeLevel: currentGrade ? parseInt(currentGrade) : userProfile?.gradeLevel,
-        subject: decodeURIComponent(currentSubject),
-      });
-      if (result.examQuestions.length === 0) {
-        toast({ variant: "destructive", title: "Generation Failed", description: "The AI couldn't generate questions for this topic. Please try another." });
-      }
-      setExam({ examQuestions: result.examQuestions.map(q => ({ ...q })) });
-      toast({ title: "Practice Session Ready!", description: "Your 25 custom questions are prepared." });
-    } catch (error) {
-      console.error("Failed to generate exam:", error);
-      toast({ variant: "destructive", title: "Generation Failed", description: "The AI failed to generate an exam. Please try again." });
-    } finally {
-      setIsLoading(false);
-      setIsInitialLoading(false);
+    
+    // Get preloaded questions
+    const questions = getQuestionsForTopic(currentTopic, parseInt(currentGrade));
+    
+    if (questions.length === 0) {
+      toast({ variant: "destructive", title: "No Questions Found", description: "We don't have practice questions for this topic yet." });
+      setExam({ examQuestions: [] });
+    } else {
+      setExam({ examQuestions: questions.map(q => ({ ...q })) });
     }
-  }, [user, userProfile, toast]);
+    
+    setIsLoading(false);
+    setIsInitialLoading(false);
+  }, [toast]);
+
 
   useEffect(() => {
     const topicParam = searchParams.get('topic');
@@ -103,13 +86,11 @@ export default function PracticePage() {
       setTopic(decodedTopic);
       setGrade(gradeParam);
       setSubject(subjectParam);
-      if (user && userProfile) {
-        handleGenerateExam(topicParam, gradeParam, subjectParam);
-      }
+      loadQuestions(decodedTopic, gradeParam, subjectParam);
     } else {
       setIsInitialLoading(false);
     }
-  }, [searchParams, user, userProfile, handleGenerateExam]);
+  }, [searchParams, loadQuestions]);
 
   useEffect(() => {
     tutorChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -192,11 +173,11 @@ export default function PracticePage() {
     }
   };
 
-  if (isInitialLoading && !exam) {
+  if (isInitialLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Loader className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-muted-foreground">Preparing your practice session...</p>
+        <p className="ml-4 text-muted-foreground">Loading practice session...</p>
       </div>
     );
   }
@@ -240,7 +221,7 @@ export default function PracticePage() {
                         Practice: {topic}
                     </CardTitle>
                     <CardDescription>
-                        {exam ? `Question ${currentQuestionIndex + 1} of ${exam.examQuestions.length}` : 'Generating questions...'}
+                        {exam ? `Question ${currentQuestionIndex + 1} of ${exam.examQuestions.length}` : 'Loading questions...'}
                     </CardDescription>
                     </div>
                 </div>
@@ -251,7 +232,7 @@ export default function PracticePage() {
                 <Card className="flex-1 flex items-center justify-center">
                     <div className="text-center p-12">
                         <Loader className="mx-auto h-12 w-12 animate-spin text-primary mb-4" />
-                        <p className="text-muted-foreground">Generating your practice questions...</p>
+                        <p className="text-muted-foreground">Loading questions...</p>
                     </div>
                 </Card>
             )}
@@ -322,8 +303,8 @@ export default function PracticePage() {
                     <Card className="flex-1 flex items-center justify-center">
                         <div className="text-center p-12 text-muted-foreground">
                             <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
-                            <p className="font-semibold">Could not generate questions for "{topic}".</p>
-                            <p>The AI might not have enough information for this specific topic yet. Please try a different one.</p>
+                            <p className="font-semibold">Could not find practice questions for "{topic}".</p>
+                            <p>We are working on adding more topics. Please try a different one for now.</p>
                         </div>
                     </Card>
             )}
@@ -396,5 +377,3 @@ export default function PracticePage() {
     </div>
   )
 }
-
-    
