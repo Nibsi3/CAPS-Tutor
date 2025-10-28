@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +20,7 @@ export default function AiTutorPage() {
   const { user } = useUser();
   const firestore = getFirestore();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -29,8 +31,23 @@ export default function AiTutorPage() {
   }, [user, firestore]);
   const { data: userProfile } = useDoc(userProfileRef);
 
-  const handleSendMessage = async () => {
-    if (!user || !userProfile || !prompt.trim()) {
+  useEffect(() => {
+    const initialPrompt = searchParams.get('prompt');
+    if (initialPrompt) {
+      // Decode the prompt from the URL
+      const decodedPrompt = decodeURIComponent(initialPrompt);
+      setPrompt(decodedPrompt);
+      // Automatically send the message if the user profile is loaded
+      if (userProfile) {
+        handleSendMessage(decodedPrompt);
+      }
+    }
+  }, [searchParams, userProfile]); // Re-run when userProfile is available
+
+
+  const handleSendMessage = async (messageToSend?: string) => {
+    const currentPrompt = messageToSend || prompt;
+    if (!user || !userProfile || !currentPrompt.trim()) {
         toast({
             variant: "destructive",
             title: "Cannot send message",
@@ -39,14 +56,14 @@ export default function AiTutorPage() {
         return;
     }
 
-    const newMessages: Message[] = [...messages, { role: 'user', content: prompt }];
+    const newMessages: Message[] = [...messages, { role: 'user', content: currentPrompt }];
     setMessages(newMessages);
     setPrompt('');
     setIsLoading(true);
     
     try {
         const result = await askAiTutor({
-            prompt: prompt,
+            prompt: currentPrompt,
             gradeLevel: userProfile.gradeLevel,
             subjects: userProfile.subjects,
         });
@@ -79,7 +96,7 @@ export default function AiTutorPage() {
         </CardHeader>
         <CardContent className="flex-1 flex flex-col gap-4 overflow-y-auto p-6">
           <div className="flex-1 space-y-6">
-            {messages.length === 0 && (
+            {messages.length === 0 && !isLoading && (
               <div className="text-center text-muted-foreground h-full flex flex-col items-center justify-center">
                  <Sparkles className="w-12 h-12 mb-4" />
                 <p className="text-lg">Ready to help!</p>
@@ -124,7 +141,7 @@ export default function AiTutorPage() {
               type="submit"
               size="sm"
               className="absolute right-2.5 top-1/2 -translate-y-1/2"
-              onClick={handleSendMessage}
+              onClick={() => handleSendMessage()}
               disabled={isLoading || !prompt.trim()}
             >
               {isLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}

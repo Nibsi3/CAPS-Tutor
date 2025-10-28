@@ -1,15 +1,19 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { lessons, placeholderLessons } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { ExternalLink, BookOpenCheck, Bot } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ExternalLink, BookOpenCheck, Bot, Search } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LessonDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const lessonId = params.id as string;
+  const [searchTerm, setSearchTerm] = useState('');
 
   const allLessons = [...lessons, ...placeholderLessons];
   const lesson = allLessons.find(l => l.id === lessonId);
@@ -21,6 +25,18 @@ export default function LessonDetailPage() {
       </div>
     );
   }
+
+  const filteredTopics = lesson.topics.filter(topic =>
+    topic.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleTopicClick = (topic: string) => {
+    const prompt = `Explain the topic "${topic}" for Grade ${lesson.gradeLevel} ${lesson.subject}.`;
+    // URL encode the prompt to handle special characters
+    const encodedPrompt = encodeURIComponent(prompt);
+    router.push(`/dashboard/tutor?prompt=${encodedPrompt}`);
+  };
+
 
   return (
     <div className="flex-1 space-y-6">
@@ -45,14 +61,33 @@ export default function LessonDetailPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <h3 className="font-semibold text-lg mb-2">Key Topics (CAPS Aligned)</h3>
+            <h3 className="font-semibold text-lg mb-4">Key Topics (CAPS Aligned)</h3>
+            <div className="relative mb-6">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                    type="search"
+                    placeholder="Search topics..."
+                    className="pl-10 w-full md:w-1/2 lg:w-1/3"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {lesson.topics.map((topic, index) => (
-                <div key={index} className="p-4 border rounded-lg bg-muted/50">
+              {filteredTopics.map((topic, index) => (
+                <button 
+                    key={index} 
+                    onClick={() => handleTopicClick(topic)}
+                    className="text-left p-4 border rounded-lg bg-muted/50 hover:bg-muted transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary"
+                >
                     {topic}
-                </div>
+                </button>
               ))}
             </div>
+             {filteredTopics.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                    <p>No topics found matching "{searchTerm}".</p>
+                </div>
+            )}
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
