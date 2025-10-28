@@ -23,8 +23,7 @@ export async function logOut(auth: Auth) {
   }
 }
 
-export async function deleteCurrentUser() {
-  const auth = (await import('@/firebase')).useAuth();
+export async function deleteCurrentUser(auth: Auth) {
   const user = auth.currentUser;
   if (user) {
     try {
