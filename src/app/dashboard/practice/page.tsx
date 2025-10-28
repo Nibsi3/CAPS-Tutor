@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -7,9 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Loader, Target, Bot, Sparkles, AlertTriangle, User, ArrowRight, ArrowLeft } from "lucide-react";
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
-import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { doc, getFirestore } from 'firebase/firestore';
 import Link from 'next/link';
 import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
 import { getQuestionsForTopic, Question } from '@/lib/questions';
@@ -28,8 +27,6 @@ interface Message {
 }
 
 export default function PracticePage() {
-  const { user } = useUser();
-  const firestore = getFirestore();
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
@@ -40,6 +37,7 @@ export default function PracticePage() {
   const [subject, setSubject] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [score, setScore] = useState(0);
   
   // AI Tutor State
   const [tutorMessages, setTutorMessages] = useState<Message[]>([]);
@@ -47,17 +45,11 @@ export default function PracticePage() {
   const [isTutorLoading, setIsTutorLoading] = useState(false);
   const tutorChatEndRef = useRef<HTMLDivElement>(null);
 
-
-  const userProfileRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, `users/${user.uid}`);
-  }, [user, firestore]);
-  const { data: userProfile } = useDoc(userProfileRef);
-
   const loadQuestions = useCallback((currentTopic: string, currentGrade: string, currentSubject: string) => {
     setIsLoading(true);
     setExam(null);
     setCurrentQuestionIndex(0);
+    setScore(0);
     
     // Set up the tutor's initial message
     setTutorMessages([{ role: 'assistant', content: `Hi there! I'm ready to help you with any questions you have about **${currentTopic}**. Ask me anything!` }]);
@@ -106,7 +98,7 @@ export default function PracticePage() {
   };
 
   const handleCheckAnswer = async (index: number) => {
-    if (!exam || !grade) return;
+    if (!exam || !grade || !subject) return;
 
     const newQuestions = [...exam.examQuestions];
     const question = newQuestions[index];
@@ -124,9 +116,12 @@ export default function PracticePage() {
         question: question.question,
         studentAnswer: question.studentAnswer,
         gradeLevel: parseInt(grade),
-        subject: subject || question.topic,
+        subject: subject,
       });
       newQuestions[index].feedback = feedbackResult;
+      if (feedbackResult.isCorrect && !question.feedback?.isCorrect) { // only increment score on first correct answer
+        setScore(s => s + 1);
+      }
     } catch (error) {
       console.error("Feedback Error:", error);
       toast({ variant: "destructive", title: "Feedback Failed", description: "Could not get feedback for this answer." });
@@ -169,6 +164,8 @@ export default function PracticePage() {
       setIsTutorLoading(false);
     }
   };
+  
+  const currentQuestionCorrect = !!exam?.examQuestions[currentQuestionIndex]?.feedback?.isCorrect;
 
   if (isInitialLoading) {
     return (
@@ -213,14 +210,20 @@ export default function PracticePage() {
                 <CardHeader>
                 <div className="flex justify-between items-center">
                     <div>
-                    <CardTitle className="font-headline text-3xl flex items-center gap-3">
-                        <Target className="w-8 h-8 text-primary" />
-                        Practice: {topic}
-                    </CardTitle>
-                    <CardDescription>
-                        {exam ? `Question ${currentQuestionIndex + 1} of ${exam.examQuestions.length}` : 'Loading questions...'}
-                    </CardDescription>
+                      <CardTitle className="font-headline text-3xl flex items-center gap-3">
+                          <Target className="w-8 h-8 text-primary" />
+                          Practice: {topic}
+                      </CardTitle>
+                      <CardDescription>
+                          {exam ? `Question ${currentQuestionIndex + 1} of ${exam.examQuestions.length}` : 'Loading questions...'}
+                      </CardDescription>
                     </div>
+                     {exam && (
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Score</p>
+                        <p className="font-headline text-2xl font-bold">{score} / {exam.examQuestions.length}</p>
+                      </div>
+                    )}
                 </div>
                 </CardHeader>
             </Card>
@@ -229,7 +232,7 @@ export default function PracticePage() {
                 <Card className="flex-1 flex items-center justify-center">
                     <div className="text-center p-12">
                         <Loader className="mx-auto h-12 w-12 animate-spin text-primary mb-4" />
-                        <p className="text-muted-foreground">Loading questions...</p>
+                        <p className="text-muted-foreground">Generating your practice questions...</p>
                     </div>
                 </Card>
             )}
@@ -248,11 +251,11 @@ export default function PracticePage() {
                                     placeholder="Your answer..."
                                     value={q.studentAnswer || ''}
                                     onChange={(e) => handleAnswerChange(index, e.target.value)}
-                                    disabled={!!q.feedback}
+                                    disabled={!!q.feedback?.isCorrect}
                                     rows={4}
                                     />
                                     
-                                    <Button onClick={() => handleCheckAnswer(index)} disabled={!q.studentAnswer || q.isChecking || !!q.feedback}>
+                                    <Button onClick={() => handleCheckAnswer(index)} disabled={!q.studentAnswer || q.isChecking || !!q.feedback?.isCorrect}>
                                         {q.isChecking && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                                         {q.isChecking ? 'Checking...' : 'Check Answer'}
                                     </Button>
@@ -288,7 +291,7 @@ export default function PracticePage() {
                         </div>
                         <Button
                             onClick={() => setCurrentQuestionIndex(prev => Math.min(exam.examQuestions.length - 1, prev + 1))}
-                            disabled={currentQuestionIndex === exam.examQuestions.length - 1}
+                            disabled={currentQuestionIndex === exam.examQuestions.length - 1 || !currentQuestionCorrect}
                         >
                            Next <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
