@@ -62,6 +62,7 @@ export default function LoginPage() {
       } else {
         await signInWithFacebook(auth);
       }
+      // Successful sign-in will be handled by the useEffect hook
     } catch (error: any) {
       console.error(`${provider} Sign-In Error:`, error);
       
@@ -91,18 +92,18 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       // First, try to create an account
-      await initiateEmailSignUp(auth, values.email, values.password);
+      const userCredential = await initiateEmailSignUp(auth, values.email, values.password);
       toast({
         title: 'Welcome!',
         description: "We've created a new account for you.",
       });
       
-      if(auth.currentUser && firestore) {
-          const userProfileRef = doc(firestore, 'users', auth.currentUser.uid);
+      if(userCredential?.user && firestore) {
+          const userProfileRef = doc(firestore, 'users', userCredential.user.uid);
           await setDoc(userProfileRef, {
             firstName: 'New',
             lastName: 'User',
-            email: auth.currentUser.email,
+            email: userCredential.user.email,
           }, { merge: true });
       }
 
@@ -145,7 +146,7 @@ export default function LoginPage() {
   };
 
 
-  if (isUserLoading) {
+  if (isUserLoading && !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader className="h-12 w-12 animate-spin" />
@@ -167,7 +168,7 @@ export default function LoginPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogAction asChild>
-            <a href={`https://console.firebase.google.com/project/${auth.app.options.projectId}/authentication/settings`} target="_blank" rel="noopener noreferrer" onClick={() => setShowPopupError(false)}>
+            <a href={auth?.app?.options?.projectId ? `https://console.firebase.google.com/project/${auth.app.options.projectId}/authentication/settings` : '#'} target="_blank" rel="noopener noreferrer" onClick={() => setShowPopupError(false)}>
               Go to Firebase Settings
             </a>
           </AlertDialogAction>
