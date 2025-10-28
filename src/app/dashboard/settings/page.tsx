@@ -60,6 +60,7 @@ export default function SettingsPage() {
     });
     
     useEffect(() => {
+        // Only reset the form if the userProfile data is available and the form hasn't been touched by the user yet.
         if (userProfile && !form.formState.isDirty) {
             form.reset({
                 gradeLevel: String(userProfile.gradeLevel || ''),
@@ -73,8 +74,11 @@ export default function SettingsPage() {
     const onSubmit = (data: SettingsFormValues) => {
         if (!user || !userProfileRef) return;
         
+        // Ensure we have the most recent profile data to merge with
+        const currentData = userProfile || {};
+
         const profileData = {
-            ...userProfile, // Spread existing profile to keep fields like email, firstName etc.
+            ...currentData, // Spread existing profile to keep fields like email, firstName etc.
             ...data, // Overwrite with new form data
             gradeLevel: parseInt(data.gradeLevel, 10), // Ensure gradeLevel is a number
         };
