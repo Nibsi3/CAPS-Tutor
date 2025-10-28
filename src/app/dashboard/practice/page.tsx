@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from '@/components/ui/textarea';
-import { Loader, Target, Bot, Sparkles } from "lucide-react";
+import { Loader, Target, Bot, Sparkles, AlertTriangle } from "lucide-react";
 import { generateAdaptiveExam, AdaptiveExamOutput } from '@/ai/flows/adaptive-exam-generation';
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
 import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getFirestore } from 'firebase/firestore';
+import Link from 'next/link';
 
 // Correctly define the type for a single question
 type ExamQuestion = AdaptiveExamOutput['examQuestions'][number];
@@ -40,34 +41,19 @@ export default function PracticePage() {
   }, [user, firestore]);
   const { data: userProfile } = useDoc(userProfileRef);
 
-  useEffect(() => {
-    const topicParam = searchParams.get('topic');
-    const gradeParam = searchParams.get('grade');
-    const subjectParam = searchParams.get('subject');
+  const handleGenerateExam = useCallback(async () => {
+    const currentTopic = searchParams.get('topic');
+    const currentGrade = searchParams.get('grade');
+    const currentSubject = searchParams.get('subject');
 
-    if (topicParam) {
-      setTopic(decodeURIComponent(topicParam));
-      setGrade(gradeParam);
-      setSubject(subjectParam);
-    } else {
-        setIsInitialLoading(false);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (topic && user) {
-        handleGenerateExam();
-    }
-  }, [topic, user]);
-
-
-  const handleGenerateExam = async () => {
     if (!user) {
         toast({ variant: "destructive", title: "Not Logged In", description: "You must be logged in to practice." });
+        setIsInitialLoading(false);
         return;
     }
-    if (!topic && !userProfile) {
+    if (!currentTopic && !userProfile) {
         toast({ variant: "destructive", title: "No Topic Selected", description: "Go to the lessons page to pick a topic to practice!" });
+        setIsInitialLoading(false);
         return;
     }
 
@@ -77,9 +63,9 @@ export default function PracticePage() {
         const result = await generateAdaptiveExam({
             studentId: user.uid,
             numQuestions: 5,
-            topic: topic || undefined,
-            gradeLevel: grade ? parseInt(grade) : userProfile?.gradeLevel,
-            subject: subject || userProfile?.subjects?.[0]
+            topic: currentTopic ? decodeURIComponent(currentTopic) : undefined,
+            gradeLevel: currentGrade ? parseInt(currentGrade) : userProfile?.gradeLevel,
+            subject: currentSubject ? decodeURIComponent(currentSubject) : userProfile?.subjects?.[0]
         });
         if (result.examQuestions.length === 0) {
             toast({ variant: "destructive", title: "Generation Failed", description: "The AI couldn't generate questions for this topic. Please try another." });
@@ -93,7 +79,22 @@ export default function PracticePage() {
         setIsLoading(false);
         setIsInitialLoading(false);
     }
-  };
+  }, [user, userProfile, searchParams, toast]);
+
+  useEffect(() => {
+    const topicParam = searchParams.get('topic');
+    if (topicParam) {
+      setTopic(decodeURIComponent(topicParam));
+      setGrade(searchParams.get('grade'));
+      setSubject(searchParams.get('subject'));
+      if (user && userProfile) {
+        handleGenerateExam();
+      }
+    } else {
+        setIsInitialLoading(false);
+    }
+  }, [searchParams, user, userProfile, handleGenerateExam]);
+
 
   const handleAnswerChange = (index: number, answer: string) => {
     if (!exam) return;
@@ -160,7 +161,7 @@ export default function PracticePage() {
                        Visit the "Lessons" page to choose a subject and topic you'd like to practice.
                     </p>
                     <Button size="lg" asChild>
-                       <a href="/dashboard/lessons">Browse Lessons</a>
+                       <Link href="/dashboard/lessons">Browse Lessons</Link>
                     </Button>
                 </CardContent>
             </Card>
@@ -189,7 +190,7 @@ export default function PracticePage() {
         </CardHeader>
       </Card>
       
-      {isLoading && !exam && (
+      {isLoading && (
           <div className="text-center p-12">
             <Loader className="mx-auto h-12 w-12 animate-spin text-primary mb-4" />
             <p className="text-muted-foreground">Generating your practice questions...</p>
@@ -235,8 +236,9 @@ export default function PracticePage() {
                 ))}
                 {exam.examQuestions.length === 0 && !isLoading && (
                      <div className="text-center p-12 text-muted-foreground">
-                        <p>The AI could not generate questions for "{topic}".</p>
-                        <p>Please try a different topic from the lessons page.</p>
+                        <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
+                        <p className="font-semibold">Could not generate questions for "{topic}".</p>
+                        <p>The AI might not have enough information for this specific topic yet. Please try a different one.</p>
                     </div>
                 )}
             </CardContent>
