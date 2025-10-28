@@ -3,12 +3,15 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Award, Book, Brain, CheckCircle, Star, Target, Trophy, Medal, Rocket } from "lucide-react";
+import { Award, Book, Brain, CheckCircle, Star, Target, Trophy, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { subjects as allSubjects } from "@/lib/data";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 const personalAchievements = [
     {
@@ -61,35 +64,52 @@ const personalAchievements = [
     }
 ];
 
-const leaderboards: Record<string, { rank: number; name: string; score: number; avatar: string }[]> = {
-  "Mathematics": [
-    { rank: 1, name: "Lerato M.", score: 152, avatar: "/avatars/01.png" },
-    { rank: 2, name: "John D.", score: 148, avatar: "/avatars/02.png" },
-    { rank: 3, name: "Thabo K.", score: 145, avatar: "/avatars/03.png" },
-    { rank: 4, name: "You", score: 130, avatar: "" },
-    { rank: 5, name: "Sipho N.", score: 121, avatar: "/avatars/04.png" },
-  ],
-  "Life Sciences": [
-    { rank: 1, name: "Aisha P.", score: 210, avatar: "/avatars/05.png" },
-    { rank: 2, name: "You", score: 198, avatar: "" },
-    { rank: 3, name: "Fatima A.", score: 185, avatar: "/avatars/06.png" },
-    { rank: 4, name: "David L.", score: 170, avatar: "/avatars/01.png" },
-    { rank: 5, name: "Nomvula Z.", score: 165, avatar: "/avatars/02.png" },
-  ],
-  "Physical Sciences": [
-    { rank: 1, name: "Chris B.", score: 180, avatar: "/avatars/03.png" },
-    { rank: 2, name: "Zane W.", score: 175, avatar: "/avatars/04.png" },
-    { rank: 3, name: "Michael T.", score: 160, avatar: "/avatars/05.png" },
-    { rank: 4, name: "You", score: 155, avatar: "" },
-    { rank: 5, name: "Kevin R.", score: 140, avatar: "/avatars/06.png" },
-  ],
-};
+const generateLeaderboardData = (subjects: { value: string, label: string }[]) => {
+  const data: Record<string, Record<string, { rank: number; name: string; score: number; avatar: string }[]>> = {};
+  const timeframes = ['Weekly', 'Monthly', 'Yearly', 'All Time'];
+  const names = ["Lerato M.", "Thabo K.", "Sipho N.", "Aisha P.", "Fatima A.", "David L.", "Nomvula Z.", "Chris B.", "Zane W.", "Michael T."];
 
+  subjects.forEach(subject => {
+    data[subject.value] = {};
+    timeframes.forEach((timeframe, timeIndex) => {
+      const leaderboard = [];
+      const usedNames = new Set<string>();
+      
+      // Add "You" to the leaderboard at a random position
+      const yourRank = Math.floor(Math.random() * 5) + 1;
+      let scoreMultiplier = (4 - timeIndex) * 20;
+
+      for (let i = 1; i <= 5; i++) {
+        if (i === yourRank) {
+           leaderboard.push({ rank: i, name: "You", score: Math.floor(Math.random() * 50) + scoreMultiplier + 50, avatar: "" });
+        } else {
+          let randomName;
+          do {
+            randomName = names[Math.floor(Math.random() * names.length)];
+          } while (usedNames.has(randomName));
+          usedNames.add(randomName);
+          leaderboard.push({ rank: i, name: randomName, score: Math.floor(Math.random() * 30) + scoreMultiplier + (5-i)*10, avatar: `/avatars/0${i}.png` });
+        }
+      }
+      // Simple sort by score and update ranks
+      leaderboard.sort((a, b) => b.score - a.score);
+      leaderboard.forEach((player, index) => player.rank = index + 1);
+
+      data[subject.value][timeframe] = leaderboard;
+    });
+  });
+
+  return data;
+}
+
+
+const leaderboards = generateLeaderboardData(allSubjects);
 const leaderboardSubjects = Object.keys(leaderboards);
 
 
 export default function AchievementsPage() {
   const [selectedSubject, setSelectedSubject] = useState(leaderboardSubjects[0]);
+  const [selectedTimeframe, setSelectedTimeframe] = useState('Weekly');
   const unlockedCount = personalAchievements.filter(a => a.unlocked).length;
   const totalCount = personalAchievements.length;
 
@@ -99,6 +119,8 @@ export default function AchievementsPage() {
     if (rank === 3) return <Medal className="h-6 w-6 text-orange-600" />;
     return <span className="font-bold text-lg">{rank}</span>;
   }
+  
+  const currentLeaderboard = leaderboards[selectedSubject]?.[selectedTimeframe] || [];
 
   return (
     <div className="flex-1 space-y-8">
@@ -156,7 +178,7 @@ export default function AchievementsPage() {
               </div>
               <div className="w-full sm:w-auto">
                 <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                  <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectTrigger className="w-full sm:w-[240px]">
                     <SelectValue placeholder="Select a subject" />
                   </SelectTrigger>
                   <SelectContent>
@@ -169,6 +191,14 @@ export default function AchievementsPage() {
             </div>
           </CardHeader>
           <CardContent>
+            <Tabs value={selectedTimeframe} onValueChange={setSelectedTimeframe} className="mb-6">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+                    <TabsTrigger value="Weekly">Weekly</TabsTrigger>
+                    <TabsTrigger value="Monthly">Monthly</TabsTrigger>
+                    <TabsTrigger value="Yearly">Yearly</TabsTrigger>
+                    <TabsTrigger value="All Time">All Time</TabsTrigger>
+                </TabsList>
+            </Tabs>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -178,7 +208,7 @@ export default function AchievementsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {leaderboards[selectedSubject]?.map((student) => (
+                {currentLeaderboard.map((student) => (
                   <TableRow key={student.rank} className={cn(student.name === "You" && "bg-accent")}>
                     <TableCell className="w-[80px]">
                         <div className="flex items-center justify-center h-10 w-10 rounded-full bg-muted">
