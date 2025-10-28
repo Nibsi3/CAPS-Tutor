@@ -139,38 +139,38 @@ export default function PracticePage() {
   
   const handleTutorSendMessage = async () => {
     const currentPrompt = tutorPrompt;
-    if (!user || !userProfile || !topic || !currentPrompt.trim()) {
-        toast({
-            variant: "destructive",
-            title: "Cannot send message",
-            description: "Cannot send message right now.",
-        });
-        return;
+    if (!user || !topic || !currentPrompt.trim() || !grade || !subject) {
+      toast({
+        variant: "destructive",
+        title: "Cannot send message",
+        description: "Cannot send message right now.",
+      });
+      return;
     }
-
+  
     const newMessages: Message[] = [...tutorMessages, { role: 'user', content: currentPrompt }];
     setTutorMessages(newMessages);
     setTutorPrompt('');
     setIsTutorLoading(true);
     
     try {
-        const result = await askAiTutor({
-            prompt: `In the context of the topic "${topic}", the user asked: "${currentPrompt}"`,
-            gradeLevel: userProfile.gradeLevel,
-            subjects: [subject || 'General'],
-        });
-
-        setTutorMessages([...newMessages, { role: 'assistant', content: result.response }]);
-
+      const result = await askAiTutor({
+        prompt: `In the context of the topic "${topic}", the user asked: "${currentPrompt}"`,
+        gradeLevel: parseInt(grade),
+        subjects: [subject],
+      });
+  
+      setTutorMessages([...newMessages, { role: 'assistant', content: result.response }]);
+  
     } catch (error) {
-        console.error("Failed to get response from AI tutor:", error);
-        toast({
-            variant: "destructive",
-            title: "AI Tutor Error",
-            description: "The AI failed to provide a response. Please try again.",
-        });
+      console.error("Failed to get response from AI tutor:", error);
+      toast({
+        variant: "destructive",
+        title: "AI Tutor Error",
+        description: "The AI failed to provide a response. Please try again.",
+      });
     } finally {
-        setIsTutorLoading(false);
+      setIsTutorLoading(false);
     }
   };
 
@@ -285,7 +285,7 @@ export default function PracticePage() {
                             onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
                             disabled={currentQuestionIndex === 0}
                         >
-                            <ArrowLeft className="mr-2" /> Previous
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                         </Button>
                         <div className="text-sm text-muted-foreground">
                             {currentQuestionIndex + 1} / {exam.examQuestions.length}
@@ -294,7 +294,7 @@ export default function PracticePage() {
                             onClick={() => setCurrentQuestionIndex(prev => Math.min(exam.examQuestions.length - 1, prev + 1))}
                             disabled={currentQuestionIndex === exam.examQuestions.length - 1}
                         >
-                           Next <ArrowRight className="ml-2" />
+                           Next <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     </div>
                 </Card>
