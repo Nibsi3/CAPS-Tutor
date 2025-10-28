@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,16 +65,17 @@ export default function SettingsPage() {
     }, [userProfile, form]);
 
     const onSubmit = (data: SettingsFormValues) => {
-        if (!user) return;
+        if (!user || !userProfileRef) return;
         
         const profileData = {
             ...data,
+            gradeLevel: parseInt(data.gradeLevel, 10), // Ensure gradeLevel is a number
             email: user.email,
             firstName: user.displayName?.split(' ')[0] || '',
             lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
         };
 
-        setDocumentNonBlocking(userProfileRef!, profileData, { merge: true });
+        setDocumentNonBlocking(userProfileRef, profileData, { merge: true });
 
         toast({
             title: "Settings Saved",
@@ -111,7 +112,7 @@ export default function SettingsPage() {
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Grade Level</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={String(field.value) || ''}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select your grade" />
@@ -135,7 +136,7 @@ export default function SettingsPage() {
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Province</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select your province" />

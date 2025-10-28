@@ -11,7 +11,10 @@ import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getFirestore } from 'firebase/firestore';
 
-interface QuestionWithFeedback extends AdaptiveExamOutput['examQuestions'][0] {
+// Correctly define the type for a single question
+type ExamQuestion = AdaptiveExamOutput['examQuestions'][number];
+
+interface QuestionWithFeedback extends ExamQuestion {
   studentAnswer?: string;
   feedback?: InteractiveFeedbackOutput | null;
   isChecking?: boolean;
@@ -51,7 +54,6 @@ export default function PracticePage() {
         toast({
             title: "Exam Generated!",
             description: "Your custom exam is ready.",
-            icon: <CheckCircle className="h-5 w-5 text-green-500" />,
         });
     } catch (error) {
         console.error("Failed to generate exam:", error);
@@ -84,7 +86,7 @@ export default function PracticePage() {
         const result = await getInteractiveFeedback({
             question: question.question,
             studentAnswer: question.studentAnswer || '',
-            gradeLevel: parseInt(userProfile.gradeLevel),
+            gradeLevel: userProfile.gradeLevel,
             subject: question.topic, // Or a more general subject if available
         });
         newQuestions[index].feedback = result;
@@ -142,9 +144,10 @@ export default function PracticePage() {
                           placeholder="Your answer..."
                           value={q.studentAnswer || ''}
                           onChange={(e) => handleAnswerChange(index, e.target.value)}
+                          disabled={!!q.feedback}
                         />
                         
-                        <Button onClick={() => handleCheckAnswer(index)} disabled={!q.studentAnswer || q.isChecking}>
+                        <Button onClick={() => handleCheckAnswer(index)} disabled={!q.studentAnswer || q.isChecking || !!q.feedback}>
                             {q.isChecking && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                             {q.isChecking ? 'Checking...' : 'Check Answer'}
                         </Button>
@@ -168,5 +171,3 @@ export default function PracticePage() {
     </div>
   )
 }
-
-    

@@ -21,7 +21,7 @@ export default function DashboardPage() {
         return doc(firestore, `users/${user.uid}`);
     }, [user, firestore]);
 
-    const { data: userProfile } = useDoc(userProfileRef);
+    const { data: userProfile } = useDoc<{gradeLevel: number, subjects: string[]}>(userProfileRef);
 
   return (
     <div className="flex-1 space-y-4">
@@ -92,5 +92,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
-    
