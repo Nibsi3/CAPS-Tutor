@@ -139,15 +139,11 @@ export default function PracticePage() {
   
   const handleTutorSendMessage = async () => {
     const currentPrompt = tutorPrompt;
-    if (!currentPrompt.trim() || !topic || !grade || !subject) {
-      toast({
-        variant: 'destructive',
-        title: 'Cannot send message',
-        description: 'Cannot send message right now.',
-      });
-      return;
-    }
-  
+    if (!currentPrompt.trim() || !grade || !subject) return;
+
+    const currentQuestion = exam?.examQuestions[currentQuestionIndex]?.question;
+    const contextPrompt = `Regarding the question: "${currentQuestion}", the student asks: "${currentPrompt}"`;
+
     const newMessages: Message[] = [...tutorMessages, { role: 'user', content: currentPrompt }];
     setTutorMessages(newMessages);
     setTutorPrompt('');
@@ -155,7 +151,7 @@ export default function PracticePage() {
     
     try {
       const result = await askAiTutor({
-        prompt: `In the context of the topic "${topic}", the user asked: "${currentPrompt}"`,
+        prompt: contextPrompt,
         gradeLevel: parseInt(grade),
         subjects: [subject],
       });
@@ -270,7 +266,7 @@ export default function PracticePage() {
                                             <p className={`font-semibold ${q.feedback.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
                                             {q.feedback.isCorrect ? 'Correct! Excellent work.' : 'Not quite. Here is a step-by-step explanation:'}
                                             </p>
-                                            <div className="prose prose-sm max-w-full text-muted-foreground prose-p:my-2 prose-li:my-1">
+                                            <div className="prose prose-sm max-w-full text-muted-foreground prose-p:my-3 prose-li:my-1.5">
                                                 <ReactMarkdown>{q.feedback.explanation}</ReactMarkdown>
                                             </div>
                                         </div>
@@ -329,7 +325,7 @@ export default function PracticePage() {
                     <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                         {message.role === 'assistant' && <Bot className="w-6 h-6 flex-shrink-0 text-primary" />}
                         <div className={`rounded-lg p-3 max-w-[90%] text-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                        <div className="prose prose-sm max-w-full prose-p:my-2 prose-li:my-1"><ReactMarkdown>{message.content}</ReactMarkdown></div>
+                        <div className="prose prose-sm max-w-full prose-p:my-3 prose-li:my-1.5"><ReactMarkdown>{message.content}</ReactMarkdown></div>
                         </div>
                         {message.role === 'user' && <User className="w-6 h-6 flex-shrink-0" />}
                     </div>
@@ -378,5 +374,3 @@ export default function PracticePage() {
     </div>
   )
 }
-
-    
