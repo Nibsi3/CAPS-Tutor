@@ -45,7 +45,7 @@ const interactiveFeedbackPrompt = ai.definePrompt({
 
 **Your Task:**
 1.  **Assess the Answer**: Carefully evaluate the student's answer. Is it correct, partially correct, or incorrect?
-2.  **Determine `isCorrect`**: Set the 'isCorrect' boolean field to \`true\` if the answer is fundamentally correct, otherwise set it to \`false\`.
+2.  **Determine \`isCorrect\`**: Set the 'isCorrect' boolean field to \`true\` if the answer is fundamentally correct, otherwise set it to \`false\`.
 3.  **Craft the Explanation**:
     *   **If Correct**: Write a positive and encouraging confirmation. Briefly mention *why* it's correct. For example: "That's exactly right! You've correctly applied the formula for the area of a circle. Well done!"
     *   **If Incorrect**: Write a gentle and supportive explanation.
