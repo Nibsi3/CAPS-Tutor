@@ -7,7 +7,9 @@ import {
   Settings,
   Target,
   Users,
-  BarChart
+  BarChart,
+  Bot,
+  Award
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -48,7 +50,7 @@ export default function DashboardLayout({
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
               <Link
                 href="/dashboard"
-                className="flex items-center gap-3 rounded-lg bg-muted px-3 py-2 text-primary transition-all hover:text-primary"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
               >
                 <Home className="h-4 w-4" />
                 Dashboard
@@ -66,9 +68,23 @@ export default function DashboardLayout({
               >
                 <Target className="h-4 w-4" />
                 Practice
+              </Link>
+               <Link
+                href="/dashboard/tutor"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <Bot className="h-4 w-4" />
+                AI Tutor
                 <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
                   New
                 </Badge>
+              </Link>
+              <Link
+                href="/dashboard/achievements"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <Award className="h-4 w-4" />
+                Achievements
               </Link>
               <Link
                 href="/dashboard/progress"
@@ -88,8 +104,8 @@ export default function DashboardLayout({
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-2 pt-0 md:p-4 md:pt-0">
-                <Button size="sm" className="w-full">
-                  Ask AI Tutor
+                <Button size="sm" className="w-full" asChild>
+                  <Link href="/dashboard/tutor">Ask AI Tutor</Link>
                 </Button>
               </CardContent>
             </Card>

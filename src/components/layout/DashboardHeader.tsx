@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, Search, Home, BookOpen, Target, BarChart, Settings } from "lucide-react"
+import { Menu, Search, Home, BookOpen, Target, BarChart, Settings, Bot, Award } from "lucide-react"
 import Link from "next/link"
 import { UserNav } from "./UserNav"
 import { ThemeToggle } from "./ThemeToggle"
@@ -59,8 +59,22 @@ export function DashboardHeader() {
               Practice
             </Link>
             <Link
+              href="/dashboard/tutor"
+              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <Bot className="h-5 w-5" />
+              AI Tutor
+            </Link>
+            <Link
+              href="/dashboard/achievements"
+              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <Award className="h-5 w-5" />
+              Achievements
+            </Link>
+            <Link
               href="/dashboard/progress"
-              className="flex items-center gap-4 px-2.5 text-foreground"
+              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
             >
               <BarChart className="h-5 w-5" />
               Progress
