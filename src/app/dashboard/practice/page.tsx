@@ -6,14 +6,14 @@ import { useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from '@/components/ui/textarea';
-import { Loader, Target, Bot, Sparkles, AlertTriangle, User, ArrowRight, ArrowLeft } from "lucide-react";
+import { Loader, Target, Bot, Sparkles, AlertTriangle, User, ArrowRight, ArrowLeft, BrainCircuit } from "lucide-react";
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
 import { getQuestionsForTopic, Question } from '@/lib/questions';
 import ReactMarkdown from 'react-markdown';
-
+import { Progress } from '@/components/ui/progress';
 
 interface QuestionWithFeedback extends Question {
   studentAnswer?: string;
@@ -25,6 +25,13 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+const strugglingTopics = [
+    { name: "Algebraic expressions", subject: "Mathematics", grade: "10", mastery: 45 },
+    { name: "Euclidean geometry", subject: "Mathematics", grade: "10", mastery: 52 },
+    { name: "Chemical equilibrium", subject: "Physical Sciences", grade: "12", mastery: 60 },
+];
+
 
 export default function PracticePage() {
   const { toast } = useToast();
@@ -134,10 +141,10 @@ export default function PracticePage() {
   
   const handleTutorSendMessage = async () => {
     const currentPrompt = tutorPrompt;
-    if (!currentPrompt.trim() || !grade || !subject) return;
+    if (!currentPrompt.trim() || !grade || !subject || !topic) return;
 
     const currentQuestion = exam?.examQuestions[currentQuestionIndex]?.question;
-    const contextPrompt = `Regarding the question: "${currentQuestion}", the student asks: "${currentPrompt}"`;
+    const contextPrompt = `Regarding the topic "${topic}" and specifically the question: "${currentQuestion}", the student asks: "${currentPrompt}"`;
 
     const newMessages: Message[] = [...tutorMessages, { role: 'user', content: currentPrompt }];
     setTutorMessages(newMessages);
@@ -166,6 +173,7 @@ export default function PracticePage() {
   };
   
   const currentQuestionCorrect = !!exam?.examQuestions[currentQuestionIndex]?.feedback?.isCorrect;
+  const questionsCount = exam?.examQuestions.length || 0;
 
   if (isInitialLoading) {
     return (
@@ -182,20 +190,50 @@ export default function PracticePage() {
         <CardHeader>
           <CardTitle className="font-headline text-3xl">Practice Zone</CardTitle>
           <CardDescription>
-            Test your knowledge with custom quizzes on any topic.
+            Test your knowledge with custom quizzes. Start with a recommended topic or choose one from the lessons page.
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-center py-12">
-          <div className="mx-auto bg-primary/10 rounded-full w-24 h-24 flex items-center justify-center mb-6">
-            <Sparkles className="w-12 h-12 text-primary" />
-          </div>
-          <h3 className="text-2xl font-bold font-headline mb-2">Select a Topic to Start</h3>
-          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Visit the "Lessons" page to choose a subject and topic you'd like to practice.
-          </p>
-          <Button size="lg" asChild>
-            <Link href="/dashboard/lessons">Browse Lessons</Link>
-          </Button>
+        <CardContent className="space-y-8">
+            <div className='space-y-4'>
+                <h3 className="text-2xl font-bold font-headline flex items-center gap-3"><BrainCircuit className="w-8 h-8 text-primary"/> Recommended For You</h3>
+                <p className="text-muted-foreground max-w-2xl">
+                    Based on your recent activity, here are a few topics where some extra practice could be beneficial. Mastering these will boost your overall progress.
+                </p>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {strugglingTopics.map(topic => (
+                    <Link 
+                        key={topic.name} 
+                        href={`/dashboard/practice?topic=${encodeURIComponent(topic.name)}&grade=${topic.grade}&subject=${topic.subject}`}
+                        className="block"
+                    >
+                        <Card className="h-full hover:border-primary hover:shadow-lg transition-all">
+                            <CardHeader>
+                                <CardTitle>{topic.name}</CardTitle>
+                                <CardDescription>{topic.subject} - Grade {topic.grade}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className='space-y-2'>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="font-medium text-muted-foreground">Current Mastery</span>
+                                        <span className="font-bold text-primary">{topic.mastery}%</span>
+                                    </div>
+                                    <Progress value={topic.mastery} />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                ))}
+            </div>
+             <div className="text-center py-6 bg-muted rounded-lg">
+                <h4 className="text-xl font-bold font-headline mb-2">Or, Choose Your Own Topic</h4>
+                <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+                    Visit the "Lessons" page to choose any subject and topic you'd like to practice.
+                </p>
+                <Button size="lg" asChild>
+                    <Link href="/dashboard/lessons">Browse Lessons</Link>
+                </Button>
+            </div>
         </CardContent>
       </Card>
     );
@@ -215,13 +253,13 @@ export default function PracticePage() {
                           Practice: {topic}
                       </CardTitle>
                       <CardDescription>
-                          {exam ? `Question ${currentQuestionIndex + 1} of ${exam.examQuestions.length}` : 'Loading questions...'}
+                          {exam ? `Question ${currentQuestionIndex + 1} of ${questionsCount}` : 'Loading questions...'}
                       </CardDescription>
                     </div>
                      {exam && (
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">Score</p>
-                        <p className="font-headline text-2xl font-bold">{score} / {exam.examQuestions.length}</p>
+                        <p className="font-headline text-2xl font-bold">{score} / {questionsCount}</p>
                       </div>
                     )}
                 </div>
@@ -237,7 +275,7 @@ export default function PracticePage() {
                 </Card>
             )}
 
-            {exam && exam.examQuestions.length > 0 && (
+            {exam && questionsCount > 0 && (
                 <Card className="flex-1 flex flex-col">
                     <CardContent className="space-y-4 pt-6 flex-1">
                         
@@ -269,7 +307,7 @@ export default function PracticePage() {
                                             <p className={`font-semibold ${q.feedback.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
                                             {q.feedback.isCorrect ? 'Correct! Excellent work.' : 'Not quite. Here is a step-by-step explanation:'}
                                             </p>
-                                            <div className="prose prose-sm max-w-full text-muted-foreground prose-p:my-3 prose-li:my-1.5">
+                                            <div className="prose prose-sm max-w-full text-muted-foreground prose-p:my-3 prose-li:my-1.5 prose-p:leading-relaxed">
                                                 <ReactMarkdown>{q.feedback.explanation}</ReactMarkdown>
                                             </div>
                                         </div>
@@ -287,11 +325,11 @@ export default function PracticePage() {
                             <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                         </Button>
                         <div className="text-sm text-muted-foreground">
-                            {currentQuestionIndex + 1} / {exam.examQuestions.length}
+                            {currentQuestionIndex + 1} / {questionsCount}
                         </div>
                         <Button
-                            onClick={() => setCurrentQuestionIndex(prev => Math.min(exam.examQuestions.length - 1, prev + 1))}
-                            disabled={currentQuestionIndex === exam.examQuestions.length - 1 || !currentQuestionCorrect}
+                            onClick={() => setCurrentQuestionIndex(prev => Math.min(questionsCount - 1, prev + 1))}
+                            disabled={currentQuestionIndex === questionsCount - 1 || !currentQuestionCorrect}
                         >
                            Next <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
@@ -299,7 +337,7 @@ export default function PracticePage() {
                 </Card>
             )}
 
-            {exam && exam.examQuestions.length === 0 && !isLoading && (
+            {exam && questionsCount === 0 && !isLoading && (
                     <Card className="flex-1 flex items-center justify-center">
                         <div className="text-center p-12 text-muted-foreground">
                             <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
@@ -328,7 +366,7 @@ export default function PracticePage() {
                     <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                         {message.role === 'assistant' && <Bot className="w-6 h-6 flex-shrink-0 text-primary" />}
                         <div className={`rounded-lg p-3 max-w-[90%] text-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                        <div className="prose prose-sm max-w-full prose-p:my-3 prose-li:my-1.5"><ReactMarkdown>{message.content}</ReactMarkdown></div>
+                        <div className="prose prose-sm max-w-full prose-p:my-3 prose-li:my-1.5 prose-p:leading-relaxed"><ReactMarkdown>{message.content}</ReactMarkdown></div>
                         </div>
                         {message.role === 'user' && <User className="w-6 h-6 flex-shrink-0" />}
                     </div>

@@ -96,19 +96,6 @@ export default function DashboardLayout({
             </nav>
           </div>
           <div className="mt-auto p-4">
-            <Card>
-              <CardHeader className="p-2 pt-0 md:p-4">
-                <CardTitle>Need Help?</CardTitle>
-                <CardDescription>
-                  Stuck on a problem? Ask Mr. Ranedeer for a hint or a detailed explanation.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-2 pt-0 md:p-4 md:pt-0">
-                <Button size="sm" className="w-full" asChild>
-                  <Link href="/dashboard/tutor">Ask AI Tutor</Link>
-                </Button>
-              </CardContent>
-            </Card>
             <Link
                 href="/dashboard/settings"
                 className="mt-4 flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
