@@ -9,11 +9,13 @@ import { lessons, grades, placeholderLessons } from "@/lib/data";
 import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator } from "lucide-react";
 import { cn } from '@/lib/utils';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog"
 
 // Create a unique list of subjects from the available lessons
 const allLessons = [...lessons, ...placeholderLessons];
@@ -105,7 +107,6 @@ export default function LessonsPage() {
           </div>
 
           {filteredLessons.length > 0 ? (
-             <TooltipProvider>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {filteredLessons.map(lesson => {
                     const Icon = subjectIcons[lesson.subject] || BookOpen;
@@ -132,19 +133,24 @@ export default function LessonsPage() {
                                         </div>
                                     ))}
                                     {lesson.topics.length > 5 && (
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <div className="text-xs font-semibold text-primary/80 pt-1 cursor-pointer hover:underline">...and {lesson.topics.length - 5} more</div>
-                                            </TooltipTrigger>
-                                            <TooltipContent className="max-w-xs">
-                                                <p className='font-medium'>Additional Topics:</p>
-                                                <ul className='list-disc list-inside mt-2 space-y-1'>
-                                                    {lesson.topics.slice(5).map((topic, index) => (
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <button className="text-xs font-semibold text-primary/80 pt-1 cursor-pointer hover:underline text-left">...and {lesson.topics.length - 5} more</button>
+                                            </DialogTrigger>
+                                            <DialogContent className="sm:max-w-md">
+                                                <DialogHeader>
+                                                    <DialogTitle>All Topics for {lesson.subject} - Grade {lesson.gradeLevel}</DialogTitle>
+                                                    <DialogDescription>
+                                                        A complete list of topics covered in this subject.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <ul className='list-disc list-inside mt-4 space-y-2 max-h-80 overflow-y-auto pr-4'>
+                                                    {lesson.topics.map((topic, index) => (
                                                         <li key={index}>{topic}</li>
                                                     ))}
                                                 </ul>
-                                            </TooltipContent>
-                                        </Tooltip>
+                                            </DialogContent>
+                                        </Dialog>
                                     )}
                                 </div>
                             </CardContent>
@@ -157,7 +163,6 @@ export default function LessonsPage() {
                     )
                   })}
                 </div>
-            </TooltipProvider>
           ) : (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
               <h3 className='text-lg font-semibold'>No Lessons Found</h3>
