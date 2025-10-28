@@ -35,7 +35,7 @@ import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/fireb
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, Settings as SettingsIcon, AlertTriangle } from 'lucide-react';
-import { grades, subjects } from '@/lib/data';
+import { grades, subjects, provinces } from '@/lib/data';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import {
@@ -165,7 +165,6 @@ export default function SettingsPage() {
     setIsDeleting(true);
     try {
       // First, delete the Firestore document.
-      // Note: Security rules should prevent unauthorized deletion, but we attempt it first.
       await deleteDoc(userProfileRef);
       
       // Then, delete the user from Authentication
