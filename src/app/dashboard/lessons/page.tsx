@@ -6,10 +6,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { lessons, grades, placeholderLessons } from "@/lib/data";
+import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator } from "lucide-react";
+import { cn } from '@/lib/utils';
 
 // Create a unique list of subjects from the available lessons
 const allLessons = [...lessons, ...placeholderLessons];
 const availableSubjects = [...new Set(allLessons.map(l => l.subject))].map(s => ({ value: s, label: s}));
+
+const subjectIcons: Record<string, React.ElementType> = {
+  "Mathematics": Calculator,
+  "Physical Sciences": FlaskConical,
+  "Life Sciences": BarChart,
+  "Accounting": FileText,
+  "Business Studies": Landmark,
+  "Geography": Globe,
+  // Add more icons for other subjects if needed
+};
+
+const subjectColors: Record<string, string> = {
+  "Mathematics": "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+  "Physical Sciences": "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
+  "Life Sciences": "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
+  "Geography": "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400",
+  "Accounting": "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400",
+  "Business Studies": "bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400",
+};
+
 
 export default function LessonsPage() {
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
@@ -24,15 +46,15 @@ export default function LessonsPage() {
 
   return (
     <div className="flex-1 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Lesson Hub</CardTitle>
-          <CardDescription>
-            Browse and search for lessons. Use the filters to find content for your grade and subject.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <Card className='overflow-hidden'>
+        <div className="bg-card p-6 border-b">
+            <CardTitle className="font-headline text-3xl flex items-center gap-3"><BookOpen className='w-8 h-8' />Lesson Hub</CardTitle>
+            <CardDescription className='pt-2'>
+                Browse and search for lessons. Use the filters to find content for your grade and subject.
+            </CardDescription>
+        </div>
+        <CardContent className='p-6'>
+          <div className="flex flex-col sm:flex-row gap-4 mb-8">
             <Select onValueChange={setSelectedGrade} value={selectedGrade || ''}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Filter by Grade" />
@@ -59,32 +81,49 @@ export default function LessonsPage() {
           </div>
 
           {filteredLessons.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredLessons.map(lesson => (
-                <Card key={lesson.id}>
-                  <CardHeader>
-                    <CardTitle className="text-xl font-headline">{lesson.subject}</CardTitle>
-                    <CardDescription>Grade {lesson.gradeLevel}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm font-medium mb-2">Key Topics:</p>
-                    <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 h-32 overflow-y-auto">
-                      {lesson.topics.map((obj, index) => (
-                        <li key={index}>{obj}</li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                  <CardFooter>
-                    <Button asChild className="w-full">
-                        <Link href={`/dashboard/lessons/${lesson.id}`}>Explore Subject</Link>
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredLessons.map(lesson => {
+                const Icon = subjectIcons[lesson.subject] || BookOpen;
+                const colorClass = subjectColors[lesson.subject] || "bg-muted text-muted-foreground";
+
+                return (
+                    <Card key={lesson.id} className="flex flex-col hover:shadow-lg transition-shadow duration-300">
+                        <CardHeader className={cn("flex-row items-center gap-4 space-y-0 pb-4", colorClass.replace("text-", "dark:text-"))}>
+                            <div className={cn("p-3 rounded-lg", colorClass)}>
+                                <Icon className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-xl font-headline">{lesson.subject}</CardTitle>
+                                <CardDescription className={cn("font-semibold", colorClass.replace("bg-", "text-").replace("dark:bg-", "dark:text-").replace(/100|900\/30/g, '600'))}>Grade {lesson.gradeLevel}</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="flex-1 space-y-4">
+                            <p className="text-sm font-medium">Key Topics:</p>
+                            <div className="space-y-2 text-sm text-muted-foreground">
+                                {lesson.topics.slice(0, 5).map((topic, index) => (
+                                    <div key={index} className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-primary/50"></div>
+                                        <span>{topic}</span>
+                                    </div>
+                                ))}
+                                {lesson.topics.length > 5 && (
+                                    <div className="text-xs font-semibold text-primary/80 pt-1">...and {lesson.topics.length - 5} more</div>
+                                )}
+                            </div>
+                        </CardContent>
+                        <CardFooter>
+                            <Button asChild className="w-full">
+                                <Link href={`/dashboard/lessons/${lesson.id}`}>Explore Subject</Link>
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                )
+              })}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No lessons found for the selected filters. Please select a grade and subject.</p>
+            <div className="text-center py-16 border-2 border-dashed rounded-lg">
+              <h3 className='text-lg font-semibold'>No Lessons Found</h3>
+              <p className="text-muted-foreground mt-2">No lessons matched your filter criteria. Please try different options.</p>
             </div>
           )}
         </CardContent>
