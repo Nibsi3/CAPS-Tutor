@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader } from 'lucide-react';
 import { grades, subjects as allSubjects } from '@/lib/data';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 const provinces = [
     "Eastern Cape", "Free State", "Gauteng", "KwaZulu-Natal", 
@@ -80,11 +80,12 @@ export default function SettingsPage() {
         if (!user || !userProfileRef) return;
         
         const profileDataToSave: Partial<UserProfile> = {
+            ...userProfile, // preserve existing fields
             ...data, 
             gradeLevel: parseInt(data.gradeLevel, 10),
-            email: user.email,
-            firstName: user.displayName?.split(' ')[0],
-            lastName: user.displayName?.split(' ').slice(1).join(' '),
+            email: user.email ?? userProfile?.email,
+            firstName: user.displayName?.split(' ')[0] ?? userProfile?.firstName,
+            lastName: user.displayName?.split(' ').slice(1).join(' ') ?? userProfile?.lastName,
         };
 
         // Use the standard setDoc function with non-blocking error handling
@@ -101,7 +102,7 @@ export default function SettingsPage() {
                     path: userProfileRef.path,
                     operation: 'update',
                     requestResourceData: profileDataToSave,
-                });
+                } satisfies SecurityRuleContext);
                 errorEmitter.emit('permission-error', permissionError);
                 toast({
                     variant: "destructive",
@@ -261,3 +262,5 @@ export default function SettingsPage() {
     </div>
   )
 }
+
+    
