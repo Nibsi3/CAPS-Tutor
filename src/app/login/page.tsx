@@ -55,25 +55,26 @@ export default function LoginPage() {
   }, [user, firestore, router]);
 
   const handleSocialSignIn = async (provider: 'google' | 'facebook') => {
+    setIsSubmitting(true);
     try {
-      // TODO: Make sure this app's domain is an authorized domain in the Firebase Console.
-      // Go to Authentication > Settings > Authorized domains.
       if (provider === 'google') {
         await signInWithGoogle(auth);
       } else {
         await signInWithFacebook(auth);
       }
-      // The onAuthStateChanged listener in the provider will handle the redirect.
     } catch (error: any) {
       console.error(`${provider} Sign-In Error:`, error);
       
-      let description = error.message || `Could not sign in with ${provider}. Please try again.`;
+      let description = `Could not sign in with ${provider}. Please try again.`;
 
       if (error.code === 'auth/popup-closed-by-user') {
           setShowPopupError(true);
+          setIsSubmitting(false);
           return;
       } else if (error.code === 'auth/account-exists-with-different-credential') {
           description = 'An account already exists with the same email address but different sign-in credentials. Try signing in with the original method.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+         description = `Sign-in with ${provider} is not enabled. Please enable it in your Firebase project's Authentication settings under "Sign-in method".`;
       }
 
       toast({
@@ -81,6 +82,8 @@ export default function LoginPage() {
         title: "Authentication Error",
         description: description,
       });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -104,21 +107,31 @@ export default function LoginPage() {
       }
 
     } catch (error: any) {
-      // If the email already exists, try to sign in instead
       if (error.code === 'auth/email-already-in-use') {
+        // If email exists, try to sign in
         try {
           await initiateEmailSignIn(auth, values.email, values.password);
+          // onAuthStateChanged will handle redirect
         } catch (signInError: any) {
+          let description = 'An unexpected error occurred during sign-in.';
+           if (signInError.code === 'auth/wrong-password' || signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/invalid-password') {
+             description = 'The password you entered is incorrect. Please try again.';
+           }
           toast({
             variant: 'destructive',
             title: 'Sign In Failed',
-            description:
-              signInError.code === 'auth/wrong-password' || signInError.code === 'auth/invalid-credential'
-                ? 'The password you entered is incorrect. Please try again.'
-                : 'An unexpected error occurred during sign-in.',
+            description: description,
           });
         }
-      } else {
+      } else if (error.code === 'auth/operation-not-allowed') {
+        // Handle case where Email/Password provider is not enabled
+        toast({
+          variant: 'destructive',
+          title: 'Sign-in Method Disabled',
+          description: 'Email/Password sign-in is not enabled. Please enable it in your Firebase project\'s Authentication settings.',
+        });
+      }
+      else {
         // Handle other sign-up errors
         toast({
           variant: 'destructive',
@@ -214,7 +227,8 @@ export default function LoginPage() {
             </Form>
             <Separator className="my-6" />
             <div className="space-y-4">
-              <Button variant="outline" onClick={() => handleSocialSignIn('google')} className="w-full">
+              <Button variant="outline" onClick={() => handleSocialSignIn('google')} className="w-full" disabled={isSubmitting}>
+                {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
                   <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
                   <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
@@ -223,7 +237,8 @@ export default function LoginPage() {
                 </svg>
                 Sign in with Google
               </Button>
-              <Button variant="outline" onClick={() => handleSocialSignIn('facebook')} className="w-full bg-[#1877F2] text-white hover:bg-[#1877F2]/90 hover:text-white">
+              <Button variant="outline" onClick={() => handleSocialSignIn('facebook')} className="w-full bg-[#1877F2] text-white hover:bg-[#1877F2]/90 hover:text-white" disabled={isSubmitting}>
+                {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                 <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" /></svg>
                 Sign in with Facebook
               </Button>
