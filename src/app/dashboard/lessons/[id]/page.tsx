@@ -6,7 +6,7 @@ import { lessons, placeholderLessons } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ExternalLink, BookOpenCheck, Bot, Search } from 'lucide-react';
+import { ExternalLink, BookOpenCheck, Bot, Search, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LessonDetailPage() {
@@ -73,12 +73,13 @@ export default function LessonDetailPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredTopics.map((topic, index) => (
-                <button 
+                 <button 
                     key={index} 
                     onClick={() => handleTopicClick(topic)}
-                    className="text-left p-4 border rounded-lg bg-muted/50 hover:bg-muted transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="group text-left p-4 border rounded-lg bg-card hover:bg-muted transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary flex justify-between items-center"
                 >
-                    {topic}
+                    <span className="font-medium">{topic}</span>
+                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                 </button>
               ))}
             </div>
@@ -127,3 +128,5 @@ export default function LessonDetailPage() {
     </div>
   );
 }
+
+    

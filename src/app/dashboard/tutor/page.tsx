@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,8 @@ export default function AiTutorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -32,18 +34,9 @@ export default function AiTutorPage() {
   const { data: userProfile } = useDoc(userProfileRef);
 
   useEffect(() => {
-    const initialPrompt = searchParams.get('prompt');
-    if (initialPrompt) {
-      // Decode the prompt from the URL
-      const decodedPrompt = decodeURIComponent(initialPrompt);
-      setPrompt(decodedPrompt);
-      // Automatically send the message if the user profile is loaded
-      if (userProfile) {
-        handleSendMessage(decodedPrompt);
-      }
-    }
-  }, [searchParams, userProfile]); // Re-run when userProfile is available
-
+    // Scroll to the bottom of the chat on new messages
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSendMessage = async (messageToSend?: string) => {
     const currentPrompt = messageToSend || prompt;
@@ -51,7 +44,7 @@ export default function AiTutorPage() {
         toast({
             variant: "destructive",
             title: "Cannot send message",
-            description: "You must be logged in and have a complete profile.",
+            description: "You must be logged in, have a complete profile, and write a message.",
         });
         return;
     }
@@ -77,14 +70,25 @@ export default function AiTutorPage() {
             title: "AI Tutor Error",
             description: "The AI failed to provide a response. Please try again.",
         });
+         setMessages(newMessages); // remove the user message if AI fails
     } finally {
         setIsLoading(false);
     }
   };
 
+  // Effect to handle initial prompt from URL
+  useEffect(() => {
+    const initialPrompt = searchParams.get('prompt');
+    if (initialPrompt && userProfile && messages.length === 0) {
+      const decodedPrompt = decodeURIComponent(initialPrompt);
+      handleSendMessage(decodedPrompt);
+    }
+  }, [searchParams, userProfile, messages.length]);
+
+
   return (
     <div className="flex-1 flex flex-col h-full">
-      <Card className="flex-1 flex flex-col">
+      <Card className="flex-1 flex flex-col max-h-[85vh]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 font-headline text-3xl">
             <Bot className="h-8 w-8" />
@@ -120,6 +124,7 @@ export default function AiTutorPage() {
                 </div>
               </div>
             )}
+             <div ref={chatEndRef} />
           </div>
         </CardContent>
         <div className="p-4 border-t">
@@ -144,8 +149,7 @@ export default function AiTutorPage() {
               onClick={() => handleSendMessage()}
               disabled={isLoading || !prompt.trim()}
             >
-              {isLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Send
+              {isLoading ? 'Sending...' : 'Send'}
             </Button>
           </div>
         </div>
@@ -153,3 +157,5 @@ export default function AiTutorPage() {
     </div>
   )
 }
+
+    
