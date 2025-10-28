@@ -74,9 +74,7 @@ export default function DashboardPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Button asChild>
-                        <Link href="/dashboard/settings">Go to Settings</Link>
-                    </Button>
+                    <p className="text-muted-foreground">Please configure your grade and subjects to continue.</p>
                 </CardContent>
             </Card>
         )}
