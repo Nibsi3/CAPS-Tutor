@@ -91,7 +91,7 @@ export default function SettingsPage() {
     if (userProfile && !formState.isDirty) {
       reset({
         ...userProfile,
-        gradeLevel: userProfile.gradeLevel.toString(),
+        gradeLevel: userProfile.gradeLevel ? userProfile.gradeLevel.toString() : undefined,
       });
     } else if (user && !userProfile && !isProfileLoading) {
       // Set defaults from user object if no profile exists
@@ -115,6 +115,7 @@ export default function SettingsPage() {
     }
 
     const dataToSave = {
+        ...userProfile, // preserve existing data
         ...data,
         email: user?.email, // ensure email is preserved
         gradeLevel: parseInt(data.gradeLevel, 10), // Convert grade back to number
@@ -126,10 +127,8 @@ export default function SettingsPage() {
           title: 'Settings Saved',
           description: 'Your profile has been updated successfully.',
         });
-        form.reset(data, { keepValues: true }); // Resets dirty state but keeps values
       })
       .catch((serverError) => {
-        console.error('Error saving settings:', serverError);
         const permissionError = new FirestorePermissionError({
           path: userProfileRef.path,
           operation: 'update',
