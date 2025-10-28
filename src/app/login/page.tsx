@@ -37,6 +37,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPopupError, setShowPopupError] = useState(false);
+  const [isAutoSigningIn, setIsAutoSigningIn] = useState(true);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -45,6 +46,44 @@ export default function LoginPage() {
       password: '',
     },
   });
+
+  useEffect(() => {
+    // This effect will run once on mount to create a random user and sign in.
+    const autoSignIn = async () => {
+      if (user) {
+        router.push('/dashboard');
+        return;
+      }
+      
+      const randomId = Math.floor(Math.random() * 100000);
+      const randomEmail = `testuser${randomId}@example.com`;
+      const randomPassword = `password${randomId}`;
+
+      toast({
+          title: "Creating Random Account",
+          description: `Signing you in as ${randomEmail}`,
+      });
+      
+      try {
+        await initiateEmailSignUp(auth, randomEmail, randomPassword);
+        // The onAuthStateChanged listener will handle the redirect on success.
+      } catch (error: any) {
+        console.error("Auto Sign-Up Error:", error);
+        toast({
+            variant: "destructive",
+            title: "Auto Sign-Up Failed",
+            description: "Could not create a random account. Please try manual sign-in.",
+        });
+        setIsAutoSigningIn(false); // Fallback to manual login
+      }
+    };
+    
+    // We only run this once.
+    if(isAutoSigningIn) {
+        autoSignIn();
+    }
+  }, [auth, user, router, toast, isAutoSigningIn]);
+
 
   useEffect(() => {
     if (user) {
@@ -85,12 +124,9 @@ export default function LoginPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-        // We can decide whether to sign in or sign up. For now, let's just sign in.
-        // In a real app you might have a toggle or separate pages.
         await initiateEmailSignIn(auth, values.email, values.password);
     } catch (error: any) {
         console.error("Email Sign-In Error:", error);
-        // A more specific error could be shown if we catch specific error codes.
         if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
             try {
                 await initiateEmailSignUp(auth, values.email, values.password);
@@ -118,10 +154,11 @@ export default function LoginPage() {
   };
 
 
-  if (isUserLoading || user) {
+  if (isUserLoading || user || isAutoSigningIn) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader className="h-12 w-12 animate-spin" />
+        <p className="ml-4 text-lg">Creating a temporary account...</p>
       </div>
     );
   }
@@ -218,4 +255,3 @@ export default function LoginPage() {
       </div>
     </>
   );
-}
