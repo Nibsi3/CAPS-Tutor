@@ -248,7 +248,7 @@ export default function SettingsPage() {
               <FormField
                 control={form.control}
                 name="subjects"
-                render={({ field }) => (
+                render={() => (
                   <FormItem>
                     <div className="mb-4">
                       <FormLabel className="text-base">Your Subjects</FormLabel>
@@ -258,31 +258,40 @@ export default function SettingsPage() {
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                       {subjects.map((item) => (
-                        <FormItem
+                        <FormField
                           key={item.value}
-                          className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
-                        >
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value?.includes(item.value)}
-                              onCheckedChange={(checked) => {
-                                return checked
-                                  ? field.onChange([
-                                      ...(field.value || []),
-                                      item.value,
-                                    ])
-                                  : field.onChange(
-                                      field.value?.filter(
-                                        (value) => value !== item.value
-                                      )
-                                    );
-                              }}
-                            />
-                          </FormControl>
-                          <FormLabel className="font-normal">
-                            {item.label}
-                          </FormLabel>
-                        </FormItem>
+                          control={form.control}
+                          name="subjects"
+                          render={({ field }) => {
+                            return (
+                              <FormItem
+                                key={item.value}
+                                className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
+                              >
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(item.value)}
+                                    onCheckedChange={(checked) => {
+                                      return checked
+                                        ? field.onChange([
+                                            ...(field.value || []),
+                                            item.value,
+                                          ])
+                                        : field.onChange(
+                                            field.value?.filter(
+                                              (value) => value !== item.value
+                                            )
+                                          );
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="font-normal">
+                                  {item.label}
+                                </FormLabel>
+                              </FormItem>
+                            );
+                          }}
+                        />
                       ))}
                     </div>
                     <FormMessage />
