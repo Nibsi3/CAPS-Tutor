@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { lessons, placeholderLessons } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,9 +15,21 @@ export default function LessonDetailPage() {
   const router = useRouter();
   const lessonId = params.id as string;
   const [searchTerm, setSearchTerm] = useState('');
+  const [topicProgress, setTopicProgress] = useState<Record<string, number>>({});
 
   const allLessons = [...lessons, ...placeholderLessons];
   const lesson = allLessons.find(l => l.id === lessonId);
+
+  useEffect(() => {
+    if (lesson) {
+      const initialProgress: Record<string, number> = {};
+      lesson.topics.forEach(topic => {
+        initialProgress[topic] = Math.floor(Math.random() * 100);
+      });
+      setTopicProgress(initialProgress);
+    }
+  }, [lesson]);
+
 
   if (!lesson) {
     return (
@@ -74,7 +86,7 @@ export default function LessonDetailPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredTopics.map((topic, index) => {
-                const progress = Math.floor(Math.random() * 100); // Placeholder progress
+                const progress = topicProgress[topic] ?? 0; // Use progress from state
                 return (
                  <button 
                     key={index} 
