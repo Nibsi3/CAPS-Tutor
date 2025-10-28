@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -35,6 +35,8 @@ import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, Settings as SettingsIcon } from 'lucide-react';
 import { grades, subjects } from '@/lib/data';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
@@ -43,7 +45,6 @@ const profileFormSchema = z.object({
   lastName: z.string().min(2, {
     message: 'Last name must be at least 2 characters.',
   }),
-  email: z.string().email(),
   gradeLevel: z.string({
     required_error: 'Please select a grade level.',
   }),
@@ -79,7 +80,6 @@ export default function SettingsPage() {
     defaultValues: {
       firstName: '',
       lastName: '',
-      email: '',
       subjects: [],
     },
     mode: 'onChange',
@@ -98,7 +98,6 @@ export default function SettingsPage() {
       reset({
         firstName: user.displayName?.split(' ')[0] || '',
         lastName: user.displayName?.split(' ')[1] || '',
-        email: user.email || '',
         subjects: [],
         gradeLevel: undefined,
       });
@@ -117,24 +116,32 @@ export default function SettingsPage() {
 
     const dataToSave = {
         ...data,
+        email: user?.email, // ensure email is preserved
         gradeLevel: parseInt(data.gradeLevel, 10), // Convert grade back to number
     };
 
-    try {
-        await setDoc(userProfileRef, dataToSave, { merge: true });
+    setDoc(userProfileRef, dataToSave, { merge: true })
+      .then(() => {
         toast({
-            title: "Settings Saved",
-            description: "Your profile has been updated successfully.",
+          title: 'Settings Saved',
+          description: 'Your profile has been updated successfully.',
         });
         form.reset(data, { keepValues: true }); // Resets dirty state but keeps values
-    } catch (error) {
-        console.error("Error saving settings:", error);
+      })
+      .catch((serverError) => {
+        console.error('Error saving settings:', serverError);
+        const permissionError = new FirestorePermissionError({
+          path: userProfileRef.path,
+          operation: 'update',
+          requestResourceData: dataToSave,
+        });
+        errorEmitter.emit('permission-error', permissionError);
         toast({
             variant: "destructive",
             title: "Uh oh! Something went wrong.",
             description: "There was a problem saving your settings. Please try again.",
         });
-    }
+      });
   }
 
   if (isUserLoading || (isProfileLoading && !userProfile)) {
@@ -195,22 +202,15 @@ export default function SettingsPage() {
                     )}
                   />
               </div>
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="your@email.com" {...field} disabled />
-                    </FormControl>
-                     <FormDescription>
-                      Your email address cannot be changed.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input value={user?.email || 'No email associated'} disabled />
+                </FormControl>
+                 <FormDescription>
+                  Your email address cannot be changed.
+                </FormDescription>
+              </FormItem>
             </CardContent>
           </Card>
           
