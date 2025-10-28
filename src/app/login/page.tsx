@@ -109,11 +109,18 @@ export default function LoginPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      await initiateEmailSignIn(auth, values.email, values.password);
-      // onAuthStateChanged will handle redirect via useEffect
+      const userCred = await initiateEmailSignIn(auth, values.email, values.password);
+      if (userCred && firestore) {
+        const profileSnap = await getDoc(doc(firestore, 'users', userCred.user.uid));
+        if (profileSnap.exists() && profileSnap.data().subjects?.length > 0) {
+          router.push('/dashboard');
+        } else {
+          router.push('/onboarding');
+        }
+      }
     } catch (signInError: any) {
       let description = 'An unexpected error occurred during sign-in.';
-      if (signInError.code === 'auth/wrong-password' || signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/invalid-password' || signInError.code === 'auth/user-not-found') {
+      if (signInError.code === 'auth/wrong-password' || signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/invalid-password' || signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-email') {
         description = 'The email or password you entered is incorrect. Please try again.';
       } else if (signInError.code === 'auth/too-many-requests') {
         description = 'Access to this account has been temporarily disabled due to many failed login attempts. You can reset your password or try again later.';
@@ -123,8 +130,7 @@ export default function LoginPage() {
         title: 'Sign In Failed',
         description: description,
       });
-    } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Only set to false on error, success will redirect
     }
   };
 
