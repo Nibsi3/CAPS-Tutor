@@ -81,10 +81,10 @@ export default function DashboardPage() {
       )}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <div className="lg:col-span-4">
-          <ProgressChart />
+          <ProgressChart hasActivity={hasCompletedSetup} />
         </div>
         <div className="lg:col-span-3">
-          <RecentActivity />
+          <RecentActivity hasActivity={hasCompletedSetup} />
         </div>
       </div>
     </div>

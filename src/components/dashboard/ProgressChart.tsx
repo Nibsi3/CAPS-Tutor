@@ -8,7 +8,21 @@ import {
 } from "@/components/ui/chart"
 import { progressChartData } from "@/lib/data"
 
-export function ProgressChart() {
+// Replace hardcoded data with a version that can be empty for new users
+const emptyProgressData = [
+  { date: 'Mon', 'This Week': 0, 'Last Week': 0 },
+  { date: 'Tue', 'This Week': 0, 'Last Week': 0 },
+  { date: 'Wed', 'This Week': 0, 'Last Week': 0 },
+  { date: 'Thu', 'This Week': 0, 'Last Week': 0 },
+  { date: 'Fri', 'This Week': 0, 'Last Week': 0 },
+  { date: 'Sat', 'This Week': 0, 'Last Week': 0 },
+  { date: 'Sun', 'This Week': 0, 'Last Week': 0 },
+];
+
+
+export function ProgressChart({ hasActivity = false }: { hasActivity?: boolean }) {
+  const data = hasActivity ? progressChartData : emptyProgressData;
+
   return (
     <Card>
       <CardHeader>
@@ -21,7 +35,7 @@ export function ProgressChart() {
           'Last Week': { label: 'Last Week', color: 'hsl(var(--chart-2))' },
         }} className="h-[250px] w-full">
             <ResponsiveContainer>
-              <BarChart data={progressChartData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
+              <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
                 <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
                 <YAxis tickLine={false} axisLine={false} tickMargin={8} unit="m" />
                 <Tooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
