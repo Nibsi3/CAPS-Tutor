@@ -7,6 +7,7 @@ import { doc, collection, query, where } from "firebase/firestore";
 import { Progress } from "@/components/ui/progress";
 import { Loader, BarChart2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from '@/lib/utils';
 
 interface StudentProgress {
   learningObjectiveId: string;
@@ -24,6 +25,14 @@ const objectiveToTopicMap: Record<string, string> = {
   "calculus-1": "Calculus",
   "prob-1": "Probability",
 };
+
+const topicColors = [
+  "bg-chart-1",
+  "bg-chart-2",
+  "bg-chart-3",
+  "bg-chart-4",
+  "bg-chart-5",
+];
 
 export default function ProgressPage() {
   const { user, isUserLoading } = useUser();
@@ -161,13 +170,13 @@ export default function ProgressPage() {
                 </div>
               ) : Object.keys(processedProgress).length > 0 ? (
                 <div className="space-y-6">
-                  {Object.entries(processedProgress).map(([topic, masteryLevel]) => (
+                  {Object.entries(processedProgress).map(([topic, masteryLevel], index) => (
                     <div key={topic} className="space-y-2">
                       <div className="flex justify-between font-medium">
                         <span>{topic}</span>
                         <span>{Math.round(masteryLevel)}%</span>
                       </div>
-                      <Progress value={masteryLevel} />
+                      <Progress value={masteryLevel} indicatorClassName={cn(topicColors[index % topicColors.length])} />
                     </div>
                   ))}
                 </div>
@@ -182,5 +191,3 @@ export default function ProgressPage() {
     </div>
   )
 }
-
-    

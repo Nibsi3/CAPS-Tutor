@@ -89,6 +89,7 @@ export default function SettingsPage() {
             title: "Settings Saved",
             description: "Your profile has been updated successfully.",
         });
+        form.reset(data); // Resets the form's dirty state
     };
 
     if (isUserLoading || (isProfileLoading && !userProfile)) {
@@ -227,7 +228,7 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                <Button type="submit" disabled={form.formState.isSubmitting}>
+                <Button type="submit" disabled={!form.formState.isDirty || form.formState.isSubmitting}>
                     {form.formState.isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                     Save Changes
                 </Button>
