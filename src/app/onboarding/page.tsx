@@ -94,8 +94,11 @@ export default function OnboardingPage() {
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      subjects: [],
+      age: 0,
+      province: '',
       school: '',
+      gradeLevel: '',
+      subjects: [],
     },
     mode: 'onChange',
   });
@@ -106,7 +109,11 @@ export default function OnboardingPage() {
     if (userProfile && !formState.isDirty) {
       reset({
         ...userProfile,
-        gradeLevel: userProfile.gradeLevel ? userProfile.gradeLevel.toString() : undefined,
+        age: userProfile.age || 0,
+        province: userProfile.province || '',
+        school: userProfile.school || '',
+        subjects: userProfile.subjects || [],
+        gradeLevel: userProfile.gradeLevel ? userProfile.gradeLevel.toString() : '',
       });
     }
   }, [userProfile, reset, formState.isDirty]);
@@ -178,7 +185,7 @@ export default function OnboardingPage() {
                             <FormItem>
                                 <FormLabel>What is your age?</FormLabel>
                                 <FormControl>
-                                    <Input type="number" placeholder="e.g., 16" {...field} />
+                                    <Input type="number" placeholder="e.g., 16" {...field} value={field.value || ''} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

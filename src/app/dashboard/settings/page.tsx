@@ -97,6 +97,7 @@ export default function SettingsPage() {
     defaultValues: {
       firstName: '',
       lastName: '',
+      gradeLevel: '',
       subjects: [],
     },
     mode: 'onChange',
@@ -108,7 +109,8 @@ export default function SettingsPage() {
     if (userProfile && !formState.isDirty) {
       reset({
         ...userProfile,
-        gradeLevel: userProfile.gradeLevel ? userProfile.gradeLevel.toString() : undefined,
+        gradeLevel: userProfile.gradeLevel ? userProfile.gradeLevel.toString() : '',
+        subjects: userProfile.subjects || [],
       });
     } else if (user && !userProfile && !isProfileLoading) {
       // Set defaults from user object if no profile exists
@@ -116,7 +118,7 @@ export default function SettingsPage() {
         firstName: user.displayName?.split(' ')[0] || '',
         lastName: user.displayName?.split(' ')[1] || '',
         subjects: [],
-        gradeLevel: undefined,
+        gradeLevel: '',
       });
     }
   }, [user, userProfile, isProfileLoading, reset, formState.isDirty]);
