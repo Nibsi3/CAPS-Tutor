@@ -31,10 +31,9 @@ export default function LessonDetailPage() {
   );
 
   const handleTopicClick = (topic: string) => {
-    const prompt = `Explain the topic "${topic}" for Grade ${lesson.gradeLevel} ${lesson.subject}.`;
-    // URL encode the prompt to handle special characters
-    const encodedPrompt = encodeURIComponent(prompt);
-    router.push(`/dashboard/tutor?prompt=${encodedPrompt}`);
+    // Navigate to the practice page with the topic as a query parameter
+    const encodedTopic = encodeURIComponent(topic);
+    router.push(`/dashboard/practice?topic=${encodedTopic}&grade=${lesson.gradeLevel}&subject=${lesson.subject}`);
   };
 
 
