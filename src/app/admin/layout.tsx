@@ -47,7 +47,7 @@ export default function AdminLayout({
               </Link>
               <Link
                 href="/admin/syllabus"
-                className="flex items-center gap-3 rounded-lg bg-muted px-3 py-2 text-primary transition-all hover:text-primary"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
               >
                 <FileUp className="h-4 w-4" />
                 Syllabus Uploader
@@ -63,7 +63,7 @@ export default function AdminLayout({
                 </Badge>
               </Link>
               <Link
-                href="#"
+                href="/dashboard/settings"
                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
               >
                 <Settings className="h-4 w-4" />

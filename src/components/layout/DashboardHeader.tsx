@@ -79,6 +79,13 @@ export function DashboardHeader() {
               <BarChart className="h-5 w-5" />
               Progress
             </Link>
+            <Link
+              href="/dashboard/settings"
+              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <Settings className="h-5 w-5" />
+              Settings
+            </Link>
           </nav>
         </SheetContent>
       </Sheet>
