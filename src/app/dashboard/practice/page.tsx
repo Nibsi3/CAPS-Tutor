@@ -106,7 +106,7 @@ export default function PracticePage() {
   };
 
   const handleCheckAnswer = async (index: number) => {
-    if (!exam || !userProfile) return;
+    if (!exam || !grade) return;
 
     const newQuestions = [...exam.examQuestions];
     const question = newQuestions[index];
@@ -123,7 +123,7 @@ export default function PracticePage() {
       const feedbackResult = await getInteractiveFeedback({
         question: question.question,
         studentAnswer: question.studentAnswer,
-        gradeLevel: grade ? parseInt(grade) : userProfile.gradeLevel,
+        gradeLevel: parseInt(grade),
         subject: subject || question.topic,
       });
       newQuestions[index].feedback = feedbackResult;
@@ -139,11 +139,11 @@ export default function PracticePage() {
   
   const handleTutorSendMessage = async () => {
     const currentPrompt = tutorPrompt;
-    if (!user || !topic || !currentPrompt.trim() || !grade || !subject) {
+    if (!currentPrompt.trim() || !topic || !grade || !subject) {
       toast({
-        variant: "destructive",
-        title: "Cannot send message",
-        description: "Cannot send message right now.",
+        variant: 'destructive',
+        title: 'Cannot send message',
+        description: 'Cannot send message right now.',
       });
       return;
     }
