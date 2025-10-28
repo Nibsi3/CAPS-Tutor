@@ -29,13 +29,31 @@ const subjectIcons: Record<string, React.ElementType> = {
   // Add more icons for other subjects if needed
 };
 
-const subjectColors: Record<string, string> = {
-  "Mathematics": "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-  "Physical Sciences": "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
-  "Life Sciences": "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
-  "Geography": "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400",
-  "Accounting": "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400",
-  "Business Studies": "bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400",
+const subjectColors: Record<string, { bg: string, text: string }> = {
+    "Mathematics": {
+      bg: "bg-blue-100 dark:bg-blue-900/30",
+      text: "text-blue-600 dark:text-blue-400"
+    },
+    "Physical Sciences": {
+      bg: "bg-purple-100 dark:bg-purple-900/30",
+      text: "text-purple-600 dark:text-purple-400"
+    },
+    "Life Sciences": {
+      bg: "bg-green-100 dark:bg-green-900/30",
+      text: "text-green-600 dark:text-green-400"
+    },
+    "Geography": {
+      bg: "bg-orange-100 dark:bg-orange-900/30",
+      text: "text-orange-600 dark:text-orange-400"
+    },
+    "Accounting": {
+      bg: "bg-indigo-100 dark:bg-indigo-900/30",
+      text: "text-indigo-600 dark:text-indigo-400"
+    },
+    "Business Studies": {
+      bg: "bg-pink-100 dark:bg-pink-900/30",
+      text: "text-pink-600 dark:text-pink-400"
+    },
 };
 
 
@@ -91,17 +109,17 @@ export default function LessonsPage() {
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {filteredLessons.map(lesson => {
                     const Icon = subjectIcons[lesson.subject] || BookOpen;
-                    const colorClass = subjectColors[lesson.subject] || "bg-muted text-muted-foreground";
+                    const colors = subjectColors[lesson.subject] || { bg: "bg-muted", text: "text-muted-foreground" };
 
                     return (
                         <Card key={lesson.id} className="flex flex-col hover:shadow-lg transition-shadow duration-300 rounded-2xl">
-                            <CardHeader className={cn("flex-row items-center gap-4 space-y-0 pb-4", colorClass.replace("text-", "dark:text-"))}>
-                                <div className={cn("p-3 rounded-xl", colorClass)}>
-                                    <Icon className="w-6 h-6" />
+                             <CardHeader className="flex-row items-center gap-4 space-y-0 pb-4">
+                                <div className={cn("p-3 rounded-xl", colors.bg)}>
+                                    <Icon className={cn("w-6 h-6", colors.text)} />
                                 </div>
                                 <div>
                                     <CardTitle className="text-xl font-headline">{lesson.subject}</CardTitle>
-                                    <CardDescription className={cn("font-semibold", colorClass.replace("bg-", "text-").replace("dark:bg-", "dark:text-").replace(/100|900\/30/g, '600'))}>Grade {lesson.gradeLevel}</CardDescription>
+                                    <CardDescription className={cn("font-semibold", colors.text)}>Grade {lesson.gradeLevel}</CardDescription>
                                 </div>
                             </CardHeader>
                             <CardContent className="flex-1 space-y-4">
