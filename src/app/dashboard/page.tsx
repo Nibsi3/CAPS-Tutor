@@ -56,19 +56,10 @@ export default function DashboardPage() {
                                   <Link href={`/dashboard/lessons`}>View</Link>
                               </Button>
                           </div>
-                          {/* We will add real progress later */}
                       </div>
                   ))}
               </CardContent>
           </Card>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <div className="lg:col-span-4">
-              <ProgressChart />
-            </div>
-            <div className="lg:col-span-3">
-              <RecentActivity />
-            </div>
-          </div>
         </>
       ) : (
         <Card className="mt-6">
@@ -88,6 +79,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       )}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <div className="lg:col-span-4">
+          <ProgressChart />
+        </div>
+        <div className="lg:col-span-3">
+          <RecentActivity />
+        </div>
+      </div>
     </div>
   )
 }

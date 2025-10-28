@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Loader, BarChart2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface StudentProgress {
   learningObjectiveId: string;
@@ -163,8 +164,8 @@ export default function ProgressPage() {
                 <div className="space-y-4">
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="space-y-2">
-                       <div className="h-4 w-1/4 animate-pulse rounded-md bg-muted"></div>
-                       <div className="h-6 w-full animate-pulse rounded-md bg-muted"></div>
+                       <Skeleton className="h-4 w-1/4 rounded-md" />
+                       <Skeleton className="h-6 w-full rounded-md" />
                     </div>
                   ))}
                 </div>
@@ -181,8 +182,19 @@ export default function ProgressPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                    <p className="text-muted-foreground">No progress data found yet. Complete some practice questions to see your mastery levels!</p>
+                <div className="text-center py-8 space-y-4">
+                  <p className="text-muted-foreground">Complete some practice questions to see your mastery levels here.</p>
+                  <div className="space-y-4 px-4">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="space-y-2">
+                        <div className='flex justify-between items-center'>
+                          <Skeleton className="h-4 w-1/4 rounded-md" />
+                          <Skeleton className="h-4 w-1/6 rounded-md" />
+                        </div>
+                        <Skeleton className="h-6 w-full rounded-md" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
