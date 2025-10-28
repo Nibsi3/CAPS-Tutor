@@ -249,7 +249,7 @@ export default function SettingsPage() {
               <FormField
                 control={form.control}
                 name="subjects"
-                render={({ field }) => (
+                render={() => (
                   <FormItem>
                     <div className="mb-4">
                       <FormLabel className="text-base">Your Subjects</FormLabel>
