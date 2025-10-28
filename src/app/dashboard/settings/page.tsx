@@ -34,6 +34,7 @@ type SettingsFormValues = z.infer<typeof settingsSchema>;
 interface UserProfile extends SettingsFormValues {
     province?: string;
     school?: string;
+    gradeLevel: string | number;
 }
 
 export default function SettingsPage() {
@@ -61,7 +62,7 @@ export default function SettingsPage() {
     useEffect(() => {
         if (userProfile) {
             form.reset({
-                gradeLevel: userProfile.gradeLevel || '',
+                gradeLevel: String(userProfile.gradeLevel || ''),
                 province: userProfile.province || '',
                 school: userProfile.school || '',
                 subjects: userProfile.subjects || [],
@@ -73,6 +74,7 @@ export default function SettingsPage() {
         if (!user || !userProfileRef) return;
         
         const profileData = {
+            ...userProfile, // Preserve existing data
             ...data,
             gradeLevel: parseInt(data.gradeLevel, 10), // Ensure gradeLevel is a number
             email: user.email,
