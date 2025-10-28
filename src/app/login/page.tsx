@@ -11,9 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { useUser, useAuth, useFirestore } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signInWithGoogle, signInWithFacebook } from '@/firebase/auth/social-auth';
-import { initiateEmailSignUp, initiateEmailSignIn } from '@/firebase/non-blocking-login';
+import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -24,11 +24,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { doc, setDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  password: z.string().min(1, { message: 'Password is required.' }),
 });
 
 export default function LoginPage() {
@@ -47,12 +47,25 @@ export default function LoginPage() {
       password: '',
     },
   });
+  
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, `users/${user.uid}`);
+  }, [user, firestore]);
+  const { data: userProfile } = useDoc<{subjects?: string[]}>(userProfileRef);
+
 
   useEffect(() => {
-    if (user && firestore) {
-      router.push('/dashboard');
+    if (user && firestore && !isUserLoading) {
+      if (userProfile && userProfile.subjects && userProfile.subjects.length > 0) {
+        router.push('/dashboard');
+      } else if (userProfile) {
+        // Profile exists but is incomplete
+        router.push('/onboarding');
+      }
+      // if userProfile is loading, the effect will re-run when it's available
     }
-  }, [user, firestore, router]);
+  }, [user, firestore, router, userProfile, isUserLoading]);
 
   const handleSocialSignIn = async (provider: 'google' | 'facebook') => {
     setIsSubmitting(true);
@@ -91,62 +104,27 @@ export default function LoginPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      // First, try to create an account
-      const userCredential = await initiateEmailSignUp(auth, values.email, values.password);
+      await initiateEmailSignIn(auth, values.email, values.password);
+      // onAuthStateChanged will handle redirect via useEffect
+    } catch (signInError: any) {
+      let description = 'An unexpected error occurred during sign-in.';
+      if (signInError.code === 'auth/wrong-password' || signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/invalid-password' || signInError.code === 'auth/user-not-found') {
+        description = 'The email or password you entered is incorrect. Please try again.';
+      } else if (signInError.code === 'auth/too-many-requests') {
+        description = 'Access to this account has been temporarily disabled due to many failed login attempts. You can reset your password or try again later.';
+      }
       toast({
-        title: 'Welcome!',
-        description: "We've created a new account for you.",
+        variant: 'destructive',
+        title: 'Sign In Failed',
+        description: description,
       });
-      
-      if(userCredential?.user && firestore) {
-          const userProfileRef = doc(firestore, 'users', userCredential.user.uid);
-          await setDoc(userProfileRef, {
-            firstName: 'New',
-            lastName: 'User',
-            email: userCredential.user.email,
-          }, { merge: true });
-      }
-
-    } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        // If email exists, try to sign in
-        try {
-          await initiateEmailSignIn(auth, values.email, values.password);
-          // onAuthStateChanged will handle redirect
-        } catch (signInError: any) {
-          let description = 'An unexpected error occurred during sign-in.';
-           if (signInError.code === 'auth/wrong-password' || signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/invalid-password') {
-             description = 'The password you entered is incorrect. Please try again.';
-           }
-          toast({
-            variant: 'destructive',
-            title: 'Sign In Failed',
-            description: description,
-          });
-        }
-      } else if (error.code === 'auth/operation-not-allowed') {
-        // Handle case where Email/Password provider is not enabled
-        toast({
-          variant: 'destructive',
-          title: 'Sign-in Method Disabled',
-          description: 'Email/Password sign-in is not enabled. Please enable it in your Firebase project\'s Authentication settings.',
-        });
-      }
-      else {
-        // Handle other sign-up errors
-        toast({
-          variant: 'destructive',
-          title: 'Sign Up Failed',
-          description: error.message || 'Could not create your account.',
-        });
-      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
 
-  if (isUserLoading && !user) {
+  if (isUserLoading || (user && !userProfile)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader className="h-12 w-12 animate-spin" />
@@ -165,6 +143,7 @@ export default function LoginPage() {
               The sign-in pop-up was closed. This usually happens because your application's domain isn't authorized for sign-in.
               <br /><br />
               Please go to your Firebase project's Authentication settings and add this domain to the list of "Authorized domains".
+              The correct value to add is the hostname, for example: `my-app-12345.cloudworkstations.dev` (without `https://` or port numbers).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogAction asChild>
@@ -188,8 +167,8 @@ export default function LoginPage() {
         </div>
         <Card className="w-full max-w-sm">
           <CardHeader className="text-center">
-            <CardTitle className="font-headline text-2xl">Welcome</CardTitle>
-            <CardDescription>Sign in or create an account to continue</CardDescription>
+            <CardTitle className="font-headline text-2xl">Welcome Back</CardTitle>
+            <CardDescription>Sign in to your account to continue</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -238,11 +217,12 @@ export default function LoginPage() {
                 </svg>
                 Sign in with Google
               </Button>
-              <Button variant="outline" onClick={() => handleSocialSignIn('facebook')} className="w-full bg-[#1877F2] text-white hover:bg-[#1877F2]/90 hover:text-white" disabled={isSubmitting}>
-                {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" /></svg>
-                Sign in with Facebook
-              </Button>
+            </div>
+            <div className="mt-4 text-center text-sm">
+              Don&apos;t have an account?{" "}
+              <Link href="/register" className="underline">
+                Sign up
+              </Link>
             </div>
           </CardContent>
         </Card>
