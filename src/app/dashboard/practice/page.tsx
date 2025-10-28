@@ -270,7 +270,7 @@ export default function PracticePage() {
                                             <p className={`font-semibold ${q.feedback.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
                                             {q.feedback.isCorrect ? 'Correct! Excellent work.' : 'Not quite. Here is a step-by-step explanation:'}
                                             </p>
-                                            <div className="prose prose-sm max-w-full text-muted-foreground">
+                                            <div className="prose prose-sm max-w-full text-muted-foreground prose-p:my-2 prose-li:my-1">
                                                 <ReactMarkdown>{q.feedback.explanation}</ReactMarkdown>
                                             </div>
                                         </div>
@@ -329,7 +329,7 @@ export default function PracticePage() {
                     <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                         {message.role === 'assistant' && <Bot className="w-6 h-6 flex-shrink-0 text-primary" />}
                         <div className={`rounded-lg p-3 max-w-[90%] text-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                        <div className="prose prose-sm max-w-full"><ReactMarkdown>{message.content}</ReactMarkdown></div>
+                        <div className="prose prose-sm max-w-full prose-p:my-2 prose-li:my-1"><ReactMarkdown>{message.content}</ReactMarkdown></div>
                         </div>
                         {message.role === 'user' && <User className="w-6 h-6 flex-shrink-0" />}
                     </div>
@@ -378,3 +378,5 @@ export default function PracticePage() {
     </div>
   )
 }
+
+    
