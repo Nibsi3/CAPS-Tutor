@@ -26,6 +26,7 @@ export async function signInWithGoogle(auth: Auth, firestore: Firestore): Promis
     return result;
   } catch (error) {
     console.error("Error during Google Sign-In:", error);
+    // Re-throw the error to be handled by the calling component (e.g., to show a toast notification)
     throw error;
   }
 }

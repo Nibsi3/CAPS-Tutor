@@ -56,13 +56,13 @@ export default function LoginPage() {
 
 
   useEffect(() => {
+    // This effect is now only for users who are ALREADY logged in when they visit the page.
     if (user && !isUserLoading && !isProfileLoading) {
       if (userProfile && userProfile.subjects && userProfile.subjects.length > 0) {
         router.push('/dashboard');
       } else if (userProfile) {
         router.push('/onboarding');
       }
-      // If user exists but profile doesn't, they will be redirected upon sign-in action.
     }
   }, [user, userProfile, isUserLoading, isProfileLoading, router]);
 
@@ -88,8 +88,6 @@ export default function LoginPage() {
 
       if (error.code === 'auth/popup-closed-by-user') {
           setShowPopupError(true);
-          setIsSubmitting(false);
-          return;
       } else if (error.code === 'auth/account-exists-with-different-credential') {
           description = 'An account already exists with the same email address but different sign-in credentials. Try signing in with the original method.';
       } else if (error.code === 'auth/operation-not-allowed') {
@@ -101,9 +99,9 @@ export default function LoginPage() {
         title: "Authentication Error",
         description: description,
       });
+    } finally {
        setIsSubmitting(false);
     }
-    // isSubmitting will be false if redirection happens or an error occurs.
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {

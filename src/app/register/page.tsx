@@ -16,7 +16,7 @@ import { signInWithGoogle } from '@/firebase/auth/social-auth';
 import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { sendEmailVerification } from 'firebase/auth';
 
 const formSchema = z.object({
@@ -80,7 +80,8 @@ export default function RegisterPage() {
         title: "Authentication Error",
         description: description,
       });
-       setIsSubmitting(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
