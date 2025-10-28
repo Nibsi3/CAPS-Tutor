@@ -98,11 +98,13 @@ export const subjects = [
     { value: "Economics", label: "Economics" },
     { value: "Geography", label: "Geography" },
     { value: "History", label: "History" },
-    { value: "Information Technology / CAT", label: "Information Technology / CAT" },
+    { value: "Information Technology", label: "Information Technology" },
+    { value: "Computer Applications Technology (CAT)", label: "Computer Applications Technology (CAT)" },
     { value: "Tourism", label: "Tourism" },
-    { value: "Consumer Studies / Hospitality", label: "Consumer Studies / Hospitality" },
-    { value: "Engineering Graphics & Design / Technical Subjects", label: "Engineering Graphics & Design" },
-    { value: "Creative Arts / Visual Arts / Music / Drama", label: "Creative Arts" },
+    { value: "Consumer Studies", label: "Consumer Studies" },
+    { value: "Hospitality Studies", label: "Hospitality Studies" },
+    { value: "Engineering Graphics & Design", label: "Engineering Graphics & Design" },
+    { value: "Creative Arts", label: "Creative Arts" },
 ];
 
 export interface Lesson {
@@ -119,115 +121,86 @@ const rawLessons = [
     {
         gradeLevels: ["10", "11", "12"],
         subject: "Mathematics",
-        textbookLink: "https://www.siyavula.com/read/za/mathematics/grade-10",
-        topics: ["Numbers & patterns", "Algebra (expressions, equations, inequalities)", "Functions (polynomial, exponential, logarithmic)", "Trigonometry", "Euclidean & analytical geometry", "Calculus (differentiation & integration basics, applications - Grade 12)", "Probability & Statistics", "Finance & growth models"],
-        pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate%28NSC%29Examinations/NSCPastExaminationpapers.aspx",
+        textbookLink: "https://www.siyavula.com/read/za/mathematics",
+        topics: [
+            // Grade 10
+            "Algebraic expressions", "Exponents", "Number patterns", "Equations and inequalities", "Trigonometry", "Functions", "Euclidean geometry", "Analytical geometry", "Finance and growth", "Statistics", "Measurement", "Probability",
+            // Grade 11
+            "Exponents and surds", "Equations and inequalities", "Number patterns", "Analytical geometry", "Functions", "Trigonometry", "Euclidean geometry", "Finance, growth and decay", "Statistics", "Probability",
+            // Grade 12
+            "Sequences and series", "Functions and inverses", "Calculus (Differential)", "Financial mathematics", "Analytical geometry", "Trigonometry", "Euclidean geometry", "Statistics", "Probability (counting principles)"
+        ],
+        pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate(NSC)Examinations/NSCPastExaminationpapers.aspx",
         source: "Siyavula / DBE"
     },
     {
         gradeLevels: ["10", "11", "12"],
-        subject: "Mathematical Literacy",
-        textbookLink: "DBE Mind the Gap study guides (see DBE Self Study Guides)",
-        topics: ["Number sense in real contexts", "Financial mathematics (interest, annuities, inflation)", "Data handling & graphs", "Measurement & scale", "Maps & plans", "Consumer & business calculations", "Problem-solving in context"],
-        pastPapersLink: "DBE NSC past papers (Maths Lit) via DBE & TestPapers",
-        source: "DBE Mind the Gap"
-    },
-    {
-        gradeLevels: ["10", "11", "12"],
         subject: "Physical Sciences",
-        textbookLink: "https://www.siyavula.com/read/za/physical-sciences/grade-10",
-        topics: ["Scientific method & lab skills", "Matter & materials", "Atomic structure", "Periodic trends", "Chemical bonding", "Stoichiometry", "Chemical reactions & equilibrium (Gr12)", "Mechanics (kinematics, dynamics, energy)", "Waves", "Electricity & magnetism", "Optics", "Thermal physics", "Chemical kinetics & electrochemistry (Gr12)"],
-        pastPapersLink: "DBE NSC past papers (Physical Sciences) / TestPapers",
+        textbookLink: "https://www.siyavula.com/read/za/physical-sciences",
+        topics: [
+            // Grade 10 (Physics)
+            "Waves and sound", "Light and optics", "Electricity and magnetism", "Mechanics (vectors, motion)",
+            // Grade 10 (Chemistry)
+            "Matter and materials", "The atom", "The periodic table", "Chemical bonding", "Particles substances are made of",
+            // Grade 11 (Physics)
+            "Newton's Laws", "Electrostatics", "Electric circuits", "Electromagnetism",
+            // Grade 11 (Chemistry)
+            "Stoichiometry", "Intermolecular forces", "Ideal gases", "Energy and chemical change", "Types of reaction",
+            // Grade 12 (Physics)
+            "Momentum and impulse", "Vertical projectile motion", "Work, energy and power", "The Doppler effect", "Electrodynamics (generators, motors)", "Photoelectric effect",
+            // Grade 12 (Chemistry)
+            "Rate and extent of reactions", "Chemical equilibrium", "Acids and bases", "Electrochemical reactions (galvanic, electrolytic cells)", "The chemical industry (fertilizers)"
+        ],
+        pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate(NSC)Examinations/NSCPastExaminationpapers.aspx",
         source: "DBE Physical Sciences CAPS document & Siyavula"
     },
     {
         gradeLevels: ["10", "11", "12"],
         subject: "Life Sciences",
         textbookLink: "https://www.education.gov.za/LinkClick.aspx?fileticket=gQvYxE2bl9M%3D&mid=9704&portalid=0&tabid=2720",
-        topics: ["Cells & cell structure", "Cell division (mitosis, meiosis)", "DNA, genes & heredity", "Proteins & enzymes", "Physiology (plant & animal systems)", "Ecology & ecosystems", "Evolution", "Biotechnology & applications", "Human health & diseases (Gr12 depth topics)"],
-        pastPapersLink: "DBE NSC past papers (Life Sciences) / TestPapers",
+        topics: [
+            // Grade 10
+            "The chemistry of life", "Cells: The basic unit of life", "Mitosis", "Plant and animal tissues", "Leaf structure", "Support and transport systems in plants and animals",
+            // Grade 11
+            "Biodiversity", "Micro-organisms", "Plant diversity", "Animal diversity", "Photosynthesis", "Cellular respiration", "Human impact on the environment",
+            // Grade 12
+            "DNA: The code of life", "Meiosis", "Genetics and inheritance", "Responding to the environment (humans & plants)", "Human reproduction", "Endocrine system", "Homeostasis", "Evolution"
+        ],
+        pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate(NSC)Examinations/NSCPastExaminationpapers.aspx",
         source: "DBE Life Sciences CAPS PDF"
     },
     {
         gradeLevels: ["10", "11", "12"],
         subject: "Accounting",
-        textbookLink: "DBE LTSM Accounting learner books (search on DBE LTSM)",
-        topics: ["Accounting concepts", "Double-entry bookkeeping", "Journals & ledgers", "Financial statements (income statement, balance sheet)", "Cost accounting", "Budgets & cashflow", "VAT & tax basics", "Ratio analysis", "Project work (Grade 12)"],
-        pastPapersLink: "DBE NSC past papers (Accounting) / TestPapers",
+        topics: [
+            "Indigenous bookkeeping", "GAAP principles", "Bookkeeping of a sole trader", "Journals", "General Ledger", "Trial Balance", "Financial statements of a sole trader", "VAT concepts", "Salaries and wages journals", "Bookkeeping of a partnership", "Financial statements of a partnership", "Reconciliations", "Cost accounting (manufacturing)", "Budgeting", "Inventory systems", "Analysis and interpretation of financial statements", "Bookkeeping of a company", "Auditing"
+        ],
+        pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate(NSC)Examinations/NSCPastExaminationpapers.aspx",
         source: "DBE LTSM Accounting listings"
     },
     {
         gradeLevels: ["10", "11", "12"],
         subject: "Business Studies",
-        textbookLink: "https://www.education.gov.za/Curriculum/LearningandTeachingSupportMaterials%28LTSM%29/FETBusinessStudiesTextbooks.aspx",
-        topics: ["Business environments & sectors", "Entrepreneurship & business planning", "Marketing", "Human resources", "Operations management", "Financial basics", "Business ethics", "Strategy", "Case studies and project work"],
-        pastPapersLink: "DBE NSC past papers (Business Studies) / TestPapers / SA Papers",
+        topics: [
+            "Business environments", "Business sectors", "Forms of ownership", "Business opportunities", "Business location", "Contracts", "Business plan", "Management and leadership", "Human resources", "Marketing", "Production function", "Ethics and professionalism", "Corporate social responsibility", "Creative thinking", "Problem solving", "Teamwork"
+        ],
+        pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate(NSC)Examinations/NSCPastExaminationpapers.aspx",
         source: "DBE FET Business Studies page"
     },
     {
         gradeLevels: ["10", "11", "12"],
-        subject: "Economics",
-        textbookLink: "DBE CAPS Economics document (download via CAPS FET page)",
-        topics: ["Microeconomics (demand & supply, elasticity, market structures)", "Macroeconomics (GDP, inflation, unemployment, fiscal & monetary policy)", "International trade", "Development economics", "Economic indicators", "Data interpretation & policy analysis (Gr12 case studies)"],
-        pastPapersLink: "DBE NSC past papers (Economics) / TestPapers",
-        source: "DBE CAPS Economics listing"
-    },
-    {
-        gradeLevels: ["10", "11", "12"],
         subject: "Geography",
-        textbookLink: "DBE Mind the Gap / CAPS Geography resources (DBE LTSM)",
-        topics: ["Physical geography: geomorphology, climate, hydrology", "Human geography: population, urbanization, settlement", "Economic geography & resources", "Fieldwork & map skills", "GIS basics", "Sustainable development case studies"],
-        pastPapersLink: "DBE NSC past papers (Geography) / TestPapers",
+        topics: [
+            // Grade 10
+            "Geographical skills and techniques", "The structure of the Earth", "Plate tectonics", "Volcanoes and earthquakes", "Folding and faulting", "Weather and climate",
+            // Grade 11
+            "Geomorphology", "Development geography", "Resources and sustainability", "Geographical skills and techniques",
+            // Grade 12
+            "Climate and weather", "Geomorphology", "Rural and urban settlements", "Economic geography of South Africa", "Geographical skills and techniques"
+        ],
+        pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate(NSC)Examinations/NSCPastExaminationpapers.aspx",
         source: "DBE Mind the Gap & LTSM"
     },
-    {
-        gradeLevels: ["10", "11", "12"],
-        subject: "History",
-        textbookLink: "DBE LTSM History CAPS documents",
-        topics: ["Historical skills & sources", "South African 19th & 20th century topics", "Apartheid & liberation history", "World history themes (industrialization, wars, decolonization)", "Source analysis & essay writing"],
-        pastPapersLink: "DBE NSC past papers (History) / TestPapers",
-        source: "DBE LTSM History listing"
-    },
-    {
-        gradeLevels: ["10", "11", "12"],
-        subject: "Information Technology / CAT",
-        textbookLink: "DBE digital CAT & IT learner books (PDFs / web versions on DBE site)",
-        topics: ["Computer systems", "Software", "Databases", "Spreadsheets", "Programming fundamentals", "Networking basics", "Practical project (portfolio-based assessment)"],
-        pastPapersLink: "DBE NSC past papers (CAT/IT) / TestPapers",
-        source: "DBE digital content listings (CAT/IT)"
-    },
-    {
-        gradeLevels: ["10", "11", "12"],
-        subject: "Tourism",
-        textbookLink: "DBE Mind the Gap & LTSM tourism resources",
-        topics: ["Tourism industry overview", "Marketing & product development", "Customer service", "Sustainable tourism", "Travel & hospitality operations", "Economics of tourism", "Fieldwork & industry case studies"],
-        pastPapersLink: "DBE NSC past papers (Tourism) / TestPapers",
-        source: "DBE Mind the Gap / LTSM tourism resources"
-    },
-    {
-        gradeLevels: ["10", "11", "12"],
-        subject: "Consumer Studies / Hospitality",
-        textbookLink: "DBE LTSM & Mind the Gap resources",
-        topics: ["Nutrition & food science", "Consumer rights", "Household management", "Clothing & textiles", "Hospitality operations", "Food safety & service", "Entrepreneurship in hospitality"],
-        pastPapersLink: "DBE NSC past papers (Consumer Studies / Hospitality) / TestPapers",
-        source: "DBE LTSM / Mind the Gap"
-    },
-    {
-        gradeLevels: ["10", "11", "12"],
-        subject: "Engineering Graphics & Design / Technical Subjects",
-        textbookLink: "DBE technical subject learner books (LTSM)",
-        topics: ["Technical drawing & CAD", "Materials & properties", "Measurement & tolerances", "Design processes", "Mechanical & civil basics", "Project-based assessments and SBA"],
-        pastPapersLink: "DBE NSC past papers & SBA exemplars",
-        source: "DBE LTSM technical listings"
-    },
-    {
-        gradeLevels: ["10", "11", "12"],
-        subject: "Creative Arts / Visual Arts / Music / Drama",
-        textbookLink: "DBE LTSM creative arts resources",
-        topics: ["Design elements", "Art media & techniques", "Music theory & performance", "Drama techniques", "Portfolio and practical assessment guidance"],
-        pastPapersLink: "DBE NSC past papers & portfolio exemplars",
-        source: "DBE LTSM creative arts listings"
-    }
 ];
 
 // This function expands the raw lessons into individual lessons for each grade.
@@ -235,10 +208,36 @@ function expandLessons(lessons: any[]): Lesson[] {
   const expanded: Lesson[] = [];
   lessons.forEach(lesson => {
     lesson.gradeLevels.forEach((grade: string) => {
+      
+      // Basic filter logic to assign topics per grade
+      let gradeTopics: string[] = [];
+      if (grade === "10") {
+        gradeTopics = lesson.subject === "Mathematics" ? lesson.topics.slice(0, 12) :
+                      lesson.subject === "Physical Sciences" ? [...lesson.topics.slice(0, 4), ...lesson.topics.slice(8, 13)] :
+                      lesson.subject === "Life Sciences" ? lesson.topics.slice(0, 6) :
+                      lesson.subject === "Geography" ? lesson.topics.slice(0, 6) :
+                      lesson.topics;
+      } else if (grade === "11") {
+        gradeTopics = lesson.subject === "Mathematics" ? lesson.topics.slice(12, 22) :
+                      lesson.subject === "Physical Sciences" ? [...lesson.topics.slice(4, 8), ...lesson.topics.slice(13, 18)] :
+                      lesson.subject === "Life Sciences" ? lesson.topics.slice(6, 13) :
+                      lesson.subject === "Geography" ? lesson.topics.slice(6, 10) :
+                      lesson.topics;
+      } else if (grade === "12") {
+        gradeTopics = lesson.subject === "Mathematics" ? lesson.topics.slice(22) :
+                      lesson.subject === "Physical Sciences" ? [...lesson.topics.slice(18, 24), ...lesson.topics.slice(24)] :
+                      lesson.subject === "Life Sciences" ? lesson.topics.slice(13) :
+                      lesson.subject === "Geography" ? lesson.topics.slice(10) :
+                      lesson.topics;
+      } else {
+        gradeTopics = lesson.topics;
+      }
+      
       expanded.push({
         ...lesson,
-        id: `${lesson.subject.toLowerCase().replace(/ /g, '-')}-grade-${grade}`,
+        id: `${lesson.subject.toLowerCase().replace(/[^a-z0-9]/g, '-')}-grade-${grade}`,
         gradeLevel: grade,
+        topics: gradeTopics.length > 0 ? gradeTopics : lesson.topics, // Fallback to all topics if filtering fails
         gradeLevels: undefined, // remove the array
       });
     });
@@ -257,7 +256,9 @@ export const placeholderLessons: Lesson[] = [
       "Algebraic Expressions",
       "Exponents",
       "Geometric constructions",
-      "Geometry of 2D shapes"
+      "Geometry of 2D shapes",
+      "Number system",
+      "Problem solving"
     ],
   },
   {
@@ -269,7 +270,8 @@ export const placeholderLessons: Lesson[] = [
         "Algebraic expressions & equations",
         "Functions & relationships",
         "Geometry of straight lines & 2D shapes",
-        "Trigonometry basics"
+        "Trigonometry basics",
+        "Area and perimeter"
     ],
   }
 ];
@@ -288,5 +290,3 @@ export const mathQuestionsByGrade: Record<string, { question: string, answer: st
     "11": { question: "Find the value of sin(30°) + cos(60°)", answer: "1" },
     "12": { question: "Find the derivative of f(x) = 3x² + 2x - 1", answer: "f'(x) = 6x + 2" },
 };
-
-    

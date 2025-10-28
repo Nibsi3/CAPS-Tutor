@@ -4,7 +4,8 @@ import { useParams } from 'next/navigation';
 import { lessons, placeholderLessons } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { ExternalLink, BookOpenCheck } from 'lucide-react';
+import { ExternalLink, BookOpenCheck, Bot } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LessonDetailPage() {
   const params = useParams();
@@ -25,13 +26,22 @@ export default function LessonDetailPage() {
     <div className="flex-1 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl font-headline flex items-center gap-4">
-            <BookOpenCheck className="w-8 h-8 text-primary" />
-            {lesson.subject}
-          </CardTitle>
-          <CardDescription>
-            Curriculum for Grade {lesson.gradeLevel}
-          </CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-3xl font-headline flex items-center gap-4">
+                <BookOpenCheck className="w-8 h-8 text-primary" />
+                {lesson.subject}
+              </CardTitle>
+              <CardDescription>
+                Curriculum for Grade {lesson.gradeLevel}
+              </CardDescription>
+            </div>
+            <Button asChild>
+              <Link href="/dashboard/tutor">
+                <Bot className="mr-2 h-4 w-4" /> Ask AI Tutor
+              </Link>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
