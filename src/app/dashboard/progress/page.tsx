@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useUser, useDoc, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collection, query, where, getFirestore } from "firebase/firestore";
+import { useUser, useDoc, useCollection, useMemoFirebase, useFirestore } from "@/firebase";
+import { doc, collection, query, where } from "firebase/firestore";
 import { Progress } from "@/components/ui/progress";
 import { Loader, BarChart2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,7 +45,7 @@ export default function ProgressPage() {
   
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
 
-  const processedProgress = useMemoFirebase(() => {
+  const processedProgress = useMemo(() => {
     if (!progressData) return {};
     
     const progressByTopic: Record<string, { totalMastery: number, count: number }> = {};
@@ -67,7 +67,7 @@ export default function ProgressPage() {
 
   }, [progressData]);
 
-  const overallMastery = useMemoFirebase(() => {
+  const overallMastery = useMemo(() => {
     if (!processedProgress || Object.keys(processedProgress).length === 0) return 0;
     const topics = Object.values(processedProgress);
     const total = topics.reduce((sum, level) => sum + level, 0);
@@ -143,7 +143,7 @@ export default function ProgressPage() {
                             <SelectValue placeholder="Filter by subject" />
                         </SelectTrigger>
                         <SelectContent>
-                            {userProfile.subjects.map((s:string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            {(userProfile.subjects as string[]).map((s:string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                         </SelectContent>
                     </Select>
                  )}

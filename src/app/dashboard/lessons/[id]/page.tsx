@@ -30,7 +30,7 @@ export default function LessonDetailPage() {
             {lesson.subject}
           </CardTitle>
           <CardDescription>
-            Curriculum for Grades {lesson.gradeLevels.join(', ')}
+            Curriculum for Grade {lesson.gradeLevel}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

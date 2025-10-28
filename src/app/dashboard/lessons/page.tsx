@@ -8,14 +8,15 @@ import { Button } from "@/components/ui/button";
 import { lessons, grades, placeholderLessons } from "@/lib/data";
 
 // Create a unique list of subjects from the available lessons
-const availableSubjects = [...new Set([...lessons, ...placeholderLessons].map(l => l.subject))].map(s => ({ value: s, label: s}));
+const allLessons = [...lessons, ...placeholderLessons];
+const availableSubjects = [...new Set(allLessons.map(l => l.subject))].map(s => ({ value: s, label: s}));
 
 export default function LessonsPage() {
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
 
-  const filteredLessons = [...lessons, ...placeholderLessons].filter(lesson => {
-    const gradeMatch = !selectedGrade || lesson.gradeLevels.includes(selectedGrade);
+  const filteredLessons = allLessons.filter(lesson => {
+    const gradeMatch = !selectedGrade || lesson.gradeLevel === selectedGrade;
     const subjectMatch = !selectedSubject || lesson.subject === selectedSubject;
     return gradeMatch && subjectMatch;
   });
@@ -63,7 +64,7 @@ export default function LessonsPage() {
                 <Card key={lesson.id}>
                   <CardHeader>
                     <CardTitle className="text-xl font-headline">{lesson.subject}</CardTitle>
-                    <CardDescription>Grades {lesson.gradeLevels.join(', ')}</CardDescription>
+                    <CardDescription>Grade {lesson.gradeLevel}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm font-medium mb-2">Key Topics:</p>

@@ -10,8 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from 'lucide-react';
@@ -31,6 +30,12 @@ const settingsSchema = z.object({
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
 
+// Extend the type to include optional fields that might exist in Firestore but aren't in the form always
+interface UserProfile extends SettingsFormValues {
+    province?: string;
+    school?: string;
+}
+
 export default function SettingsPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
@@ -41,7 +46,7 @@ export default function SettingsPage() {
         return doc(firestore, 'users', user.uid);
     }, [user, firestore]);
 
-    const { data: userProfile, isLoading: isProfileLoading } = useDoc<SettingsFormValues>(userProfileRef);
+    const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
     const form = useForm<SettingsFormValues>({
         resolver: zodResolver(settingsSchema),

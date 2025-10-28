@@ -107,7 +107,7 @@ export const subjects = [
 
 export interface Lesson {
     id: string;
-    gradeLevels: string[];
+    gradeLevel: string;
     subject: string;
     textbookLink?: string;
     topics: string[];
@@ -115,18 +115,16 @@ export interface Lesson {
     source?: string;
 }
 
-export const lessons: Lesson[] = [
+const rawLessons = [
     {
-        id: "math-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Mathematics",
-        textbookLink: "https://www.siyavula.com/downloads/books/maths/Gr10_Mathematics_Learner_Eng_v11.pdf",
+        textbookLink: "https://www.siyavula.com/read/za/mathematics/grade-10",
         topics: ["Numbers & patterns", "Algebra (expressions, equations, inequalities)", "Functions (polynomial, exponential, logarithmic)", "Trigonometry", "Euclidean & analytical geometry", "Calculus (differentiation & integration basics, applications - Grade 12)", "Probability & Statistics", "Finance & growth models"],
         pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate%28NSC%29Examinations/NSCPastExaminationpapers.aspx",
         source: "Siyavula / DBE"
     },
     {
-        id: "math-lit-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Mathematical Literacy",
         textbookLink: "DBE Mind the Gap study guides (see DBE Self Study Guides)",
@@ -135,16 +133,14 @@ export const lessons: Lesson[] = [
         source: "DBE Mind the Gap"
     },
     {
-        id: "phys-sci-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Physical Sciences",
-        textbookLink: "https://www.siyavula.com/downloads/books/science/Gr10_PhysicalSciences_Learner_Eng.pdf",
+        textbookLink: "https://www.siyavula.com/read/za/physical-sciences/grade-10",
         topics: ["Scientific method & lab skills", "Matter & materials", "Atomic structure", "Periodic trends", "Chemical bonding", "Stoichiometry", "Chemical reactions & equilibrium (Gr12)", "Mechanics (kinematics, dynamics, energy)", "Waves", "Electricity & magnetism", "Optics", "Thermal physics", "Chemical kinetics & electrochemistry (Gr12)"],
         pastPapersLink: "DBE NSC past papers (Physical Sciences) / TestPapers",
         source: "DBE Physical Sciences CAPS document & Siyavula"
     },
     {
-        id: "life-sci-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Life Sciences",
         textbookLink: "https://www.education.gov.za/LinkClick.aspx?fileticket=gQvYxE2bl9M%3D&mid=9704&portalid=0&tabid=2720",
@@ -153,7 +149,6 @@ export const lessons: Lesson[] = [
         source: "DBE Life Sciences CAPS PDF"
     },
     {
-        id: "accounting-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Accounting",
         textbookLink: "DBE LTSM Accounting learner books (search on DBE LTSM)",
@@ -162,7 +157,6 @@ export const lessons: Lesson[] = [
         source: "DBE LTSM Accounting listings"
     },
     {
-        id: "business-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Business Studies",
         textbookLink: "https://www.education.gov.za/Curriculum/LearningandTeachingSupportMaterials%28LTSM%29/FETBusinessStudiesTextbooks.aspx",
@@ -171,7 +165,6 @@ export const lessons: Lesson[] = [
         source: "DBE FET Business Studies page"
     },
     {
-        id: "economics-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Economics",
         textbookLink: "DBE CAPS Economics document (download via CAPS FET page)",
@@ -180,7 +173,6 @@ export const lessons: Lesson[] = [
         source: "DBE CAPS Economics listing"
     },
     {
-        id: "geography-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Geography",
         textbookLink: "DBE Mind the Gap / CAPS Geography resources (DBE LTSM)",
@@ -189,7 +181,6 @@ export const lessons: Lesson[] = [
         source: "DBE Mind the Gap & LTSM"
     },
     {
-        id: "history-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "History",
         textbookLink: "DBE LTSM History CAPS documents",
@@ -198,7 +189,6 @@ export const lessons: Lesson[] = [
         source: "DBE LTSM History listing"
     },
     {
-        id: "it-cat-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Information Technology / CAT",
         textbookLink: "DBE digital CAT & IT learner books (PDFs / web versions on DBE site)",
@@ -207,7 +197,6 @@ export const lessons: Lesson[] = [
         source: "DBE digital content listings (CAT/IT)"
     },
     {
-        id: "tourism-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Tourism",
         textbookLink: "DBE Mind the Gap & LTSM tourism resources",
@@ -216,7 +205,6 @@ export const lessons: Lesson[] = [
         source: "DBE Mind the Gap / LTSM tourism resources"
     },
     {
-        id: "hospitality-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Consumer Studies / Hospitality",
         textbookLink: "DBE LTSM & Mind the Gap resources",
@@ -225,7 +213,6 @@ export const lessons: Lesson[] = [
         source: "DBE LTSM / Mind the Gap"
     },
     {
-        id: "egd-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Engineering Graphics & Design / Technical Subjects",
         textbookLink: "DBE technical subject learner books (LTSM)",
@@ -234,7 +221,6 @@ export const lessons: Lesson[] = [
         source: "DBE LTSM technical listings"
     },
     {
-        id: "creative-arts-10-12",
         gradeLevels: ["10", "11", "12"],
         subject: "Creative Arts / Visual Arts / Music / Drama",
         textbookLink: "DBE LTSM creative arts resources",
@@ -244,10 +230,28 @@ export const lessons: Lesson[] = [
     }
 ];
 
+// This function expands the raw lessons into individual lessons for each grade.
+function expandLessons(lessons: any[]): Lesson[] {
+  const expanded: Lesson[] = [];
+  lessons.forEach(lesson => {
+    lesson.gradeLevels.forEach((grade: string) => {
+      expanded.push({
+        ...lesson,
+        id: `${lesson.subject.toLowerCase().replace(/ /g, '-')}-grade-${grade}`,
+        gradeLevel: grade,
+        gradeLevels: undefined, // remove the array
+      });
+    });
+  });
+  return expanded;
+}
+
+export const lessons: Lesson[] = expandLessons(rawLessons);
+
 export const placeholderLessons: Lesson[] = [
   {
     id: "lesson-math-8-1",
-    gradeLevels: ["8"],
+    gradeLevel: "8",
     subject: "Mathematics",
     topics: [
       "Algebraic Expressions",
@@ -258,7 +262,7 @@ export const placeholderLessons: Lesson[] = [
   },
   {
     id: "lesson-math-9-1",
-    gradeLevels: ["9"],
+    gradeLevel: "9",
     subject: "Mathematics",
     topics: [
         "Number system & real numbers",

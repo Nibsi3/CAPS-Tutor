@@ -17,8 +17,8 @@ export function ProgressChart() {
       </CardHeader>
       <CardContent>
         <ChartContainer config={{
-          'This Week': { label: 'This Week', color: 'hsl(var(--primary))' },
-          'Last Week': { label: 'Last Week', color: 'hsl(var(--secondary))' },
+          'This Week': { label: 'This Week', color: 'hsl(var(--chart-1))' },
+          'Last Week': { label: 'Last Week', color: 'hsl(var(--chart-2))' },
         }} className="h-[250px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={progressChartData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
