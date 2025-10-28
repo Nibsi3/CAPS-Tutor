@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -30,11 +30,15 @@ const settingsSchema = z.object({
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
 
-// Extend the type to include optional fields that might exist in Firestore but aren't in the form always
-interface UserProfile extends SettingsFormValues {
+// This interface represents the data structure in Firestore
+interface UserProfile {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    gradeLevel: number;
     province?: string;
     school?: string;
-    gradeLevel: string | number;
+    subjects: string[];
 }
 
 export default function SettingsPage() {
@@ -60,8 +64,9 @@ export default function SettingsPage() {
     });
     
     useEffect(() => {
-        // Only reset the form if the userProfile data is available and the form hasn't been touched by the user yet.
-        if (userProfile && !form.formState.isDirty) {
+        // When the userProfile data loads from Firestore, reset the form with that data.
+        // This populates the form fields on initial render.
+        if (userProfile) {
             form.reset({
                 gradeLevel: String(userProfile.gradeLevel || ''),
                 province: userProfile.province || '',
@@ -69,30 +74,32 @@ export default function SettingsPage() {
                 subjects: userProfile.subjects || [],
             });
         }
-    }, [userProfile, form]);
+    }, [userProfile, form.reset]);
 
     const onSubmit = (data: SettingsFormValues) => {
         if (!user || !userProfileRef) return;
         
-        // Ensure we have the most recent profile data to merge with
-        const currentData = userProfile || {};
-
-        const profileData = {
-            ...currentData, // Spread existing profile to keep fields like email, firstName etc.
-            ...data, // Overwrite with new form data
-            gradeLevel: parseInt(data.gradeLevel, 10), // Ensure gradeLevel is a number
+        // Prepare the data to be saved, ensuring gradeLevel is a number
+        const profileDataToSave: Partial<UserProfile> = {
+            ...data, 
+            gradeLevel: parseInt(data.gradeLevel, 10),
+            // We can also add user details from the auth object if they are not in the profile yet
+            email: user.email,
+            firstName: user.displayName?.split(' ')[0],
+            lastName: user.displayName?.split(' ').slice(1).join(' '),
         };
 
-        setDocumentNonBlocking(userProfileRef, profileData, { merge: true });
+        // Use a non-blocking write with merge to update the user's document
+        setDocumentNonBlocking(userProfileRef, profileDataToSave, { merge: true });
 
         toast({
             title: "Settings Saved",
             description: "Your profile has been updated successfully.",
         });
-        form.reset(data); // Resets the form's dirty state
+        form.reset(data, { keepIsDirty: false }); // Resets the form's dirty state after successful submission
     };
 
-    if (isUserLoading || (isProfileLoading && !userProfile)) {
+    if (isUserLoading || isProfileLoading) {
         return (
             <div className="flex items-center justify-center h-full">
                 <Loader className="h-12 w-12 animate-spin" />
@@ -106,22 +113,23 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle>Settings</CardTitle>
           <CardDescription>
-            Manage your account, grade, and subject preferences.
+            Manage your account, grade, and subject preferences to personalize your learning experience.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <div className="grid md:grid-cols-2 gap-8">
-                    {/* Grade and School Section */}
+                    {/* Academic Information */}
                     <div className="space-y-6">
+                        <h3 className="text-lg font-medium">Academic Information</h3>
                         <FormField
                         control={form.control}
                         name="gradeLevel"
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Grade Level</FormLabel>
-                            <Select onValueChange={field.onChange} value={String(field.value) || ''}>
+                            <Select onValueChange={field.onChange} value={field.value || ''}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select your grade" />
@@ -135,6 +143,9 @@ export default function SettingsPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <FormDescription>
+                                This helps us tailor content to your curriculum.
+                            </FormDescription>
                             <FormMessage />
                             </FormItem>
                         )}
@@ -181,12 +192,12 @@ export default function SettingsPage() {
                             render={() => (
                                 <FormItem>
                                     <div className="mb-4">
-                                        <FormLabel className="text-base">Your Subjects</FormLabel>
+                                        <h3 className="text-lg font-medium">Your Subjects</h3>
                                         <p className="text-sm text-muted-foreground">
                                             Select the subjects you are currently studying.
                                         </p>
                                     </div>
-                                     <div className="space-y-3 max-h-60 overflow-y-auto pr-2 rounded-md border p-4">
+                                     <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 rounded-lg border p-4">
                                         {allSubjects.map((subject) => (
                                         <FormField
                                             key={subject.value}
@@ -196,23 +207,22 @@ export default function SettingsPage() {
                                             return (
                                                 <FormItem
                                                 key={subject.value}
-                                                className="flex flex-row items-start space-x-3 space-y-0"
+                                                className="flex flex-row items-center space-x-3 space-y-0"
                                                 >
                                                 <FormControl>
                                                     <Checkbox
                                                     checked={field.value?.includes(subject.value)}
                                                     onCheckedChange={(checked) => {
-                                                        return checked
-                                                        ? field.onChange([...(field.value || []), subject.value])
-                                                        : field.onChange(
-                                                            field.value?.filter(
-                                                                (value) => value !== subject.value
-                                                            )
-                                                            )
+                                                        const updatedSubjects = checked
+                                                        ? [...(field.value || []), subject.value]
+                                                        : field.value?.filter(
+                                                            (value) => value !== subject.value
+                                                            );
+                                                        field.onChange(updatedSubjects);
                                                     }}
                                                     />
                                                 </FormControl>
-                                                <FormLabel className="font-normal">
+                                                <FormLabel className="font-normal cursor-pointer flex-1">
                                                     {subject.label}
                                                 </FormLabel>
                                                 </FormItem>
