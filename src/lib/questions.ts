@@ -1,3 +1,4 @@
+
 export interface Question {
   id: string;
   question: string;
@@ -6,7 +7,9 @@ export interface Question {
 }
 
 const allQuestions: Record<string, Question[]> = {
+  // =================================
   // Grade 10 Mathematics
+  // =================================
   "Algebraic expressions": [
     { id: 'alg-exp-1', topic: 'Algebraic expressions', question: 'Simplify the following expression: (2x + 3y) - (x - 2y)' },
     { id: 'alg-exp-2', topic: 'Algebraic expressions', question: 'Expand and simplify: (x - 5)(x + 3)' },
@@ -33,6 +36,33 @@ const allQuestions: Record<string, Question[]> = {
     { id: 'alg-exp-23', topic: 'Algebraic expressions', question: 'Expand and simplify: (x + 1/x)²' },
     { id: 'alg-exp-24', topic: 'Algebraic expressions', question: 'Simplify the algebraic fraction: (a² - 4) / (a² + 2a)' },
     { id: 'alg-exp-25', topic: 'Algebraic expressions', question: 'Subtract 5a² - 2a + 1 from 8a² + 3a - 6' },
+  ],
+  "Equations and inequalities": [
+    { id: 'eq-in-1', topic: 'Equations and inequalities', question: 'Solve for x: 3x - 7 = 5' },
+    { id: 'eq-in-2', topic: 'Equations and inequalities', question: 'Solve the inequality: 2x + 5 < 11' },
+    { id: 'eq-in-3', topic: 'Equations and inequalities', question: 'Solve for a: a/3 + a/4 = 7' },
+    { id: 'eq-in-4', topic: 'Equations and inequalities', question: 'Solve the following simultaneous equations: y = 2x + 1 and x + y = 7' },
+    { id: 'eq-in-5', topic: 'Equations and inequalities', question: 'Solve for x: x² - 6x + 8 = 0' },
+    { id: 'eq-in-6', topic: 'Equations and inequalities', question: 'Solve the inequality and represent the solution on a number line: -3 <= 2x - 1 < 5' },
+    { id: 'eq-in-7', topic: 'Equations and inequalities', question: 'Solve for x: 2^x = 32' },
+    { id: 'eq-in-8', topic: 'Equations and inequalities', question: 'Find the values of x that satisfy the inequality: x² - 4x - 5 < 0' },
+    { id: 'eq-in-9', topic: 'Equations and inequalities', question: 'Two numbers have a sum of 20 and a difference of 4. Find the two numbers.' },
+    { id: 'eq-in-10', topic: 'Equations and inequalities', question: 'Solve for y: 5(y - 2) = 3(y + 4)' },
+    { id: 'eq-in-11', topic: 'Equations and inequalities', question: 'Solve for x: (x+1)/3 = (x-1)/2' },
+    { id: 'eq-in-12', topic: 'Equations and inequalities', question: 'The length of a rectangle is 5 cm more than its width. If the perimeter is 50 cm, find the dimensions.' },
+    { id: 'eq-in-13', topic: 'Equations and inequalities', question: 'Solve the inequality: 1 - 3x >= 7' },
+    { id: 'eq-in-14', topic: 'Equations and inequalities', question: 'Solve for x: x² = 9' },
+    { id: 'eq-in-15', topic: 'Equations and inequalities', question: 'Solve for x and y: 2x + 3y = 8 and 3x - y = 1' },
+    { id: 'eq-in-16', topic: 'Equations and inequalities', question: 'Solve by completing the square: x² + 6x - 7 = 0' },
+    { id: 'eq-in-17', topic: 'Equations and inequalities', question: 'Solve for x: 3^(x+1) = 81' },
+    { id: 'eq-in-18', topic: 'Equations and inequalities', question: 'Solve the literal equation for h: A = 2πr(r + h)' },
+    { id: 'eq-in-19', topic: 'Equations and inequalities', question: 'Solve the inequality: |x - 3| > 4' },
+    { id: 'eq-in-20', topic: 'Equations and inequalities', question: 'Find the roots of the quadratic equation 2x² - 5x + 3 = 0 using the quadratic formula.' },
+    { id: 'eq-in-21', topic: 'Equations and inequalities', question: 'The sum of the digits of a two-digit number is 9. If the digits are reversed, the new number is 45 more than the original number. Find the number.' },
+    { id: 'eq-in-22', topic: 'Equations and inequalities', question: 'Solve for x: √x + 2 = x' },
+    { id: 'eq-in-23', topic: 'Equations and inequalities', question: 'List the integer solutions for the inequality: -5 < 3x + 1 <= 10' },
+    { id: 'eq-in-24', topic: 'Equations and inequalities', question: 'Solve for x: (x - 2)(x + 3) >= 0' },
+    { id: 'eq-in-25', topic: 'Equations and inequalities', question: 'Solve for p: p - 15 = 4p + 3' },
   ],
   "Trigonometry": [
     { id: 'trig-1', topic: 'Trigonometry', question: 'In a right-angled triangle, if the side opposite to angle θ is 3 and the adjacent side is 4, what is the value of tan(θ)?' },
@@ -88,7 +118,37 @@ const allQuestions: Record<string, Question[]> = {
     { id: 'func-24', topic: 'Functions', question: 'Determine if the function f(x) = x² is even, odd, or neither.' },
     { id: 'func-25', topic: 'Functions', question: 'Find the point of intersection of the lines y = x + 1 and y = -x + 3.' },
   ],
-  // Grade 12 Calculus
+
+  // =================================
+  // Grade 12 Mathematics
+  // =================================
+  "Sequences and series": [
+    { id: 'seq-1', topic: 'Sequences and series', question: 'Find the 10th term of the arithmetic sequence: 3, 7, 11, ...' },
+    { id: 'seq-2', topic: 'Sequences and series', question: 'The first term of a geometric sequence is 2 and the common ratio is 3. What is the 5th term?' },
+    { id: 'seq-3', topic: 'Sequences and series', question: 'Calculate the sum of the first 20 terms of the arithmetic series: 5 + 8 + 11 + ...' },
+    { id: 'seq-4', topic: 'Sequences and series', question: 'Determine the sum to infinity of the geometric series: 16 + 8 + 4 + ...' },
+    { id: 'seq-5', topic: 'Sequences and series', question: 'Which term of the arithmetic sequence 4, 9, 14, ... is equal to 124?' },
+    { id: 'seq-6', topic: 'Sequences and series', question: 'Write the following series in sigma notation: 2 + 5 + 8 + ... + 32' },
+    { id: 'seq-7', topic: 'Sequences and series', question: 'In a geometric sequence, the 3rd term is 20 and the 6th term is 160. Determine the common ratio.' },
+    { id: 'seq-8', topic: 'Sequences and series', question: 'For which values of x will the series (x-1) + (x-1)² + (x-1)³ + ... converge?' },
+    { id: 'seq-9', topic: 'Sequences and series', question: 'A quadratic number pattern has a general term Tn = n² + 3n - 1. Find the first three terms.' },
+    { id: 'seq-10', topic: 'Sequences and series', question: 'Calculate the sum of the first 8 terms of the geometric series: 1, -2, 4, -8, ...' },
+    { id: 'seq-11', topic: 'Sequences and series', question: 'The sum of the first n terms of an arithmetic series is given by Sn = n/2 (7n + 1). Find the first term.' },
+    { id: 'seq-12', topic: 'Sequences and series', question: 'Find the general term (Tn) of the sequence: 5, 2, -1, -4, ...' },
+    { id: 'seq-13', topic: 'Sequences and series', question: 'A ball is dropped from a height of 10m. It bounces back to 80% of its previous height. Calculate the total vertical distance the ball travels before it comes to rest.' },
+    { id: 'seq-14', topic: 'Sequences and series', question: 'Evaluate: Σ (from k=1 to 5) of (2k + 1)' },
+    { id: 'seq-15', topic: 'Sequences and series', question: 'The first three terms of a sequence are 2, x, 18. Find x if the sequence is arithmetic.' },
+    { id: 'seq-16', topic: 'Sequences and series', question: 'The first three terms of a sequence are 2, x, 18. Find x if the sequence is geometric and x > 0.' },
+    { id: 'seq-17', topic: 'Sequences and series', question: 'Find the second difference of the quadratic pattern: 3, 9, 19, 33, ...' },
+    { id: 'seq-18', topic: 'Sequences and series', question: 'How many terms are there in the series: 5 + 10 + 20 + ... + 640?' },
+    { id: 'seq-19', topic: 'Sequences and series', question: 'A convergent geometric series has a first term of 6 and a sum to infinity of 9. Find the common ratio.' },
+    { id: 'seq-20', topic: 'Sequences and series', question: 'Derive the formula for the sum of the first n terms of an arithmetic series.' },
+    { id: 'seq-21', topic: 'Sequences and series', question: 'Find the general term Tn for the quadratic pattern: 1, 6, 15, 28, ...' },
+    { id: 'seq-22', topic: 'Sequences and series', question: 'In an arithmetic sequence, T₃ + T₇ = 34. Find T₅.' },
+    { id: 'seq-23', topic: 'Sequences and series', question: 'Calculate the value of n if Σ (from k=1 to n) of 4 = 28.' },
+    { id: 'seq-24', topic: 'Sequences and series', question: 'Is the series 1 - 1 + 1 - 1 + ... convergent? Explain.' },
+    { id: 'seq-25', topic: 'Sequences and series', question: 'The sum of an infinite geometric series is 12 and the common ratio is 1/3. What is the first term?' },
+  ],
   "Calculus (Differential)": [
     { id: 'calc-1', topic: 'Calculus (Differential)', question: 'Find the derivative of f(x) = x³ - 4x² + 7x - 1 from first principles.' },
     { id: 'calc-2', topic: 'Calculus (Differential)', question: 'Determine dy/dx if y = 5x⁴ - 3x⁻².' },
@@ -116,7 +176,119 @@ const allQuestions: Record<string, Question[]> = {
     { id: 'calc-24', topic: 'Calculus (Differential)', question: 'When is a function not differentiable at a point?' },
     { id: 'calc-25', topic: 'Calculus (Differential)', question: 'The volume of a sphere is increasing at a rate of 3 cm³/s. Find the rate of increase of the radius when the radius is 2 cm.' },
   ],
-  // Add other topics and questions here...
+
+  // =================================
+  // Grade 12 Physical Sciences
+  // =================================
+  "Momentum and impulse": [
+    { id: 'mom-1', topic: 'Momentum and impulse', question: 'Define momentum in words.' },
+    { id: 'mom-2', topic: 'Momentum and impulse', question: 'A car of mass 1200 kg is moving at a velocity of 20 m/s. Calculate its momentum.' },
+    { id: 'mom-3', topic: 'Momentum and impulse', question: 'State the principle of conservation of linear momentum.' },
+    { id: 'mom-4', topic: 'Momentum and impulse', question: 'A 5 kg trolley moving at 4 m/s collides with a stationary 2 kg trolley. They stick together after the collision. Calculate their velocity after the collision.' },
+    { id: 'mom-5', topic: 'Momentum and impulse', question: 'Define impulse in terms of momentum.' },
+    { id: 'mom-6', topic: 'Momentum and impulse', question: 'A cricket ball of mass 0.15 kg is hit by a bat and its velocity changes from 25 m/s to -30 m/s. Calculate the impulse on the ball.' },
+    { id: 'mom-7', topic: 'Momentum and impulse', question: 'State Newton\'s Second Law in terms of momentum.' },
+    { id: 'mom-8', topic: 'Momentum and impulse', question: 'A force of 50 N is applied to a 10 kg block for 0.5 s. What is the change in momentum of the block?' },
+    { id: 'mom-9', topic: 'Momentum and impulse', question: 'Differentiate between an elastic and an inelastic collision.' },
+    { id: 'mom-10', topic: 'Momentum and impulse', question: 'A 80 kg rugby player running at 8 m/s tackles a 100 kg player running at 6 m/s in the opposite direction. What is their combined velocity if they move together after the tackle?' },
+    { id: 'mom-11', topic: 'Momentum and impulse', question: 'How do airbags in cars reduce injury during a collision? Explain using the concept of impulse.' },
+    { id: 'mom-12', topic: 'Momentum and impulse', question: 'A 2 kg ball moving at 5 m/s has a head-on elastic collision with a stationary 3 kg ball. If the 2 kg ball moves at -1 m/s after, what is the velocity of the 3 kg ball?' },
+    { id: 'mom-13', topic: 'Momentum and impulse', question: 'What is the unit of impulse?' },
+    { id: 'mom-14', topic: 'Momentum and impulse', question: 'If the net force on an object is zero, what can you say about its momentum?' },
+    { id: 'mom-15', topic: 'Momentum and impulse', question: 'A bullet of mass 20 g is fired from a rifle of mass 5 kg. If the bullet has a velocity of 300 m/s, what is the recoil velocity of the rifle?' },
+    { id: 'mom-16', topic: 'Momentum and impulse', question: 'The area under a force-time graph represents what physical quantity?' },
+    { id: 'mom-17', topic: 'Momentum and impulse', question: 'Can an object have momentum without having kinetic energy? Explain.' },
+    { id: 'mom-18', topic: 'Momentum and impulse', question: 'A 70 kg person jumps off a stationary 30 kg boat with a horizontal velocity of 2 m/s. What is the velocity of the boat as the person jumps?' },
+    { id: 'mom-19', topic: 'Momentum and impulse', question: 'Explain why a follow-through is important when hitting a golf ball, in terms of impulse.' },
+    { id: 'mom-20', topic: 'Momentum and impulse', question: 'In an inelastic collision, what is conserved and what is not conserved?' },
+    { id: 'mom-21', topic: 'Momentum and impulse', question: 'A 1 kg object is dropped from a height of 5 m. What is its momentum just before it hits the ground? (g = 9.8 m/s²)' },
+    { id: 'mom-22', topic: 'Momentum and impulse', question: 'If two objects have the same momentum, do they necessarily have the same kinetic energy?' },
+    { id: 'mom-23', topic: 'Momentum and impulse', question: 'A tennis ball is dropped on a hard surface and bounces back to a lower height. Is the collision elastic or inelastic? Explain.' },
+    { id: 'mom-24', topic: 'Momentum and impulse', question: 'A rocket expels gas backwards to move forwards. Which law of motion explains this?' },
+    { id: 'mom-25', topic: 'Momentum and impulse', question: 'A 2000 kg truck travelling at 10 m/s crashes into a stationary 1000 kg car. The car is thrown forward at 15 m/s. What is the velocity of the truck after the collision?' },
+  ],
+  "Rate and extent of reactions": [
+    { id: 'rate-1', topic: 'Rate and extent of reactions', question: 'Define reaction rate in words.' },
+    { id: 'rate-2', topic: 'Rate and extent of reactions', question: 'List five factors that affect the rate of a chemical reaction.' },
+    { id: 'rate-3', topic: 'Rate and extent of reactions', question: 'Explain, using the Collision Theory, why increasing the temperature increases the reaction rate.' },
+    { id: 'rate-4', topic: 'Rate and extent of reactions', question: 'A reaction produces 20 cm³ of gas in 50 seconds. What is the average rate of reaction in cm³/s?' },
+    { id: 'rate-5', topic: 'Rate and extent of reactions', question: 'What is a catalyst?' },
+    { id: 'rate-6', topic: 'Rate and extent of reactions', question: 'How does a catalyst increase the rate of a reaction? Refer to activation energy.' },
+    { id: 'rate-7', topic: 'Rate and extent of reactions', question: 'Why does a powdered solid react faster than a single lump of the same mass?' },
+    { id: 'rate-8', topic: 'Rate and extent of reactions', question: 'Draw and label a potential energy diagram for an exothermic reaction, showing the effect of a catalyst.' },
+    { id: 'rate-9', topic: 'Rate and extent of reactions', question: 'Explain why increasing the concentration of reactants increases the rate of reaction.' },
+    { id: 'rate-10', topic: 'Rate and extent of reactions', question: 'Name a suitable catalyst for the decomposition of hydrogen peroxide.' },
+    { id: 'rate-11', topic: 'Rate and extent of reactions', question: 'What is meant by the term "activation energy"?' },
+    { id: 'rate-12', topic: 'Rate and extent of reactions', question: 'In the reaction Zn(s) + 2HCl(aq) -> ZnCl₂(aq) + H₂(g), what are two ways to measure the rate of reaction?' },
+    { id: 'rate-13', topic: 'Rate and extent of reactions', question: 'How does pressure affect the rate of reaction between gases? Explain using Collision Theory.' },
+    { id: 'rate-14', topic: 'Rate and extent of reactions', question: 'Draw a Maxwell-Boltzmann distribution curve and use it to explain the effect of an increase in temperature on reaction rate.' },
+    { id: 'rate-15', topic: 'Rate and extent of reactions', question: 'Is a catalyst used up in a chemical reaction?' },
+    { id: 'rate-16', topic: 'Rate and extent of reactions', question: 'The rate of a reaction is found to double when the concentration of a reactant is doubled. What is the order of the reaction with respect to that reactant?' },
+    { id: 'rate-17', topic: 'Rate and extent of reactions', question: 'From a graph of volume of gas produced vs. time, how would you determine the instantaneous reaction rate at a specific time?' },
+    { id: 'rate-18', topic: 'Rate and extent of reactions', question: 'Why are catalytic converters used in cars?' },
+    { id: 'rate-19', topic: 'Rate and extent of reactions', question: 'Describe an experiment to investigate the effect of concentration on reaction rate between sodium thiosulfate and hydrochloric acid.' },
+    { id: 'rate-20', topic: 'Rate and extent of reactions', question: 'What does it mean if a reaction rate is zero?' },
+    { id: 'rate-21', topic: 'Rate and extent of reactions', question: 'Draw and label a potential energy diagram for an endothermic reaction.' },
+    { id: 'rate-22', topic: 'Rate and extent of reactions', question: 'What is an effective collision?' },
+    { id: 'rate-23', topic: 'Rate and extent of reactions', question: 'In the Haber process, what conditions of temperature and pressure are used? Explain the compromise.' },
+    { id: 'rate-24', topic: 'Rate and extent of reactions', question: 'Food spoils slower when kept in a refrigerator. Explain this in terms of reaction rates.' },
+    { id: 'rate-25', topic: 'Rate and extent of reactions', question: 'For the reaction A + B -> C, the rate law is Rate = k[A][B]². What happens to the rate if the concentration of B is doubled?' },
+  ],
+  "Chemical equilibrium": [
+    { id: 'eqm-1', topic: 'Chemical equilibrium', question: 'What is meant by a reversible reaction? Use the correct symbol in an example.' },
+    { id: 'eqm-2', topic: 'Chemical equilibrium', question: 'Define dynamic chemical equilibrium.' },
+    { id: 'eqm-3', topic: 'Chemical equilibrium', question: 'List three conditions necessary for a system to be in dynamic equilibrium.' },
+    { id: 'eqm-4', topic: 'Chemical equilibrium', question: 'State Le Chatelier\'s Principle.' },
+    { id: 'eqm-5', topic: 'Chemical equilibrium', question: 'Consider the reaction: N₂(g) + 3H₂(g) ⇌ 2NH₃(g), ΔH < 0. How will the equilibrium shift if the temperature is increased?' },
+    { id: 'eqm-6', topic: 'Chemical equilibrium', question: 'For the reaction in Q5, N₂(g) + 3H₂(g) ⇌ 2NH₃(g), how will the equilibrium shift if the pressure is increased?' },
+    { id: 'eqm-7', topic: 'Chemical equilibrium', question: 'For the reaction in Q5, what is the effect of adding a catalyst on the position of the equilibrium?' },
+    { id: 'eqm-8', topic: 'Chemical equilibrium', question: 'Write the equilibrium constant expression (Kc) for the reaction: 2SO₂(g) + O₂(g) ⇌ 2SO₃(g).' },
+    { id: 'eqm-9', topic: 'Chemical equilibrium', question: 'What does a large value of Kc (e.g., Kc > 1) indicate about the equilibrium position?' },
+    { id: 'eqm-10', topic: 'Chemical equilibrium', question: 'Consider the reaction: H₂(g) + I₂(g) ⇌ 2HI(g). If you add more H₂, what happens to the concentration of I₂?' },
+    { id: 'eqm-11', topic: 'Chemical equilibrium', question: 'For the reaction PCl₅(g) ⇌ PCl₃(g) + Cl₂(g), if you remove Cl₂ from the system, in which direction will the equilibrium shift?' },
+    { id: 'eqm-12', topic: 'Chemical equilibrium', question: 'What is the only factor that changes the value of the equilibrium constant, Kc?' },
+    { id: 'eqm-13', topic: 'Chemical equilibrium', question: 'Initially, 1 mole of N₂O₄ is placed in a 1 dm³ container. At equilibrium, 0.8 moles of N₂O₄ remain. Calculate Kc for the reaction N₂O₄(g) ⇌ 2NO₂(g).' },
+    { id: 'eqm-14', topic: 'Chemical equilibrium', question: 'Why are solids and pure liquids omitted from the Kc expression?' },
+    { id: 'eqm-15', topic: 'Chemical equilibrium', question: 'The reaction CaCO₃(s) ⇌ CaO(s) + CO₂(g) is endothermic. How can you increase the yield of CaO?' },
+    { id: 'eqm-16', topic: 'Chemical equilibrium', question: 'For the reaction A(g) + 2B(g) ⇌ C(g), the Kc value at a certain temperature is 4.0. If the equilibrium concentrations are [A]=0.5M and [B]=0.2M, what is [C]?' },
+    { id: 'eqm-17', topic: 'Chemical equilibrium', question: 'How does the rate of the forward reaction compare to the rate of the reverse reaction at equilibrium?' },
+    { id: 'eqm-18', topic: 'Chemical equilibrium', question: 'What does a small value of Kc (e.g., Kc < 1) indicate?' },
+    { id: 'eqm-19', topic: 'Chemical equilibrium', question: 'For the reaction Co(H₂O)₆²⁺(aq) + 4Cl⁻(aq) ⇌ CoCl₄²⁻(aq) + 6H₂O(l), the forward reaction is endothermic and CoCl₄²⁻ is blue. What colour change is observed if the mixture is heated?' },
+    { id: 'eqm-20', topic: 'Chemical equilibrium', question: 'Explain why increasing the pressure has no effect on the equilibrium position of the reaction: H₂(g) + I₂(g) ⇌ 2HI(g).' },
+    { id: 'eqm-21', topic: 'Chemical equilibrium', question: 'At equilibrium, are the concentrations of reactants and products equal?' },
+    { id: 'eqm-22', topic: 'Chemical equilibrium', question: 'What is the effect of adding an inert gas at constant volume on the equilibrium position?' },
+    { id: 'eqm-23', topic: 'Chemical equilibrium', question: 'In the Contact process for making sulfuric acid, the key step is 2SO₂(g) + O₂(g) ⇌ 2SO₃(g), ΔH < 0. What are the optimal conditions of temperature and pressure for a high yield of SO₃?' },
+    { id: 'eqm-24', topic: 'Chemical equilibrium', question: 'A reaction has Kc = 1 at 400K. Is the reaction at equilibrium if the reaction quotient Qc = 0.5? If not, in which direction will it proceed?' },
+    { id: 'eqm-25', topic: 'Chemical equilibrium', question: 'If the reverse reaction is favoured, will Kc be greater or smaller than 1?' },
+  ],
+  "Acids and bases": [
+    { id: 'acid-1', topic: 'Acids and bases', question: 'Define an Arrhenius acid.' },
+    { id: 'acid-2', topic: 'Acids and bases', question: 'Define a Brønsted-Lowry base.' },
+    { id: 'acid-3', topic: 'Acids and bases', question: 'Identify the conjugate acid-base pairs in the reaction: NH₃(aq) + H₂O(l) ⇌ NH₄⁺(aq) + OH⁻(aq).' },
+    { id: 'acid-4', topic: 'Acids and bases', question: 'What is a strong acid? Give an example.' },
+    { id: 'acid-5', topic: 'Acids and bases', question: 'What is a weak base? Give an example.' },
+    { id: 'acid-6', topic: 'Acids and bases', question: 'What is an ampholyte (amphiprotic substance)? Give an example.' },
+    { id: 'acid-7', topic: 'Acids and bases', question: 'Write the general equation for the reaction between an acid and a metal carbonate.' },
+    { id: 'acid-8', topic: 'Acids and bases', question: 'Calculate the pH of a 0.01 mol·dm⁻³ solution of HCl.' },
+    { id: 'acid-9', topic: 'Acids and bases', question: 'Calculate the pH of a solution with a hydroxide ion concentration of 1 x 10⁻⁴ mol·dm⁻³ at 25°C. (Kw = 1 x 10⁻¹⁴)' },
+    { id: 'acid-10', topic: 'Acids and bases', question: 'What is the equivalence point of a titration?' },
+    { id: 'acid-11', topic: 'Acids and bases', question: 'Name a suitable indicator for a titration between a strong acid (e.g., HCl) and a strong base (e.g., NaOH).' },
+    { id: 'acid-12', topic: 'Acids and bases', question: 'Define hydrolysis of a salt.' },
+    { id: 'acid-13', topic: 'Acids and bases', question: 'Will a solution of sodium acetate (CH₃COONa) be acidic, basic, or neutral? Explain why.' },
+    { id: 'acid-14', topic: 'Acids and bases', question: 'Write the auto-ionization of water equation and the expression for Kw.' },
+    { id: 'acid-15', topic: 'Acids and bases', question: 'What is a buffer solution?' },
+    { id: 'acid-16', topic: 'Acids and bases', question: 'Differentiate between the endpoint and the equivalence point of a titration.' },
+    { id: 'acid-17', topic: 'Acids and bases', question: '25 cm³ of a 0.1 mol·dm⁻³ NaOH solution is titrated with a 0.05 mol·dm⁻³ H₂SO₄ solution. What volume of acid is needed to reach the equivalence point?' },
+    { id: 'acid-18', topic: 'Acids and bases', question: 'Write the Ka expression for the dissociation of acetic acid, CH₃COOH.' },
+    { id: 'acid-19', topic: 'Acids and bases', question: 'If an acid has a large Ka value, is it a strong or weak acid?' },
+    { id: 'acid-20', topic: 'Acids and bases', question: 'Complete the reaction: Mg(s) + 2HCl(aq) -> ?' },
+    { id: 'acid-21', topic: 'Acids and bases', question: 'What is the pH of pure water at 25°C?' },
+    { id: 'acid-22', topic: 'Acids and bases', question: 'If a solution has a pH of 9, is it acidic or basic?' },
+    { id: 'acid-23', topic: 'Acids and bases', question: 'What is the general term for the reaction between an acid and a base?' },
+    { id: 'acid-24', topic: 'Acids and bases', question: 'Calculate the concentration of H⁺ ions in a solution with a pH of 3.5.' },
+    { id: 'acid-25', topic: 'Acids and bases', question: 'What colour is litmus paper in an acidic solution?' },
+  ],
+
 };
 
 export const getQuestionsForTopic = (topic: string, grade: number): Question[] => {
@@ -125,3 +297,6 @@ export const getQuestionsForTopic = (topic: string, grade: number): Question[] =
   // For now, we'll just use the topic name as the key.
   return allQuestions[topic] || [];
 };
+
+    
+    
