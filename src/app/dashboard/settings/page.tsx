@@ -74,7 +74,7 @@ export default function SettingsPage() {
         if (!user || !userProfileRef) return;
         
         const profileData = {
-            ...userProfile, // Preserve existing data
+            // No need to spread userProfile here if we merge
             email: user.email,
             firstName: user.displayName?.split(' ')[0] || '',
             lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
