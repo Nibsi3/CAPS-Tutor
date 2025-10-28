@@ -66,7 +66,9 @@ export default function SettingsPage() {
     });
     
     useEffect(() => {
-        if (userProfile) {
+        // Only reset the form if userProfile exists AND the user has not started editing the form.
+        // This prevents the form from being overwritten after a successful save.
+        if (userProfile && !form.formState.isDirty) {
             form.reset({
                 gradeLevel: String(userProfile.gradeLevel || ''),
                 province: userProfile.province || '',
@@ -74,27 +76,29 @@ export default function SettingsPage() {
                 subjects: userProfile.subjects || [],
             });
         }
-    }, [userProfile, form.reset]);
+    }, [userProfile, form.reset, form.formState.isDirty]);
 
     const onSubmit = (data: SettingsFormValues) => {
         if (!user || !userProfileRef) return;
         
         const profileDataToSave: Partial<UserProfile> = {
-            ...userProfile, // preserve existing fields
+            // No longer need to spread userProfile here as setDoc with merge:true handles it
             ...data, 
             gradeLevel: parseInt(data.gradeLevel, 10),
-            email: user.email ?? userProfile?.email,
-            firstName: user.displayName?.split(' ')[0] ?? userProfile?.firstName,
-            lastName: user.displayName?.split(' ').slice(1).join(' ') ?? userProfile?.lastName,
+            email: user.email ?? undefined,
+            firstName: user.displayName?.split(' ')[0] ?? undefined,
+            lastName: user.displayName?.split(' ').slice(1).join(' ') ?? undefined,
         };
-
-        // Use the standard setDoc function with non-blocking error handling
+        
+        // Non-blocking write with proper promise handling
         setDoc(userProfileRef, profileDataToSave, { merge: true })
             .then(() => {
                 toast({
                     title: "Settings Saved",
                     description: "Your profile has been updated successfully.",
                 });
+                // After successful submission, reset the form's dirty state
+                // and update the default values to match the new submission.
                 form.reset(data, { keepIsDirty: false });
             })
             .catch(async (serverError) => {
@@ -262,5 +266,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-
-    
