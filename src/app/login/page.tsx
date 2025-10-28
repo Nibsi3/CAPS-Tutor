@@ -39,7 +39,6 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPopupError, setShowPopupError] = useState(false);
-  const [isAutoSigningIn, setIsAutoSigningIn] = useState(true);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,60 +49,8 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    // This effect will run once on mount to create the specified user and sign in.
-    const autoSignIn = async () => {
-      if (user) {
-        router.push('/dashboard');
-        return;
-      }
-      
-      const email = 'cameronfalck03@gmail.com';
-      const password = '!!AnCam123';
-
-      toast({
-          title: "Creating Your Account",
-          description: `Signing you in as ${email}`,
-      });
-      
-      try {
-        await initiateEmailSignUp(auth, email, password);
-        // The onAuthStateChanged listener will handle the redirect on success.
-      } catch (error: any) {
-         if (error.code === 'auth/email-already-in-use') {
-            toast({
-                title: "Account Exists",
-                description: "Signing you in...",
-            });
-            await initiateEmailSignIn(auth, email, password);
-         } else {
-            console.error("Auto Sign-Up Error:", error);
-            toast({
-                variant: "destructive",
-                title: "Auto Sign-Up Failed",
-                description: "Could not create your account. Please try manual sign-in.",
-            });
-            setIsAutoSigningIn(false); // Fallback to manual login
-         }
-      }
-    };
-    
-    // We only want to run auto-signin once on initial load.
-    if(auth && isAutoSigningIn && !user) {
-        autoSignIn().finally(() => setIsAutoSigningIn(false));
-    }
-  }, [auth, user, router, toast, isAutoSigningIn]);
-
-
-  useEffect(() => {
     if (user && firestore) {
-      const userProfileRef = doc(firestore, 'users', user.uid);
-      setDoc(userProfileRef, {
-        firstName: 'Cameron',
-        lastName: 'Falck',
-        email: user.email,
-      }, { merge: true }).then(() => {
-        router.push('/dashboard');
-      });
+      router.push('/dashboard');
     }
   }, [user, firestore, router]);
 
@@ -146,6 +93,16 @@ export default function LoginPage() {
         title: 'Welcome!',
         description: "We've created a new account for you.",
       });
+      
+      if(auth.currentUser && firestore) {
+          const userProfileRef = doc(firestore, 'users', auth.currentUser.uid);
+          await setDoc(userProfileRef, {
+            firstName: 'New',
+            lastName: 'User',
+            email: auth.currentUser.email,
+          }, { merge: true });
+      }
+
     } catch (error: any) {
       // If the email already exists, try to sign in instead
       if (error.code === 'auth/email-already-in-use') {
@@ -175,11 +132,11 @@ export default function LoginPage() {
   };
 
 
-  if (isUserLoading || isAutoSigningIn) {
+  if (isUserLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader className="h-12 w-12 animate-spin" />
-        <p className="ml-4 text-lg">Setting up your account...</p>
+        <p className="ml-4 text-lg">Loading...</p>
       </div>
     );
   }
@@ -277,5 +234,3 @@ export default function LoginPage() {
     </>
   );
 }
-
-    
