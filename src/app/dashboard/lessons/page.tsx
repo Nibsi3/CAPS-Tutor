@@ -16,6 +16,12 @@ import {
   DialogTrigger,
   DialogDescription,
 } from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 // Create a unique list of subjects from the available lessons
 const allLessons = [...lessons, ...placeholderLessons];
@@ -134,9 +140,22 @@ export default function LessonsPage() {
                                     ))}
                                     {lesson.topics.length > 5 && (
                                         <Dialog>
-                                            <DialogTrigger asChild>
-                                                <button className="text-xs font-semibold text-primary/80 pt-1 cursor-pointer hover:underline text-left">...and {lesson.topics.length - 5} more</button>
-                                            </DialogTrigger>
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <DialogTrigger asChild>
+                                                    <button className="text-xs font-semibold text-primary/80 pt-1 cursor-pointer hover:underline text-left">...and {lesson.topics.length - 5} more</button>
+                                                </DialogTrigger>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <ul className='list-disc list-inside space-y-1'>
+                                                  {lesson.topics.slice(5).map((topic, index) => (
+                                                      <li key={index}>{topic}</li>
+                                                  ))}
+                                                </ul>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
                                             <DialogContent className="sm:max-w-md">
                                                 <DialogHeader>
                                                     <DialogTitle>All Topics for {lesson.subject} - Grade {lesson.gradeLevel}</DialogTitle>
