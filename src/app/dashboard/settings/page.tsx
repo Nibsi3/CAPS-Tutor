@@ -75,11 +75,11 @@ export default function SettingsPage() {
         
         const profileData = {
             ...userProfile, // Preserve existing data
-            ...data,
-            gradeLevel: parseInt(data.gradeLevel, 10), // Ensure gradeLevel is a number
             email: user.email,
             firstName: user.displayName?.split(' ')[0] || '',
             lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+            ...data, // Overwrite with new form data
+            gradeLevel: parseInt(data.gradeLevel, 10), // Ensure gradeLevel is a number
         };
 
         setDocumentNonBlocking(userProfileRef, profileData, { merge: true });
