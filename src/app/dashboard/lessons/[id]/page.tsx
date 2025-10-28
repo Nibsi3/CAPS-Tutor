@@ -6,7 +6,8 @@ import { lessons, placeholderLessons } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ExternalLink, BookOpenCheck, Bot, Search, ArrowRight } from 'lucide-react';
+import { Progress } from "@/components/ui/progress";
+import { ExternalLink, BookOpenCheck, Bot, Search } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LessonDetailPage() {
@@ -72,16 +73,24 @@ export default function LessonDetailPage() {
                 />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredTopics.map((topic, index) => (
+              {filteredTopics.map((topic, index) => {
+                const progress = Math.floor(Math.random() * 100); // Placeholder progress
+                return (
                  <button 
                     key={index} 
                     onClick={() => handleTopicClick(topic)}
-                    className="group text-left p-4 border rounded-lg bg-card hover:bg-muted transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary flex justify-between items-center"
+                    className="group text-left p-4 border rounded-lg bg-card hover:bg-muted transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary flex flex-col justify-between h-32"
                 >
-                    <span className="font-medium">{topic}</span>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                    <span className="font-medium mb-2">{topic}</span>
+                    <div className="mt-auto w-full">
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs text-muted-foreground">Progress</span>
+                            <span className="text-xs font-bold text-primary">{progress}%</span>
+                        </div>
+                        <Progress value={progress} indicatorClassName="bg-gradient-to-r from-blue-400 to-purple-500" />
+                    </div>
                 </button>
-              ))}
+              )})}
             </div>
              {filteredTopics.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
@@ -128,5 +137,3 @@ export default function LessonDetailPage() {
     </div>
   );
 }
-
-    
