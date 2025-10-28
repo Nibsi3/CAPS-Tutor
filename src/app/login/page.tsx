@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import { signInWithGoogle, signInWithFacebook } from '@/firebase/auth/social-auth';
 import { initiateEmailSignUp, initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { Loader } from 'lucide-react';
@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { doc, setDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -33,6 +34,7 @@ const formSchema = z.object({
 export default function LoginPage() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,37 +50,43 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    // This effect will run once on mount to create a random user and sign in.
+    // This effect will run once on mount to create the specified user and sign in.
     const autoSignIn = async () => {
       if (user) {
         router.push('/dashboard');
         return;
       }
       
-      const randomId = Math.floor(Math.random() * 100000);
-      const randomEmail = `testuser${randomId}@example.com`;
-      const randomPassword = `password${randomId}`;
+      const email = 'cameronfalck03@gmail.com';
+      const password = '!!AnCam123';
 
       toast({
-          title: "Creating Random Account",
-          description: `Signing you in as ${randomEmail}`,
+          title: "Creating Your Account",
+          description: `Signing you in as ${email}`,
       });
       
       try {
-        await initiateEmailSignUp(auth, randomEmail, randomPassword);
+        await initiateEmailSignUp(auth, email, password);
         // The onAuthStateChanged listener will handle the redirect on success.
       } catch (error: any) {
-        console.error("Auto Sign-Up Error:", error);
-        toast({
-            variant: "destructive",
-            title: "Auto Sign-Up Failed",
-            description: "Could not create a random account. Please try manual sign-in.",
-        });
-        setIsAutoSigningIn(false); // Fallback to manual login
+         if (error.code === 'auth/email-already-in-use') {
+            toast({
+                title: "Account Exists",
+                description: "Signing you in...",
+            });
+            await initiateEmailSignIn(auth, email, password);
+         } else {
+            console.error("Auto Sign-Up Error:", error);
+            toast({
+                variant: "destructive",
+                title: "Auto Sign-Up Failed",
+                description: "Could not create your account. Please try manual sign-in.",
+            });
+            setIsAutoSigningIn(false); // Fallback to manual login
+         }
       }
     };
     
-    // We only run this once.
     if(isAutoSigningIn) {
         autoSignIn();
     }
@@ -86,10 +94,17 @@ export default function LoginPage() {
 
 
   useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
+    if (user && firestore) {
+      const userProfileRef = doc(firestore, 'users', user.uid);
+      setDoc(userProfileRef, {
+        firstName: 'Cameron',
+        lastName: 'Falck',
+        email: user.email,
+      }, { merge: true }).then(() => {
+        router.push('/dashboard');
+      });
     }
-  }, [user, router]);
+  }, [user, firestore, router]);
 
   const handleSocialSignIn = async (provider: 'google' | 'facebook') => {
     try {
@@ -154,11 +169,11 @@ export default function LoginPage() {
   };
 
 
-  if (isUserLoading || user || isAutoSigningIn) {
+  if (isUserLoading || isAutoSigningIn) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader className="h-12 w-12 animate-spin" />
-        <p className="ml-4 text-lg">Creating a temporary account...</p>
+        <p className="ml-4 text-lg">Setting up your account...</p>
       </div>
     );
   }
@@ -255,3 +270,5 @@ export default function LoginPage() {
       </div>
     </>
   );
+
+    
