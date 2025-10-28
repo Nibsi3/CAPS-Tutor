@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Award, Book, Brain, CheckCircle, Star, Target, Trophy, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,7 @@ const generateLeaderboardData = (subjects: { value: string, label: string }[]) =
   const names = ["Lerato M.", "Thabo K.", "Sipho N.", "Aisha P.", "Fatima A.", "David L.", "Nomvula Z.", "Chris B.", "Zane W.", "Michael T."];
 
   subjects.forEach(subject => {
-    data[subject.value] = {};
+    data[subject.label] = {}; // Use label for display
     timeframes.forEach((timeframe, timeIndex) => {
       const leaderboard = [];
       const usedNames = new Set<string>();
@@ -95,21 +95,30 @@ const generateLeaderboardData = (subjects: { value: string, label: string }[]) =
       leaderboard.sort((a, b) => b.score - a.score);
       leaderboard.forEach((player, index) => player.rank = index + 1);
 
-      data[subject.value][timeframe] = leaderboard;
+      data[subject.label][timeframe] = leaderboard;
     });
   });
 
   return data;
 }
 
-
-const leaderboards = generateLeaderboardData(allSubjects);
-const leaderboardSubjects = Object.keys(leaderboards);
-
+const leaderboardSubjects = allSubjects.map(s => s.label);
 
 export default function AchievementsPage() {
+  const [leaderboards, setLeaderboards] = useState<Record<string, Record<string, { rank: number; name: string; score: number; avatar: string }[]>>>({});
   const [selectedSubject, setSelectedSubject] = useState(leaderboardSubjects[0]);
   const [selectedTimeframe, setSelectedTimeframe] = useState('Weekly');
+  
+  useEffect(() => {
+    // Generate data on the client side to avoid hydration mismatch
+    setLeaderboards(generateLeaderboardData(allSubjects));
+    // Set the first subject as default
+    if (allSubjects.length > 0) {
+      setSelectedSubject(allSubjects[0].label);
+    }
+  }, []);
+
+
   const unlockedCount = personalAchievements.filter(a => a.unlocked).length;
   const totalCount = personalAchievements.length;
 
