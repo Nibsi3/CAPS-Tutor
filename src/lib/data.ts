@@ -3,27 +3,27 @@ import { Award, BookCopy, CheckCircle, Target, Clock, AlertTriangle } from 'luci
 export const statCardsData = [
   {
     title: 'Lessons Completed',
-    value: '12 / 78',
+    value: '0 / 0',
     icon: BookCopy,
-    change: '+2 this week',
+    change: 'Start a lesson to see progress',
   },
   {
     title: 'Avg. Score',
-    value: '82%',
+    value: '0%',
     icon: Target,
-    change: '+3% this month',
+    change: 'Complete a quiz to see your score',
   },
   {
     title: 'Time Spent',
-    value: '7h 45m',
+    value: '0h 0m',
     icon: Clock,
-    change: '+1h this week',
+    change: 'Updated as you learn',
   },
   {
     title: 'Weakest Topic',
-    value: 'Algebraic Fractions',
+    value: 'Not determined yet',
     icon: AlertTriangle,
-    change: 'Practice now',
+    change: 'Practice to identify weak areas',
   },
 ];
 
