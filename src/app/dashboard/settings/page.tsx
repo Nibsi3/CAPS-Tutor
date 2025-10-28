@@ -10,11 +10,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useUser, useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from 'lucide-react';
 import { grades, subjects as allSubjects } from '@/lib/data';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const provinces = [
     "Eastern Cape", "Free State", "Gauteng", "KwaZulu-Natal", 
@@ -64,8 +66,6 @@ export default function SettingsPage() {
     });
     
     useEffect(() => {
-        // When the userProfile data loads from Firestore, reset the form with that data.
-        // This populates the form fields on initial render.
         if (userProfile) {
             form.reset({
                 gradeLevel: String(userProfile.gradeLevel || ''),
@@ -79,24 +79,36 @@ export default function SettingsPage() {
     const onSubmit = (data: SettingsFormValues) => {
         if (!user || !userProfileRef) return;
         
-        // Prepare the data to be saved, ensuring gradeLevel is a number
         const profileDataToSave: Partial<UserProfile> = {
             ...data, 
             gradeLevel: parseInt(data.gradeLevel, 10),
-            // We can also add user details from the auth object if they are not in the profile yet
             email: user.email,
             firstName: user.displayName?.split(' ')[0],
             lastName: user.displayName?.split(' ').slice(1).join(' '),
         };
 
-        // Use a non-blocking write with merge to update the user's document
-        setDocumentNonBlocking(userProfileRef, profileDataToSave, { merge: true });
-
-        toast({
-            title: "Settings Saved",
-            description: "Your profile has been updated successfully.",
-        });
-        form.reset(data, { keepIsDirty: false }); // Resets the form's dirty state after successful submission
+        // Use the standard setDoc function with non-blocking error handling
+        setDoc(userProfileRef, profileDataToSave, { merge: true })
+            .then(() => {
+                toast({
+                    title: "Settings Saved",
+                    description: "Your profile has been updated successfully.",
+                });
+                form.reset(data, { keepIsDirty: false });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: userProfileRef.path,
+                    operation: 'update',
+                    requestResourceData: profileDataToSave,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                toast({
+                    variant: "destructive",
+                    title: "Save Failed",
+                    description: "Could not update your settings. Please check permissions."
+                });
+            });
     };
 
     if (isUserLoading || isProfileLoading) {
