@@ -87,8 +87,9 @@ export default function LoginPage() {
       }
     };
     
-    if(isAutoSigningIn) {
-        autoSignIn();
+    // We only want to run auto-signin once on initial load.
+    if(auth && isAutoSigningIn && !user) {
+        autoSignIn().finally(() => setIsAutoSigningIn(false));
     }
   }, [auth, user, router, toast, isAutoSigningIn]);
 
@@ -139,32 +140,37 @@ export default function LoginPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-        await initiateEmailSignIn(auth, values.email, values.password);
+      // First, try to create an account
+      await initiateEmailSignUp(auth, values.email, values.password);
+      toast({
+        title: 'Welcome!',
+        description: "We've created a new account for you.",
+      });
     } catch (error: any) {
-        console.error("Email Sign-In Error:", error);
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-            try {
-                await initiateEmailSignUp(auth, values.email, values.password);
-                 toast({
-                    title: "New Account Created",
-                    description: "We've created a new account for you. Welcome!",
-                });
-            } catch (signupError: any) {
-                 toast({
-                    variant: "destructive",
-                    title: "Sign Up Failed",
-                    description: signupError.message || "Could not create a new account.",
-                });
-            }
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Sign In Failed",
-                description: error.message || "An unexpected error occurred.",
-            });
+      // If the email already exists, try to sign in instead
+      if (error.code === 'auth/email-already-in-use') {
+        try {
+          await initiateEmailSignIn(auth, values.email, values.password);
+        } catch (signInError: any) {
+          toast({
+            variant: 'destructive',
+            title: 'Sign In Failed',
+            description:
+              signInError.code === 'auth/wrong-password' || signInError.code === 'auth/invalid-credential'
+                ? 'The password you entered is incorrect. Please try again.'
+                : 'An unexpected error occurred during sign-in.',
+          });
         }
+      } else {
+        // Handle other sign-up errors
+        toast({
+          variant: 'destructive',
+          title: 'Sign Up Failed',
+          description: error.message || 'Could not create your account.',
+        });
+      }
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -270,5 +276,6 @@ export default function LoginPage() {
       </div>
     </>
   );
+}
 
     
