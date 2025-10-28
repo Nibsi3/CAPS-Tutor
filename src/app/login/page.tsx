@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { doc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -52,28 +52,35 @@ export default function LoginPage() {
     if (!user) return null;
     return doc(firestore, `users/${user.uid}`);
   }, [user, firestore]);
-  const { data: userProfile } = useDoc<{subjects?: string[]}>(userProfileRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{subjects?: string[]}>(userProfileRef);
 
 
   useEffect(() => {
-    if (user && firestore && !isUserLoading) {
+    if (user && !isUserLoading && !isProfileLoading) {
       if (userProfile && userProfile.subjects && userProfile.subjects.length > 0) {
         router.push('/dashboard');
       } else if (userProfile) {
-        // Profile exists but is incomplete
         router.push('/onboarding');
       }
-      // if userProfile is loading, the effect will re-run when it's available
+      // If user exists but profile doesn't, they will be redirected upon sign-in action.
     }
-  }, [user, firestore, router, userProfile, isUserLoading]);
+  }, [user, userProfile, isUserLoading, isProfileLoading, router]);
 
   const handleSocialSignIn = async (provider: 'google') => {
     setIsSubmitting(true);
     try {
-      if (provider === 'google') {
-        await signInWithGoogle(auth);
+      if (provider === 'google' && firestore) {
+        const userCred = await signInWithGoogle(auth, firestore);
+        if (userCred) {
+          // After sign-in and profile creation, check where to redirect
+          const profileSnap = await getDoc(doc(firestore, 'users', userCred.user.uid));
+          if (profileSnap.exists() && profileSnap.data().subjects?.length > 0) {
+            router.push('/dashboard');
+          } else {
+            router.push('/onboarding');
+          }
+        }
       }
-      // Successful sign-in will be handled by the useEffect hook
     } catch (error: any) {
       console.error(`${provider} Sign-In Error:`, error);
       
@@ -94,9 +101,9 @@ export default function LoginPage() {
         title: "Authentication Error",
         description: description,
       });
-    } finally {
-        setIsSubmitting(false);
+       setIsSubmitting(false);
     }
+    // isSubmitting will be false if redirection happens or an error occurs.
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -122,7 +129,7 @@ export default function LoginPage() {
   };
 
 
-  if (isUserLoading || (user && !userProfile)) {
+  if (isUserLoading || (user && isProfileLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader className="h-12 w-12 animate-spin" />

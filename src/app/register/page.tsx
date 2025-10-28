@@ -47,28 +47,25 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (user && firestore) {
+      // Don't redirect if they need to verify their email
       if (user.emailVerified) {
         router.push('/onboarding');
       }
     }
   }, [user, firestore, router]);
 
+
   const handleSocialSignIn = async (provider: 'google') => {
     setIsSubmitting(true);
     try {
-      const userCredential = await signInWithGoogle(auth);
-
-      // Create a user document in Firestore if it doesn't exist
-      if(userCredential?.user && firestore) {
-          const userProfileRef = doc(firestore, 'users', userCredential.user.uid);
-          await setDoc(userProfileRef, {
-            firstName: userCredential.user.displayName?.split(' ')[0] || 'New',
-            lastName: userCredential.user.displayName?.split(' ')[1] || 'User',
-            email: userCredential.user.email,
-          }, { merge: true });
-          router.push('/onboarding');
+      if (provider === 'google' && firestore) {
+          const userCredential = await signInWithGoogle(auth, firestore);
+          // After a successful sign-in, the profile is created/merged in signInWithGoogle.
+          // The user is new, so they should be sent to onboarding.
+          if (userCredential?.user) {
+            router.push('/onboarding');
+          }
       }
-      // Successful sign-in will be handled by the useEffect hook
     } catch (error: any) {
        let description = `Could not sign in with ${provider}. Please try again.`;
 
@@ -83,8 +80,7 @@ export default function RegisterPage() {
         title: "Authentication Error",
         description: description,
       });
-    } finally {
-      setIsSubmitting(false);
+       setIsSubmitting(false);
     }
   };
 
