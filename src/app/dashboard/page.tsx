@@ -9,6 +9,7 @@ import { useDoc, useUser, useMemoFirebase } from "@/firebase";
 import { doc, getFirestore } from "firebase/firestore";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 
 export default function DashboardPage() {
@@ -25,33 +26,57 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Welcome back, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
+        <h1 className="font-headline text-3xl font-bold tracking-tight">Welcome back, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
       </div>
       <StatCards />
 
-        {userProfile && userProfile.subjects && userProfile.subjects.length > 0 && (
+        {userProfile && userProfile.subjects && userProfile.subjects.length > 0 ? (
             <Card>
                 <CardHeader>
                     <CardTitle>Your Subjects</CardTitle>
                     <CardDescription>Continue where you left off or start a new lesson.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {userProfile.subjects.map((subject: string) => (
-                        <div key={subject} className="flex flex-col items-start gap-4 p-4 border rounded-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-primary/10 p-2 rounded-full">
-                                    <BookOpen className="w-6 h-6 text-primary" />
+                        <div key={subject} className="flex flex-col items-start gap-4 rounded-xl border bg-card p-6 text-card-foreground shadow">
+                            <div className="flex w-full items-start justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                                        <BookOpen className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Grade {userProfile.gradeLevel}</p>
+                                        <h3 className="font-headline text-2xl font-bold">{subject}</h3>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-semibold">Grade {userProfile.gradeLevel}</p>
-                                    <h3 className="text-xl font-bold font-headline">{subject}</h3>
-                                </div>
+                                <Button variant="ghost" size="sm" asChild>
+                                    <Link href={`/dashboard/lessons`}>View</Link>
+                                </Button>
                             </div>
-                            <Button asChild className="w-full mt-auto">
-                                <Link href="#">Resume Lesson</Link>
-                            </Button>
+                            <div className="w-full space-y-2">
+                                <div className="flex justify-between text-sm font-medium">
+                                    <span>Progress</span>
+                                    <span>{Math.floor(Math.random() * 50) + 20}%</span>
+                                </div>
+                                <Progress value={Math.floor(Math.random() * 50) + 20} />
+                                <p className="text-xs text-muted-foreground">Keep going! You're doing great.</p>
+                            </div>
                         </div>
                     ))}
+                </CardContent>
+            </Card>
+        ) : (
+             <Card>
+                <CardHeader>
+                    <CardTitle>Get Started</CardTitle>
+                    <CardDescription>
+                        First, let's set up your profile so we can personalize your learning experience.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button asChild>
+                        <Link href="/dashboard/settings">Go to Settings</Link>
+                    </Button>
                 </CardContent>
             </Card>
         )}
@@ -67,3 +92,5 @@ export default function DashboardPage() {
     </div>
   )
 }
+
+    

@@ -74,6 +74,13 @@ export const recentActivityData = [
 ];
 
 export const grades = [
+    { value: "1", label: "Grade 1" },
+    { value: "2", label: "Grade 2" },
+    { value: "3", label: "Grade 3" },
+    { value: "4", label: "Grade 4" },
+    { value: "5", label: "Grade 5" },
+    { value: "6", label: "Grade 6" },
+    { value: "7", label: "Grade 7" },
     { value: "8", label: "Grade 8" },
     { value: "9", label: "Grade 9" },
     { value: "10", label: "Grade 10" },
@@ -81,7 +88,6 @@ export const grades = [
     { value: "12", label: "Grade 12" },
 ];
 
-// Re-structured subjects to be derived from the new curriculum data
 export const subjects = [
     { value: "Mathematics", label: "Mathematics" },
     { value: "Mathematical Literacy", label: "Mathematical Literacy" },
@@ -103,10 +109,10 @@ export interface Lesson {
     id: string;
     gradeLevels: string[];
     subject: string;
-    textbookLink: string;
+    textbookLink?: string;
     topics: string[];
-    pastPapersLink: string;
-    source: string;
+    pastPapersLink?: string;
+    source?: string;
 }
 
 export const lessons: Lesson[] = [
@@ -238,8 +244,7 @@ export const lessons: Lesson[] = [
     }
 ];
 
-// Placeholder for Grade 8 and 9 since no data was provided
-export const placeholderLessons = [
+export const placeholderLessons: Lesson[] = [
   {
     id: "lesson-math-8-1",
     gradeLevels: ["8"],
@@ -264,3 +269,20 @@ export const placeholderLessons = [
     ],
   }
 ];
+
+export const mathQuestionsByGrade: Record<string, { question: string, answer: string }> = {
+    "1": { question: "If you have 2 apples and you get 3 more, how many apples do you have?", answer: "5" },
+    "2": { question: "What is 15 - 8?", answer: "7" },
+    "3": { question: "If a box has 6 crayons, how many crayons are in 4 boxes?", answer: "24" },
+    "4": { question: "What is 56 divided by 7?", answer: "8" },
+    "5": { question: "A movie starts at 2:15 PM and lasts for 1 hour and 30 minutes. What time does it end?", answer: "3:45 PM" },
+    "6": { question: "What is 3/4 as a decimal?", answer: "0.75" },
+    "7": { question: "Solve for x: 3x + 5 = 14", answer: "3" },
+    "8": { question: "What is the area of a circle with a radius of 5 cm? (Use π ≈ 3.14)", answer: "78.5 cm²" },
+    "9": { question: "Simplify the expression: (2x^2)(3x^3)", answer: "6x^5" },
+    "10": { question: "Factorize the quadratic expression: x² + 5x + 6", answer: "(x+2)(x+3)" },
+    "11": { question: "Find the value of sin(30°) + cos(60°)", answer: "1" },
+    "12": { question: "Find the derivative of f(x) = 3x² + 2x - 1", answer: "f'(x) = 6x + 2" },
+};
+
+    

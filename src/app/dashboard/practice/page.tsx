@@ -3,16 +3,32 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader, Target, AlertTriangle, CheckCircle } from "lucide-react";
+import { Textarea } from '@/components/ui/textarea';
+import { Loader, Target, CheckCircle } from "lucide-react";
 import { generateAdaptiveExam, AdaptiveExamOutput } from '@/ai/flows/adaptive-exam-generation';
-import { useUser } from '@/firebase';
+import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
+import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { doc, getFirestore } from 'firebase/firestore';
+
+interface QuestionWithFeedback extends AdaptiveExamOutput['examQuestions'][0] {
+  studentAnswer?: string;
+  feedback?: InteractiveFeedbackOutput | null;
+  isChecking?: boolean;
+}
 
 export default function PracticePage() {
   const { user } = useUser();
+  const firestore = getFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [exam, setExam] = useState<AdaptiveExamOutput | null>(null);
+  const [exam, setExam] = useState<{ examQuestions: QuestionWithFeedback[] } | null>(null);
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, `users/${user.uid}`);
+  }, [user, firestore]);
+  const { data: userProfile } = useDoc(userProfileRef);
 
   const handleGenerateExam = async () => {
     if (!user) {
@@ -31,7 +47,7 @@ export default function PracticePage() {
             studentId: user.uid,
             numQuestions: 5,
         });
-        setExam(result);
+        setExam({ examQuestions: result.examQuestions.map(q => ({...q})) });
         toast({
             title: "Exam Generated!",
             description: "Your custom exam is ready.",
@@ -49,8 +65,45 @@ export default function PracticePage() {
     }
   };
 
+  const handleAnswerChange = (index: number, answer: string) => {
+    if (!exam) return;
+    const newQuestions = [...exam.examQuestions];
+    newQuestions[index].studentAnswer = answer;
+    setExam({ examQuestions: newQuestions });
+  };
+
+  const handleCheckAnswer = async (index: number) => {
+    if (!exam || !userProfile) return;
+
+    const newQuestions = [...exam.examQuestions];
+    const question = newQuestions[index];
+    question.isChecking = true;
+    setExam({ examQuestions: newQuestions });
+
+    try {
+        const result = await getInteractiveFeedback({
+            question: question.question,
+            studentAnswer: question.studentAnswer || '',
+            gradeLevel: parseInt(userProfile.gradeLevel),
+            subject: question.topic, // Or a more general subject if available
+        });
+        newQuestions[index].feedback = result;
+    } catch (error) {
+        console.error("Feedback Error:", error);
+        toast({
+            variant: "destructive",
+            title: "Feedback Failed",
+            description: "Could not get feedback for this answer.",
+        });
+        newQuestions[index].feedback = null;
+    } finally {
+        newQuestions[index].isChecking = false;
+        setExam({ examQuestions: newQuestions });
+    }
+  };
+
   return (
-    <div className="flex-1 space-y-4">
+    <div className="flex-1 space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Adaptive Exam Generator</CardTitle>
@@ -77,20 +130,36 @@ export default function PracticePage() {
         <Card>
             <CardHeader>
                 <CardTitle>Your Custom Exam</CardTitle>
-                <CardDescription>Answer the questions below.</CardDescription>
+                <CardDescription>Answer the questions below and get instant feedback.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 {exam.examQuestions.map((q, index) => (
-                    <div key={index} className="p-4 border rounded-lg">
-                        <p className="font-semibold mb-2">Question {index + 1}: <span className="text-sm font-normal text-muted-foreground">({q.topic})</span></p>
-                        <p className="mb-4">{q.question}</p>
-                        <div className="flex items-center gap-2">
-                             <Button variant="outline">Show Answer</Button>
-                             <div className="flex items-center gap-2 text-sm">
-                                <Button variant="ghost" size="sm" className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-green-500" /> I got it right</Button>
-                                <Button variant="ghost" size="sm" className="flex items-center gap-1"><AlertTriangle className="w-4 h-4 text-red-500" /> I got it wrong</Button>
-                             </div>
-                        </div>
+                    <div key={index} className="rounded-xl border bg-card text-card-foreground shadow p-6 space-y-4">
+                        <p className="font-semibold text-lg">Question {index + 1}: <span className="text-sm font-normal text-muted-foreground">({q.topic})</span></p>
+                        <p className="text-base">{q.question}</p>
+                        
+                        <Textarea 
+                          placeholder="Your answer..."
+                          value={q.studentAnswer || ''}
+                          onChange={(e) => handleAnswerChange(index, e.target.value)}
+                        />
+                        
+                        <Button onClick={() => handleCheckAnswer(index)} disabled={!q.studentAnswer || q.isChecking}>
+                            {q.isChecking && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                            {q.isChecking ? 'Checking...' : 'Check Answer'}
+                        </Button>
+                        
+                        {q.feedback && (
+                            <div className="mt-4 space-y-4 rounded-lg border p-4 text-left bg-muted/50">
+                                <h4 className="font-semibold">Feedback:</h4>
+                                <p className={`font-semibold ${q.feedback.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                                {q.feedback.isCorrect ? 'Correct! Excellent work.' : 'Not quite. Here is a step-by-step explanation:'}
+                                </p>
+                                <div className="prose prose-sm max-w-full text-muted-foreground">
+                                    <p>{q.feedback.explanation}</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ))}
             </CardContent>
@@ -99,3 +168,5 @@ export default function PracticePage() {
     </div>
   )
 }
+
+    
