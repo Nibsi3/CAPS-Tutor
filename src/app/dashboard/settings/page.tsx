@@ -60,7 +60,7 @@ export default function SettingsPage() {
     });
     
     useEffect(() => {
-        if (userProfile) {
+        if (userProfile && !form.formState.isDirty) {
             form.reset({
                 gradeLevel: String(userProfile.gradeLevel || ''),
                 province: userProfile.province || '',
@@ -74,10 +74,7 @@ export default function SettingsPage() {
         if (!user || !userProfileRef) return;
         
         const profileData = {
-            // No need to spread userProfile here if we merge
-            email: user.email,
-            firstName: user.displayName?.split(' ')[0] || '',
-            lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+            ...userProfile, // Spread existing profile to keep fields like email, firstName etc.
             ...data, // Overwrite with new form data
             gradeLevel: parseInt(data.gradeLevel, 10), // Ensure gradeLevel is a number
         };
@@ -90,7 +87,7 @@ export default function SettingsPage() {
         });
     };
 
-    if (isUserLoading || isProfileLoading) {
+    if (isUserLoading || (isProfileLoading && !userProfile)) {
         return (
             <div className="flex items-center justify-center h-full">
                 <Loader className="h-12 w-12 animate-spin" />
