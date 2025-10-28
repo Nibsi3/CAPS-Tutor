@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Checkbox } from "@/components/ui/checkbox"
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -38,7 +39,24 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useRouter } from 'next/navigation';
 
+const provinces = [
+    { value: 'EC', label: 'Eastern Cape' },
+    { value: 'FS', label: 'Free State' },
+    { value: 'GP', label: 'Gauteng' },
+    { value: 'KZN', label: 'KwaZulu-Natal' },
+    { value: 'LP', label: 'Limpopo' },
+    { value: 'MP', label: 'Mpumalanga' },
+    { value: 'NC', label: 'Northern Cape' },
+    { value: 'NW', label: 'North West' },
+    { value: 'WC', label: 'Western Cape' },
+    { value: 'Other', label: 'Other/Homeschool' },
+];
+
+
 const profileFormSchema = z.object({
+  age: z.coerce.number().min(5, { message: "Please enter a valid age."}).max(99, { message: "Please enter a valid age."}),
+  province: z.string({ required_error: 'Please select a province.' }),
+  school: z.string().min(2, { message: 'School name is required.'}),
   gradeLevel: z.string({
     required_error: 'Please select a grade level.',
   }),
@@ -55,6 +73,9 @@ interface UserProfile {
   email: string;
   gradeLevel: number;
   subjects: string[];
+  province: string;
+  school: string;
+  age: number;
 }
 
 export default function OnboardingPage() {
@@ -74,6 +95,7 @@ export default function OnboardingPage() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       subjects: [],
+      school: '',
     },
     mode: 'onChange',
   });
@@ -83,8 +105,8 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (userProfile && !formState.isDirty) {
       reset({
+        ...userProfile,
         gradeLevel: userProfile.gradeLevel ? userProfile.gradeLevel.toString() : undefined,
-        subjects: userProfile.subjects || [],
       });
     }
   }, [userProfile, reset, formState.isDirty]);
@@ -100,9 +122,8 @@ export default function OnboardingPage() {
     }
 
     const dataToSave = {
-        ...userProfile, // preserve existing data
+        ...userProfile, // preserve existing data like name/email
         ...data,
-        email: user?.email, // ensure email is preserved
         gradeLevel: parseInt(data.gradeLevel, 10), // Convert grade back to number
     };
 
@@ -149,30 +170,86 @@ export default function OnboardingPage() {
           <CardContent>
              <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                    <FormField
-                        control={form.control}
-                        name="gradeLevel"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>What grade are you in?</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                                <SelectTrigger>
-                                <SelectValue placeholder="Select your grade" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {grades.map((grade) => (
-                                <SelectItem key={grade.value} value={grade.value}>
-                                    {grade.label}
-                                </SelectItem>
-                                ))}
-                            </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <FormField
+                            control={form.control}
+                            name="age"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>What is your age?</FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="e.g., 16" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="gradeLevel"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>What grade are you in?</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Select your grade" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {grades.map((grade) => (
+                                    <SelectItem key={grade.value} value={grade.value}>
+                                        {grade.label}
+                                    </SelectItem>
+                                    ))}
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="province"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Which province are you in?</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Select your province" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {provinces.map((province) => (
+                                    <SelectItem key={province.value} value={province.value}>
+                                        {province.label}
+                                    </SelectItem>
+                                    ))}
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="school"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>What is the name of your school?</FormLabel>
+                                 <FormControl>
+                                    <Input placeholder="e.g., Cape Town High School" {...field} />
+                                </FormControl>
+                                <FormDescription>
+                                    If you are homeschooled, just type "Homeschool".
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                    
                     <FormField
                         control={form.control}
                         name="subjects"

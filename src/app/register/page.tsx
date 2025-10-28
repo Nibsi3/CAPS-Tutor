@@ -47,7 +47,9 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (user && firestore) {
-      router.push('/onboarding');
+      if (user.emailVerified) {
+        router.push('/onboarding');
+      }
     }
   }, [user, firestore, router]);
 
@@ -57,20 +59,29 @@ export default function RegisterPage() {
       const userCredential = await signInWithGoogle(auth);
 
       // Create a user document in Firestore if it doesn't exist
-      if(userCredential && firestore) {
-          const userProfileRef = doc(firestore, 'users', userCredential.uid);
+      if(userCredential?.user && firestore) {
+          const userProfileRef = doc(firestore, 'users', userCredential.user.uid);
           await setDoc(userProfileRef, {
-            firstName: userCredential.displayName?.split(' ')[0] || 'New',
-            lastName: userCredential.displayName?.split(' ')[1] || 'User',
-            email: userCredential.email,
+            firstName: userCredential.user.displayName?.split(' ')[0] || 'New',
+            lastName: userCredential.user.displayName?.split(' ')[1] || 'User',
+            email: userCredential.user.email,
           }, { merge: true });
+          router.push('/onboarding');
       }
       // Successful sign-in will be handled by the useEffect hook
     } catch (error: any) {
+       let description = `Could not sign in with ${provider}. Please try again.`;
+
+      if (error.code === 'auth/popup-closed-by-user') {
+          description = "The sign-in pop-up was closed. If you are in a code editor's browser, make sure the domain is authorized in your Firebase project's Authentication settings.";
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+          description = 'An account already exists with this email. Please sign in with your original method.';
+      }
+
       toast({
         variant: "destructive",
         title: "Authentication Error",
-        description: `Could not sign in with ${provider}. Please try again.`,
+        description: description,
       });
     } finally {
       setIsSubmitting(false);

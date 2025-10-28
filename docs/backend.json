@@ -27,9 +27,21 @@
           "type": "string",
           "description": "Last name of the user."
         },
+        "age": {
+          "type": "number",
+          "description": "Age of the user."
+        },
         "gradeLevel": {
           "type": "number",
           "description": "The current grade level of the user (1-12)."
+        },
+        "province": {
+          "type": "string",
+          "description": "The province the user resides in."
+        },
+        "school": {
+          "type": "string",
+          "description": "The name of the user's school."
         },
         "subjects": {
           "type": "array",
@@ -286,7 +298,6 @@
   "auth": {
     "providers": [
       "google.com",
-      "facebook.com",
       "password"
     ]
   },

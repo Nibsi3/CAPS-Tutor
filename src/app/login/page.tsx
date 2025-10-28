@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { signInWithGoogle, signInWithFacebook } from '@/firebase/auth/social-auth';
+import { signInWithGoogle } from '@/firebase/auth/social-auth';
 import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -67,13 +67,11 @@ export default function LoginPage() {
     }
   }, [user, firestore, router, userProfile, isUserLoading]);
 
-  const handleSocialSignIn = async (provider: 'google' | 'facebook') => {
+  const handleSocialSignIn = async (provider: 'google') => {
     setIsSubmitting(true);
     try {
       if (provider === 'google') {
         await signInWithGoogle(auth);
-      } else {
-        await signInWithFacebook(auth);
       }
       // Successful sign-in will be handled by the useEffect hook
     } catch (error: any) {
