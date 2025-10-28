@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card';
 import {
   Form,
@@ -30,13 +31,26 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from "@/components/ui/checkbox"
-import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, Settings as SettingsIcon } from 'lucide-react';
+import { Loader, Settings as SettingsIcon, AlertTriangle } from 'lucide-react';
 import { grades, subjects } from '@/lib/data';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { deleteCurrentUser } from '@/firebase/auth/social-auth';
+import { useRouter } from 'next/navigation';
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
@@ -65,8 +79,11 @@ interface UserProfile {
 
 export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
+  const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -142,6 +159,41 @@ export default function SettingsPage() {
         });
       });
   }
+
+  const handleDeleteAccount = async () => {
+    if (!user || !userProfileRef) return;
+    setIsDeleting(true);
+    try {
+      // First, delete the Firestore document
+      await deleteDoc(userProfileRef);
+      
+      // Then, delete the user from Authentication
+      await deleteCurrentUser();
+
+      toast({
+        title: "Account Deleted",
+        description: "Your account has been permanently deleted.",
+      });
+
+      // Redirect to login after successful deletion
+      router.push('/login');
+
+    } catch (error: any) {
+      console.error("Error deleting account:", error);
+      let description = "There was a problem deleting your account. Please try again.";
+      if (error.code === 'auth/requires-recent-login') {
+        description = "This action requires you to have logged in recently. Please log out and log back in to delete your account.";
+      }
+      toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description: description,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
 
   if (isUserLoading || (isProfileLoading && !userProfile)) {
     return (
@@ -248,7 +300,7 @@ export default function SettingsPage() {
               <FormField
                 control={form.control}
                 name="subjects"
-                render={() => (
+                render={({ field }) => (
                   <FormItem>
                     <div className="mb-4">
                       <FormLabel className="text-base">Your Subjects</FormLabel>
@@ -258,40 +310,31 @@ export default function SettingsPage() {
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                       {subjects.map((item) => (
-                        <FormField
-                          key={item.value}
-                          control={form.control}
-                          name="subjects"
-                          render={({ field }) => {
-                            return (
-                              <FormItem
-                                key={item.value}
-                                className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(item.value)}
-                                    onCheckedChange={(checked) => {
-                                      return checked
-                                        ? field.onChange([
-                                            ...(field.value || []),
-                                            item.value,
-                                          ])
-                                        : field.onChange(
-                                            field.value?.filter(
-                                              (value) => value !== item.value
-                                            )
-                                          );
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  {item.label}
-                                </FormLabel>
-                              </FormItem>
-                            );
-                          }}
-                        />
+                          <FormItem
+                            key={item.value}
+                            className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
+                          >
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(item.value)}
+                                onCheckedChange={(checked) => {
+                                  return checked
+                                    ? field.onChange([
+                                        ...(field.value || []),
+                                        item.value,
+                                      ])
+                                    : field.onChange(
+                                        field.value?.filter(
+                                          (value) => value !== item.value
+                                        )
+                                      );
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              {item.label}
+                            </FormLabel>
+                          </FormItem>
                       ))}
                     </div>
                     <FormMessage />
@@ -307,6 +350,41 @@ export default function SettingsPage() {
           </Button>
         </form>
       </Form>
+
+       <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" /> Danger Zone
+          </CardTitle>
+          <CardDescription>
+            This action cannot be undone. This will permanently delete your account and all associated data.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">Delete Account</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete your
+                  account, remove your data from our servers, and log you out.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteAccount} disabled={isDeleting}>
+                  {isDeleting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                  Continue
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardFooter>
+      </Card>
+
     </div>
   );
 }
