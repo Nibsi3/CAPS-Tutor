@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { lessons, grades, placeholderLessons } from "@/lib/data";
-import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator } from "lucide-react";
+import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator, Loader, UserCheck, Settings } from "lucide-react";
 import { cn } from '@/lib/utils';
+import { useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import {
   Dialog,
   DialogContent,
@@ -66,14 +68,44 @@ const subjectColors: Record<string, { bg: string, text: string }> = {
 
 
 export default function LessonsPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
+  // Fetch user profile
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, `users/${user.uid}`);
+  }, [user, firestore]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{gradeLevel: number, subjects: string[]}>(userProfileRef);
+
+  // Manual filters state
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
 
+  // Determine if profile filters should be used
+  const useProfileFilters = userProfile && userProfile.gradeLevel && userProfile.subjects && userProfile.subjects.length > 0;
+
   const filteredLessons = allLessons.filter(lesson => {
-    const gradeMatch = !selectedGrade || lesson.gradeLevel === selectedGrade;
-    const subjectMatch = !selectedSubject || lesson.subject === selectedSubject;
-    return gradeMatch && subjectMatch;
+    if (useProfileFilters) {
+      // Filter based on user profile settings
+      const gradeMatch = lesson.gradeLevel === userProfile.gradeLevel.toString();
+      const subjectMatch = userProfile.subjects.includes(lesson.subject);
+      return gradeMatch && subjectMatch;
+    } else {
+      // Filter based on manual dropdowns
+      const gradeMatch = !selectedGrade || lesson.gradeLevel === selectedGrade;
+      const subjectMatch = !selectedSubject || lesson.subject === selectedSubject;
+      return gradeMatch && subjectMatch;
+    }
   });
+  
+  if (isProfileLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin" />
+      </div>
+    );
+  }
 
 
   return (
@@ -82,35 +114,53 @@ export default function LessonsPage() {
         <div className="bg-card p-6 border-b">
             <CardTitle className="font-headline text-3xl flex items-center gap-3"><BookOpen className='w-8 h-8' />Lesson Hub</CardTitle>
             <CardDescription className='pt-2'>
-                Browse and search for lessons. Use the filters to find content for your grade and subject.
+                Browse and search for lessons for your grade and subjects.
             </CardDescription>
         </div>
         <CardContent className='p-6'>
-          <div className="flex flex-col sm:flex-row gap-4 mb-8">
-            <Select onValueChange={setSelectedGrade} value={selectedGrade || ''}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by Grade" />
-              </SelectTrigger>
-              <SelectContent>
-                {grades.map(grade => (
-                  <SelectItem key={grade.value} value={grade.value}>{grade.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select onValueChange={setSelectedSubject} value={selectedSubject || ''}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by Subject" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableSubjects.map(subject => (
-                  <SelectItem key={subject.value} value={subject.value}>{subject.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-             <Button onClick={() => { setSelectedGrade(null); setSelectedSubject(null); }} variant="outline">
-              Clear Filters
-            </Button>
-          </div>
+          {useProfileFilters ? (
+            <div className="mb-8 p-4 rounded-lg bg-accent/50 border border-dashed flex items-center justify-between">
+              <div className='flex items-center gap-3'>
+                <UserCheck className="h-6 w-6 text-primary" />
+                <div>
+                  <p className="font-semibold">Showing lessons for Grade {userProfile.gradeLevel}</p>
+                  <p className="text-sm text-muted-foreground">Your subjects: {userProfile.subjects.join(', ')}.</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/dashboard/settings">
+                  <Settings className='mr-2 h-4 w-4'/> Change Settings
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-4 mb-8">
+              <Select onValueChange={setSelectedGrade} value={selectedGrade || ''}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filter by Grade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {grades.map(grade => (
+                    <SelectItem key={grade.value} value={grade.value}>{grade.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select onValueChange={setSelectedSubject} value={selectedSubject || ''}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filter by Subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSubjects.map(subject => (
+                    <SelectItem key={subject.value} value={subject.value}>{subject.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={() => { setSelectedGrade(null); setSelectedSubject(null); }} variant="outline">
+                Clear Filters
+              </Button>
+            </div>
+          )}
+
 
           {filteredLessons.length > 0 ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -148,11 +198,7 @@ export default function LessonsPage() {
                                                 </DialogTrigger>
                                               </TooltipTrigger>
                                               <TooltipContent>
-                                                <ul className='list-disc list-inside space-y-1'>
-                                                  {lesson.topics.slice(5).map((topic, index) => (
-                                                      <li key={index}>{topic}</li>
-                                                  ))}
-                                                </ul>
+                                                <p>Click to see all {lesson.topics.length - 5} topics</p>
                                               </TooltipContent>
                                             </Tooltip>
                                           </TooltipProvider>
@@ -185,7 +231,19 @@ export default function LessonsPage() {
           ) : (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
               <h3 className='text-lg font-semibold'>No Lessons Found</h3>
-              <p className="text-muted-foreground mt-2">No lessons matched your filter criteria. Please try different options.</p>
+              <p className="text-muted-foreground mt-2 max-w-md mx-auto">
+                {useProfileFilters 
+                  ? "We couldn't find any lessons matching your saved grade and subjects. Try adjusting your preferences in the settings." 
+                  : "No lessons matched your filter criteria. Please try different options."
+                }
+              </p>
+               {useProfileFilters && (
+                  <Button variant="default" size="sm" asChild className="mt-4">
+                    <Link href="/dashboard/settings">
+                      <Settings className='mr-2 h-4 w-4'/> Go to Settings
+                    </Link>
+                  </Button>
+               )}
             </div>
           )}
         </CardContent>
