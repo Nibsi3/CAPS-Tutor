@@ -10,6 +10,7 @@ import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getFirestore } from 'firebase/firestore';
 import { askAiTutor, AiTutorOutput } from '@/ai/flows/ai-tutor-flow';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -110,8 +111,8 @@ export default function AiTutorPage() {
             {messages.map((message, index) => (
               <div key={index} className={`flex items-start gap-4 ${message.role === 'user' ? 'justify-end' : ''}`}>
                 {message.role === 'assistant' && <Bot className="w-8 h-8 flex-shrink-0 text-primary" />}
-                <div className={`rounded-lg p-4 max-w-[80%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                  <p className="whitespace-pre-wrap">{message.content}</p>
+                <div className={`rounded-lg p-4 max-w-[80%] prose prose-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
                 </div>
                 {message.role === 'user' && <User className="w-8 h-8 flex-shrink-0" />}
               </div>
@@ -157,5 +158,3 @@ export default function AiTutorPage() {
     </div>
   )
 }
-
-    

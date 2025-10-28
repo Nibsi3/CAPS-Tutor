@@ -13,6 +13,7 @@ import { doc, getFirestore } from 'firebase/firestore';
 import Link from 'next/link';
 import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
 import { getQuestionsForTopic, Question } from '@/lib/questions';
+import ReactMarkdown from 'react-markdown';
 
 
 interface QuestionWithFeedback extends Question {
@@ -270,7 +271,7 @@ export default function PracticePage() {
                                             {q.feedback.isCorrect ? 'Correct! Excellent work.' : 'Not quite. Here is a step-by-step explanation:'}
                                             </p>
                                             <div className="prose prose-sm max-w-full text-muted-foreground">
-                                                <p>{q.feedback.explanation}</p>
+                                                <ReactMarkdown>{q.feedback.explanation}</ReactMarkdown>
                                             </div>
                                         </div>
                                     )}
@@ -328,7 +329,7 @@ export default function PracticePage() {
                     <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                         {message.role === 'assistant' && <Bot className="w-6 h-6 flex-shrink-0 text-primary" />}
                         <div className={`rounded-lg p-3 max-w-[90%] text-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                        <p className="whitespace-pre-wrap">{message.content}</p>
+                        <div className="prose prose-sm max-w-full"><ReactMarkdown>{message.content}</ReactMarkdown></div>
                         </div>
                         {message.role === 'user' && <User className="w-6 h-6 flex-shrink-0" />}
                     </div>
