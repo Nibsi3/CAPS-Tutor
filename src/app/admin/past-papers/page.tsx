@@ -113,7 +113,7 @@ export default function PastPaperUploaderPage() {
   const firestore = useFirestore();
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [pairedFiles, setPairedFiles] = useState<PairedFile[]>([]);
-  const [isProcessing, setIsProcessing] = useState(isProcessing);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('subject');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -177,36 +177,21 @@ export default function PastPaperUploaderPage() {
   }
   
   const getPairingKey = (stagedFile: StagedFile) => {
-    let name = stagedFile.file.name.toLowerCase();
+    const name = stagedFile.file.name.toLowerCase();
 
-    // Define core components to build a key
-    const subject = stagedFile.subject !== 'Unknown' ? stagedFile.subject.toLowerCase() : '';
-    const year = stagedFile.year || '';
-    
-    // More robustly extract paper number if it exists
-    let paperNumber = '';
-    const paperMatch = name.match(/p(\d)|paper\s?(\d)/);
-    if (paperMatch) {
-      paperNumber = `p${paperMatch[1] || paperMatch[2]}`;
-    }
-
-    // If we have the core components, use them to build a stable key
-    if (subject && year) {
-        return [subject, year, paperNumber].filter(Boolean).join(' ');
-    }
-
-    // Fallback for files where metadata parsing isn't perfect.
-    // This is a more aggressive cleaning step.
+    // The list of words to remove to create a consistent key
     const noise = [
-        'memo', 'memorandum', 'answer book', 'marking guidelines', 'nsc', 'ieb', 'sc', 'addendum',
-        '.pdf', '.docx', '.doc', 'eng', 'afr',
+      'memo', 'memorandum', 'answer book', 'marking guidelines', 'addendum',
+      '.pdf', '.docx', '.doc',
     ];
+    
     const regex = new RegExp(noise.join('|'), 'gi');
+    
     return name
-        .replace(regex, '')
-        .replace(/[^a-z0-9]/gi, ' ') // remove special chars
-        .replace(/\s+/g, ' ')
-        .trim();
+      .replace(regex, '') // Remove noise words
+      .replace(/[^a-z0-9]/gi, ' ') // Replace non-alphanumeric with space
+      .replace(/\s+/g, ' ') // Condense multiple spaces to one
+      .trim();
   };
 
 
@@ -768,14 +753,3 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
-
-    
-
-    
-
-    
-
-    
-
-    
-    
