@@ -131,7 +131,7 @@ export default function PastPaperUploaderPage() {
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingSubject, setEditingSubject] = useState<string>('');
+  const [editingSubject, setEditingSubject] useState<string>('');
 
   const [totalBatchSize, setTotalBatchSize] = useState(0);
   const [processedInBatch, setProcessedInBatch] = useState(0);
@@ -355,8 +355,11 @@ export default function PastPaperUploaderPage() {
     if(pairToRemove) {
       setStagedFiles(prev => [...prev, pairToRemove.paper, pairToRemove.memo]);
       setPairedFiles(prev => prev.filter(p => p.id !== id));
-      setTotalBatchSize(0); // Reset batch if a file is removed
-      setProcessedInBatch(0);
+      // If a file is removed from a batch, the batch is effectively cancelled
+      if(totalBatchSize > 0) {
+        setTotalBatchSize(0);
+        setProcessedInBatch(0);
+      }
     }
   }
 
@@ -389,110 +392,109 @@ export default function PastPaperUploaderPage() {
   };
 
   const handleProcessUploads = async () => {
-    if (!user || !pastPapersCollectionRef || !firestore) {
+    if (!user || !pastPapersCollectionRef || !firestore || pairedFiles.length === 0) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "You must be logged in to process papers.",
+        description: "Cannot process. Ensure you are logged in and have files ready.",
       });
       return;
     }
     if (isProcessing) return;
 
     setIsProcessing(true);
-    if(totalBatchSize === 0) { // Start a new batch
+    
+    // If this is the start of a new batch, set the total size.
+    if(totalBatchSize === 0) {
         setTotalBatchSize(pairedFiles.length);
         setProcessedInBatch(0);
     }
     
-    // Create a mutable copy of the array to work with
-    const filesToProcess = [...pairedFiles];
+    // Process only the FIRST file in the queue
+    const pair = pairedFiles[0];
 
-    for (const pair of filesToProcess) {
-      const subjectName = pair.paper.paperNumber 
-        ? `${pair.subject} Paper ${pair.paper.paperNumber}` 
-        : pair.subject;
+    const subjectName = pair.paper.paperNumber 
+      ? `${pair.subject} Paper ${pair.paper.paperNumber}` 
+      : pair.subject;
 
-      const paperDocData = {
-        teacherId: user.uid,
-        gradeLevel: 12,
-        subject: subjectName,
-        year: pair.paper.year,
-        paperName: pair.paper.file.name,
-        memoName: pair.memo.file.name,
-        status: "Processing" as const,
-        questionCount: 0,
-        fileUrl: '',
-      };
-      
-      try {
-        const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
-        setProcessedInBatch(prev => prev + 1);
-
-        // Remove the processed pair from the state
-        setPairedFiles(current => current.filter(p => p.id !== pair.id));
-        
-        // This part runs in the background. No need to await.
-        (async () => {
-          try {
-            const paperDataUri = await toDataUri(pair.paper.file);
-            const memoDataUri = await toDataUri(pair.memo.file);
-            
-            const result = await processPastPaper({
-              docId: docRef.id,
-              userId: user.uid,
-              subject: pair.subject,
-              grade: 12,
-              year: parseInt(pair.paper.year),
-              paperDataUri,
-              memoDataUri,
-            });
-
-            await updateDoc(docRef, {
-                status: result.success ? 'Processed' : 'Failed',
-                questionCount: result.questionCount
-            });
-
-            if (!result.success) {
-              toast({
-                  variant: "destructive",
-                  title: `Processing Failed: ${pair.paper.file.name}`,
-                  description: result.message,
-              });
-            }
-          } catch (error) {
-              console.error("AI flow or update failed for doc ID:", docRef.id, error);
-              await updateDoc(docRef, { status: 'Failed' });
-              toast({
-                    variant: "destructive",
-                    title: `Processing Error: ${pair.paper.file.name}`,
-                    description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
-              });
-          }
-        })();
-
-      } catch (serverError) {
-        // This catch block handles the failure of `addDoc`
-        const permissionError = new FirestorePermissionError({
-          path: pastPapersCollectionRef.path,
-          operation: 'create',
-          requestResourceData: paperDocData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({
-          variant: 'destructive',
-          title: 'Upload Failed',
-          description: `Could not queue ${pair.paper.file.name}. Stopping process.`
-        });
-        setIsProcessing(false);
-        return; // Stop the entire process if one doc fails to be created
-      }
-    }
+    const paperDocData = {
+      teacherId: user.uid,
+      gradeLevel: 12,
+      subject: subjectName,
+      year: pair.paper.year,
+      paperName: pair.paper.file.name,
+      memoName: pair.memo.file.name,
+      status: "Processing" as const,
+      questionCount: 0,
+      fileUrl: '',
+    };
     
-    setIsProcessing(false);
-    if(pairedFiles.length === 0) { // Reset batch on completion
-        setTotalBatchSize(0);
-        setProcessedInBatch(0);
+    try {
+      const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
+      
+      // Update progress and remove the processed file from the queue
+      setProcessedInBatch(prev => prev + 1);
+      setPairedFiles(current => current.slice(1));
+      
+      // This part runs in the background.
+      (async () => {
+        try {
+          const paperDataUri = await toDataUri(pair.paper.file);
+          const memoDataUri = await toDataUri(pair.memo.file);
+          
+          const result = await processPastPaper({
+            docId: docRef.id,
+            userId: user.uid,
+            subject: pair.subject,
+            grade: 12,
+            year: parseInt(pair.paper.year),
+            paperDataUri,
+            memoDataUri,
+          });
+
+          await updateDoc(docRef, {
+              status: result.success ? 'Processed' : 'Failed',
+              questionCount: result.questionCount
+          });
+
+          if (!result.success) {
+            toast({
+                variant: "destructive",
+                title: `Processing Failed: ${pair.paper.file.name}`,
+                description: result.message,
+            });
+          }
+        } catch (error) {
+            console.error("AI flow or update failed for doc ID:", docRef.id, error);
+            await updateDoc(docRef, { status: 'Failed' });
+            toast({
+                  variant: "destructive",
+                  title: `Processing Error: ${pair.paper.file.name}`,
+                  description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
+            });
+        }
+      })();
+
+    } catch (serverError) {
+      // This catch block handles the failure of `addDoc`
+      const permissionError = new FirestorePermissionError({
+        path: pastPapersCollectionRef.path,
+        operation: 'create',
+        requestResourceData: paperDocData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: `Could not queue ${pair.paper.file.name}. Stopping process.`
+      });
+    } finally {
+        setIsProcessing(false);
+        // If that was the last file, reset the batch tracking
+        if(pairedFiles.length === 1) {
+            setTotalBatchSize(0);
+            setProcessedInBatch(0);
+        }
     }
   };
   
@@ -552,12 +554,6 @@ export default function PastPaperUploaderPage() {
     const docRef = doc(firestore, 'pastPapers', id);
     
     deleteDoc(docRef)
-      .then(() => {
-        toast({
-          title: "Entry Deleted",
-          description: "The past paper entry has been removed.",
-        });
-      })
       .catch((serverError) => {
         const permissionError = new FirestorePermissionError({
           path: docRef.path,
@@ -588,7 +584,6 @@ export default function PastPaperUploaderPage() {
         }
       })
       .catch(serverError => {
-        // Find the first doc to get the path for the error
         if (idsToDelete.length > 0) {
             const firstDocRef = doc(firestore, `pastPapers`, idsToDelete[0]);
             const permissionError = new FirestorePermissionError({
