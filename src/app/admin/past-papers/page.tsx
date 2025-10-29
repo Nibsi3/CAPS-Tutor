@@ -113,7 +113,7 @@ export default function PastPaperUploaderPage() {
   const firestore = useFirestore();
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [pairedFiles, setPairedFiles] = useState<PairedFile[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(isProcessing);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('subject');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -164,7 +164,6 @@ export default function PastPaperUploaderPage() {
       for (const [lang, keywords] of Object.entries(languageKeywords)) {
           if (keywords.some(kw => name.includes(kw))) {
               language = lang;
-              // Do not break; allows for "Eng & Afr" to be found
           }
       }
 
@@ -183,24 +182,31 @@ export default function PastPaperUploaderPage() {
     // Define core components to build a key
     const subject = stagedFile.subject !== 'Unknown' ? stagedFile.subject.toLowerCase() : '';
     const year = stagedFile.year || '';
-    const paperNumber = stagedFile.paperNumber ? `p${stagedFile.paperNumber}` : '';
     
-    // Fallback for files where subject/year/paper might not be parsed well
-    if (!subject || !year) {
-        const noise = [
-            'memo', 'memorandum', 'answer book', 'marking guidelines', 'nsc', 'ieb', 'sc', 'addendum',
-            'afr', 'eng', '.pdf', '.docx', '.doc'
-        ];
-        const regex = new RegExp(noise.join('|'), 'gi');
-        return name
-            .replace(regex, '')
-            .replace(/\(2\)/g, '') // remove copy markers
-            .replace(/[^a-z0-9]/gi, ' ') // remove special chars
-            .replace(/\s+/g, ' ')
-            .trim();
+    // More robustly extract paper number if it exists
+    let paperNumber = '';
+    const paperMatch = name.match(/p(\d)|paper\s?(\d)/);
+    if (paperMatch) {
+      paperNumber = `p${paperMatch[1] || paperMatch[2]}`;
     }
-    
-    return [subject, year, paperNumber].filter(Boolean).join(' ');
+
+    // If we have the core components, use them to build a stable key
+    if (subject && year) {
+        return [subject, year, paperNumber].filter(Boolean).join(' ');
+    }
+
+    // Fallback for files where metadata parsing isn't perfect.
+    // This is a more aggressive cleaning step.
+    const noise = [
+        'memo', 'memorandum', 'answer book', 'marking guidelines', 'nsc', 'ieb', 'sc', 'addendum',
+        '.pdf', '.docx', '.doc', 'eng', 'afr',
+    ];
+    const regex = new RegExp(noise.join('|'), 'gi');
+    return name
+        .replace(regex, '')
+        .replace(/[^a-z0-9]/gi, ' ') // remove special chars
+        .replace(/\s+/g, ' ')
+        .trim();
   };
 
 
@@ -222,10 +228,7 @@ export default function PastPaperUploaderPage() {
       } else if (file.type === 'memo' && !group.memo) {
         group.memo = file;
       } else {
-        // Handle cases where a memo might be picked up before a paper, or duplicates
-        if (file.type === 'paper' && group.paper) remainingFiles.push(file); // Already have a paper
-        else if (file.type === 'memo' && group.memo) remainingFiles.push(file); // Already have a memo
-        else remainingFiles.push(file); // Default case
+        remainingFiles.push(file);
       }
     }
     
@@ -505,7 +508,7 @@ export default function PastPaperUploaderPage() {
                 <CardDescription>Bulk upload all your paper and memo PDF files. The system will attempt to auto-pair them. Unpaired files will go to Step 2.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Label htmlFor="paper-files" className="sr-only">Past Papers &amp; Memos</Label>
+                <Label htmlFor="paper-files" className="sr-only">Past Papers & Memos</Label>
                 <Input id="paper-files" type="file" accept=".pdf,.doc,.docx" multiple onChange={handleFileChange} />
             </CardContent>
         </Card>
@@ -774,4 +777,5 @@ export default function PastPaperUploaderPage() {
 
     
 
+    
     
