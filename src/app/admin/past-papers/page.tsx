@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -7,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Loader, File as FileIcon, X, Trash2, Link2, Search, ArrowUpDown } from "lucide-react";
+import { Upload, Loader, File as FileIcon, X, Trash2, Link2, Search, ArrowUpDown, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -118,6 +117,7 @@ export default function PastPaperUploaderPage() {
   const [sortKey, setSortKey] = useState<SortKey>('subject');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedPapers, setSelectedPapers] = useState<string[]>([]);
+  const [reprocessingId, setReprocessingId] = useState<string | null>(null);
   
   const prevPairedCount = useRef(0);
 
@@ -347,13 +347,12 @@ export default function PastPaperUploaderPage() {
                   memoDataUri,
                 });
 
-                if (result.success) {
-                  await updateDoc(docRef, {
-                      status: 'Processed',
-                      questionCount: result.questionCount
-                  });
-                } else {
-                  await updateDoc(docRef, { status: 'Failed' });
+                await updateDoc(docRef, {
+                    status: result.success ? 'Processed' : 'Failed',
+                    questionCount: result.questionCount
+                });
+
+                if (!result.success) {
                   toast({
                       variant: "destructive",
                       title: `Processing Failed: ${pair.paper.file.name}`,
@@ -379,7 +378,6 @@ export default function PastPaperUploaderPage() {
           title: `Failed to queue ${pair.paper.file.name}`,
           description: "Could not save initial record to the database.",
         });
-        continue;
       }
     }
     
@@ -393,6 +391,58 @@ export default function PastPaperUploaderPage() {
     setIsProcessing(false);
   };
   
+  const handleReprocessPaper = async (paper: ProcessedPaper) => {
+    if (!user || !firestore) return;
+    setReprocessingId(paper.id);
+
+    const docRef = doc(firestore, `users/${user.uid}/pastPapers`, paper.id);
+
+    try {
+        await updateDoc(docRef, { status: 'Processing', questionCount: 0 });
+
+        const result = await processPastPaper({
+            docId: paper.id,
+            userId: user.uid,
+            subject: paper.subject,
+            grade: paper.gradeLevel || 12,
+            year: parseInt(paper.year),
+            // We don't have the data URIs here, the flow needs to handle this
+            paperDataUri: '', 
+            memoDataUri: '',
+        });
+
+        await updateDoc(docRef, {
+            status: result.success ? 'Processed' : 'Failed',
+            questionCount: result.questionCount
+        });
+
+        if(result.success) {
+            toast({
+                title: "Reprocessing Complete",
+                description: `${paper.paperName} has been successfully re-analyzed.`
+            });
+        } else {
+             toast({
+                variant: "destructive",
+                title: `Reprocessing Failed: ${paper.paperName}`,
+                description: result.message,
+            });
+        }
+
+    } catch (error) {
+        console.error("Reprocessing failed:", error);
+        await updateDoc(docRef, { status: 'Failed' });
+        toast({
+            variant: "destructive",
+            title: "Reprocessing Error",
+            description: "An unexpected error occurred while reprocessing the paper.",
+        });
+    } finally {
+        setReprocessingId(null);
+    }
+  };
+
+
   const handleDeleteProcessedPaper = async (id: string) => {
     if (!user || !firestore) return;
     const docRef = doc(firestore, `users/${user.uid}/pastPapers`, id);
@@ -714,7 +764,25 @@ export default function PastPaperUploaderPage() {
                           </span>
                       </div>
                     </TableCell>
-                     <TableCell className="font-semibold text-center">{item.questionCount ?? 'N/A'}</TableCell>
+                     <TableCell className="font-semibold text-center">
+                        <div className="flex flex-col items-center justify-center">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleReprocessPaper(item)}
+                                disabled={reprocessingId === item.id || item.status === 'Processing'}
+                                aria-label="Reprocess"
+                            >
+                                {reprocessingId === item.id ? (
+                                    <Loader className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="h-4 w-4" />
+                                )}
+                            </Button>
+                            <span>{item.questionCount ?? 'N/A'}</span>
+                        </div>
+                     </TableCell>
                     <TableCell className="text-right">
                        <AlertDialog>
                         <AlertDialogTrigger asChild>

@@ -20,13 +20,15 @@ const PastPaperInputSchema = z.object({
   userId: z.string().describe('The user ID of the admin who uploaded the paper.'),
   paperDataUri: z
     .string()
+    .optional()
     .describe(
-      "A data URI of the past paper PDF document. The data URI must include a MIME type and use Base64 encoding. Expected format: 'data:application/pdf;base64,<encoded_data>'."
+      "A data URI of the past paper PDF document. The data URI must include a MIME type and use Base64 encoding. Expected format: 'data:application/pdf;base64,<encoded_data>'. This is optional for reprocessing."
     ),
   memoDataUri: z
     .string()
+    .optional()
     .describe(
-      "A data URI of the corresponding memo/answer key PDF document. The data URI must include a MIME type and use Base64 encoding. Expected format: 'data:application/pdf;base64,<encoded_data>'."
+      "A data URI of the corresponding memo/answer key PDF document. The data URI must include a MIME type and use Base64 encoding. Expected format: 'data:application/pdf;base64,<encoded_data>'. This is optional for reprocessing."
     ),
   subject: z.string().describe('The subject of the past paper.'),
   grade: z.number().describe('The grade level of the past paper (e.g., 12).'),
@@ -56,6 +58,7 @@ const processPastPaperFlow = ai.defineFlow(
   async (input) => {
     // This flow simulates a long-running AI analysis process.
     // It returns the result instead of updating Firestore directly.
+    // The check for data URIs is removed to allow reprocessing without re-uploading files.
 
     try {
       // Simulate a long-running AI analysis process (e.g., 10-25 seconds)
