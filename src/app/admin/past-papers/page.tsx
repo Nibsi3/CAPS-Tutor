@@ -392,13 +392,15 @@ export default function PastPaperUploaderPage() {
       });
       return;
     }
+    if (isProcessing) return;
+
     setIsProcessing(true);
     let successCount = 0;
     
-    const pairsToProcess = [...pairedFiles];
-    setPairedFiles([]);
-    
-    for (const pair of pairsToProcess) {
+    // Process one by one from the pairedFiles state
+    while (pairedFiles.length > 0) {
+      const pair = pairedFiles[0];
+      
       const subjectName = pair.paper.paperNumber 
         ? `${pair.subject} Paper ${pair.paper.paperNumber}` 
         : pair.subject;
@@ -415,15 +417,18 @@ export default function PastPaperUploaderPage() {
         fileUrl: '',
       };
       
-      addDoc(pastPapersCollectionRef, paperDocData)
-      .then(docRef => {
+      try {
+        const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
         successCount++;
         toast({
           title: `Queued: ${pair.paper.file.name}`,
-          description: "Analysis will begin shortly.",
+          description: `Processing ${successCount} of the remaining files.`,
         });
 
-        // Continue processing in the background without awaiting
+        // Remove the processed pair from the state
+        setPairedFiles(current => current.slice(1));
+        
+        // This part runs in the background. No need to await.
         (async () => {
           try {
             const paperDataUri = await toDataUri(pair.paper.file);
@@ -462,21 +467,22 @@ export default function PastPaperUploaderPage() {
           }
         })();
 
-      }).catch(serverError => {
+      } catch (serverError) {
+        // This catch block handles the failure of `addDoc`
         const permissionError = new FirestorePermissionError({
           path: pastPapersCollectionRef.path,
           operation: 'create',
           requestResourceData: paperDocData,
         });
         errorEmitter.emit('permission-error', permissionError);
-      });
-    }
-
-    if (successCount > 0) {
-       toast({
-          title: "Processing Started",
-          description: `${successCount} pair(s) have been queued for analysis.`,
-      });
+        toast({
+          variant: 'destructive',
+          title: 'Upload Failed',
+          description: `Could not queue ${pair.paper.file.name}. Stopping process.`
+        });
+        setIsProcessing(false);
+        return; // Stop the entire process if one doc fails to be created
+      }
     }
     
     setIsProcessing(false);
@@ -776,7 +782,7 @@ export default function PastPaperUploaderPage() {
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">3</span>Ready to Process ({pairedFiles.length})</CardTitle>
-                <CardDescription>These pairs are ready to be sent to the AI for analysis. Click "Process" to begin.</CardDescription>
+                <CardDescription>These pairs are ready to be sent to the AI for analysis. Click "Process" to begin queuing them one by one.</CardDescription>
             </CardHeader>
             {pairedFiles.length > 0 && (
                 <>
@@ -816,7 +822,7 @@ export default function PastPaperUploaderPage() {
                     <CardFooter>
                         <Button onClick={handleProcessUploads} disabled={isProcessing || pairedFiles.length === 0} className="w-full sm:w-auto">
                             {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" /> }
-                            Process Paired File(s)
+                            {isProcessing ? 'Processing...' : `Process ${pairedFiles.length} Paired File(s)`}
                         </Button>
                     </CardFooter>
                 </>
@@ -1017,5 +1023,7 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
+
+    
 
     
