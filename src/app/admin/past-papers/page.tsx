@@ -101,22 +101,22 @@ export default function PastPaperUploaderPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
-
+    if (!files || files.length === 0) return;
+  
     const newFiles: StagedFile[] = Array.from(files).map(file => {
       const name = file.name.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ');
-
+  
       let type: StagedFile['type'] = 'paper';
       if (name.includes('memo') || name.includes('memorandum')) {
         type = 'memo';
       }
-
+  
       const yearMatch = name.match(/20\d{2}/) || name.match(/(?<=\s)\d{2}(?=\s|$)/);
       const year = yearMatch ? (yearMatch[0].length === 2 ? `20${yearMatch[0]}` : yearMatch[0]) : '';
       
       let subject = '';
       let bestMatchLength = 0;
-
+  
       for (const [subj, keywords] of Object.entries(subjectKeywords)) {
         for (const kw of keywords) {
             if (name.includes(kw) && kw.length > bestMatchLength) {
@@ -126,24 +126,20 @@ export default function PastPaperUploaderPage() {
         }
       }
       
-      // Fallback subject detection
       if (!subject) {
         const nameWithoutExt = name.split('.pdf')[0];
         let potentialSubject = nameWithoutExt;
-
-        // Try to remove month, year, paper number etc. from the end
         potentialSubject = potentialSubject.replace(/(nov|jun|feb|march|afr|eng)\s*$/, '').trim();
         potentialSubject = potentialSubject.replace(/20\d{2}\s*$/, '').trim();
         potentialSubject = potentialSubject.replace(/p\d\s*$/, '').trim();
         potentialSubject = potentialSubject.replace(/paper\s\d\s*$/, '').trim();
         potentialSubject = potentialSubject.replace(/memo(randum)?\s*$/, '').trim();
-
+  
         if(potentialSubject) {
-            // Capitalize first letter of each word
             subject = potentialSubject.replace(/\b\w/g, l => l.toUpperCase()).trim();
         }
       }
-
+  
       let paperNumber = '';
       const paperMatch = name.match(/p(\d)|paper\s?(\d)/);
       if (paperMatch) {
@@ -152,7 +148,7 @@ export default function PastPaperUploaderPage() {
       
       return { file, subject, year, type, paperNumber };
     });
-
+  
     setStagedFiles(prevStagedFiles => {
         const updatedFilesMap = new Map(prevStagedFiles.map(f => [f.file.name, f]));
         newFiles.forEach(nf => {
@@ -197,7 +193,6 @@ export default function PastPaperUploaderPage() {
     
     let successCount = 0;
     let failedPairs = 0;
-    const remainingFiles = [...stagedFiles];
 
     const papers = stagedFiles.filter(f => f.type === 'paper');
     const memos = stagedFiles.filter(f => f.type === 'memo');
@@ -257,12 +252,12 @@ export default function PastPaperUploaderPage() {
       }
     }
     
-    const unpairedCount = stagedFiles.length - (successCount * 2);
+    const unpairedCount = stagedFiles.length - (successCount * 2) - (usedMemoIndices.size - successCount);
 
     if (successCount > 0 || failedPairs > 0) {
         toast({
             title: "Bulk Processing Complete",
-            description: `${successCount} pairs successfully queued. ${failedPairs} pairs failed. ${unpairedCount} files could not be paired.`,
+            description: `${successCount} pairs successfully queued. ${failedPairs} pairs failed. ${unpairedCount > 0 ? `${unpairedCount} files could not be paired.` : ''}`,
         });
     } else {
         toast({
