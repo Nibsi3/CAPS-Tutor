@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Upload, Loader, File as FileIcon, X, Trash2 } from "lucide-react";
-import { subjects as allSubjects } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -22,10 +21,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 // import { processPastPaper } from "@/ai/flows/past-paper-processing";
-
-const grade12Subjects = allSubjects.filter(s => 
-  !["Creative Arts", "Mathematical Literacy"].includes(s.label)
-);
 
 // Add more specific keywords for subject detection. Longer, more unique keywords first.
 const subjectKeywords: Record<string, string[]> = {
@@ -43,6 +38,7 @@ const subjectKeywords: Record<string, string[]> = {
     "Consumer Studies": ["consumer studies", "verbruikerstudies"],
     "Hospitality Studies": ["hospitality studies", "gasvryheidstudies"],
     "Engineering Graphics & Design": ["engineering graphics and design", "egd", "ingenieursgrafika en ontwerp"],
+    "Visual Arts": ["visual arts"],
     "English Home Language": ["english hl", "eng hl"],
     "English First Additional Language": ["english fal", "eng fal"],
     "Afrikaans Huistaal": ["afrikaans ht", "afr ht"],
@@ -96,6 +92,28 @@ export default function PastPaperUploaderPage() {
         }
       }
       
+      // Fallback subject detection
+      if (!subject) {
+        const nameWithoutExt = name.replace('.pdf', '');
+        const paperNumberMatch = nameWithoutExt.match(/p\d\s|paper\s\d\s/);
+        const yearMatch = nameWithoutExt.match(/20\d{2}/);
+
+        let endOfSubjectIndex = nameWithoutExt.length;
+        if(paperNumberMatch) {
+            endOfSubjectIndex = paperNumberMatch.index!;
+        } else if (yearMatch) {
+             endOfSubjectIndex = yearMatch.index!;
+        }
+        
+        let potentialSubject = nameWithoutExt.substring(0, endOfSubjectIndex).trim();
+        // Remove trailing language indicators like 'afr' or 'eng'
+        potentialSubject = potentialSubject.replace(/\s(afr|eng)$/i, '').trim();
+        if(potentialSubject) {
+            // Capitalize first letter of each word
+            subject = potentialSubject.replace(/\b\w/g, l => l.toUpperCase());
+        }
+      }
+
       let paperNumber = '';
       const paperMatch = name.match(/p(\d)|paper\s?(\d)/);
       if (paperMatch) {
@@ -130,30 +148,23 @@ export default function PastPaperUploaderPage() {
     
     const fileGroups = new Map<string, { paper?: StagedFile, memo?: StagedFile }>();
 
-    // Normalize name by removing memo, paper number identifiers for grouping
-    const getBaseName = (stagedFile: StagedFile) => {
-        return stagedFile.file.name.toLowerCase()
-          .replace(/_memo(randum)?/, '')
-          .replace(/_p\d/, '')
-          .replace(/_paper\d?/, '')
-          .replace(/\.pdf$/, '');
-    };
-
+    // Group files by a common identifier (subject, year, paper number)
     stagedFiles.forEach(stagedFile => {
       if (stagedFile.type === 'unknown' || !stagedFile.subject || !stagedFile.year) return;
-      const baseName = getBaseName(stagedFile);
       
-      if (!fileGroups.has(baseName)) {
-        fileGroups.set(baseName, {});
+      const key = `${stagedFile.subject}-${stagedFile.year}-${stagedFile.paperNumber}`;
+      
+      if (!fileGroups.has(key)) {
+        fileGroups.set(key, {});
       }
       
-      const group = fileGroups.get(baseName)!;
+      const group = fileGroups.get(key)!;
       if (stagedFile.type === 'paper') group.paper = stagedFile;
       if (stagedFile.type === 'memo') group.memo = stagedFile;
     });
 
     let successCount = 0;
-    for (const [baseName, group] of fileGroups.entries()) {
+    for (const [key, group] of fileGroups.entries()) {
       if (group.paper && group.memo) {
         try {
           toast({ title: `Processing: ${group.paper.file.name}` });
@@ -183,7 +194,7 @@ export default function PastPaperUploaderPage() {
              throw new Error(result.message);
           }
         } catch (error) {
-          console.error("Upload failed for pair:", baseName, error);
+          console.error("Upload failed for pair:", key, error);
           toast({
             variant: "destructive",
             title: `Failed to process ${group.paper?.file?.name || 'a paper'}`,
@@ -191,10 +202,12 @@ export default function PastPaperUploaderPage() {
           });
         }
       } else {
+        const missingPart = !group.paper ? "paper" : "memo";
+        const fileName = group.paper?.file?.name || group.memo?.file?.name || `files for ${key}`;
         toast({
             variant: "destructive",
             title: `Incomplete Pair`,
-            description: `Could not find a matching paper or memo for files related to "${baseName}"`,
+            description: `Could not find a matching ${missingPart} for ${fileName}.`,
         });
       }
     }
