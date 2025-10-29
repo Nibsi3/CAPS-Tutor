@@ -54,6 +54,7 @@ interface PairedFile {
   id: string;
   paper: StagedFile;
   memo: StagedFile;
+  subject: string;
 }
 
 interface ProcessedPaper {
@@ -186,27 +187,25 @@ export default function PastPaperUploaderPage() {
       return { subject, year, type, paperNumber, language };
   }
   
-  const getPairingKey = useCallback((fileName: string) => {
-    const noise = [
+  const getPairingKey = useCallback((fileName: string): string => {
+    const noiseWords = [
       'memo', 'memorandum', 'answer book', 'marking guidelines', 'addendum', 'nsc', 'ieb', 'sc', 'eng', 'afr', 'fs', 'gp', 'wc', 'ec', 'nc', 'nw', 'lp', 'mp',
-      'english', 'afrikaans',
-      /\.pdf|\.docx|\.doc/g, // regex for file extensions
-      /&\s*/g, // ampersand and following space
-      /\(\d+\)/g, // numbers in parentheses e.g. (1), (2)
+      'english', 'afrikaans', 'huistaal', 'eerste addisionele taal', 'home language', 'first additional language'
     ];
     
-    let cleanName = fileName.toLowerCase();
+    // Create a regex to match any noise word as a whole word
+    const noiseRegex = new RegExp(`\\b(${noiseWords.join('|')})\\b`, 'gi');
     
-    for (const pattern of noise) {
-        cleanName = cleanName.replace(new RegExp(typeof pattern === 'string' ? pattern : pattern.source, 'gi'), '');
-    }
-
-    return cleanName
-      .replace(/[^a-z0-9]/gi, ' ') // remove remaining special chars
-      .replace(/\s+/g, ' ') // collapse multiple spaces
+    let cleanName = fileName.toLowerCase()
+      .replace(/\.(pdf|docx|doc)$/i, '') // Remove file extensions
+      .replace(noiseRegex, '') // Remove noise words
+      .replace(/\(1\)|\(2\)|\(3\)/g, '') // Remove copy indicators like (1), (2)
+      .replace(/[^a-z0-9]/gi, ' ') // Replace non-alphanumeric chars with a space
+      .replace(/\s+/g, ' ') // Collapse multiple spaces into one
       .trim();
-  }, []);
 
+    return cleanName;
+  }, []);
 
   const autoPairFiles = useCallback((allFiles: StagedFile[]) => {
     const fileGroups = new Map<string, StagedFile[]>();
@@ -226,7 +225,7 @@ export default function PastPaperUploaderPage() {
         const memo = groupFiles.find(f => f.type === 'memo');
 
         if (paper && memo) {
-            newPairs.push({ id: `${paper.id}-${memo.id}`, paper, memo });
+            newPairs.push({ id: `${paper.id}-${memo.id}`, paper, memo, subject: paper.subject });
             remainingFiles = remainingFiles.filter(f => f.id !== paper.id && f.id !== memo.id);
         }
     }
@@ -329,10 +328,19 @@ export default function PastPaperUploaderPage() {
     const memo = stagedFiles.find(f => f.id === memoId);
 
     if (paper && memo) {
-      setPairedFiles(prev => [...prev, { id: `${paper.id}-${memo.id}`, paper, memo }]);
+      setPairedFiles(prev => [...prev, { id: `${paper.id}-${memo.id}`, paper, memo, subject: paper.subject }]);
       setStagedFiles(prev => prev.filter(f => f.id !== paperId && f.id !== memoId));
     }
   }
+
+    const handleSubjectChange = (id: string, newSubject: string, type: 'staged' | 'paired') => {
+        if (type === 'staged') {
+            setStagedFiles(current => current.map(f => f.id === id ? { ...f, subject: newSubject } : f));
+        } else if (type === 'paired') {
+            setPairedFiles(current => current.map(p => p.id === id ? { ...p, subject: newSubject } : p));
+        }
+    };
+
 
   const toDataUri = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -360,8 +368,8 @@ export default function PastPaperUploaderPage() {
     
     for (const pair of pairsToProcess) {
       const subjectName = pair.paper.paperNumber 
-        ? `${pair.paper.subject} Paper ${pair.paper.paperNumber}` 
-        : pair.paper.subject;
+        ? `${pair.subject} Paper ${pair.paper.paperNumber}` 
+        : pair.subject;
 
       const paperDocData = {
         teacherId: user.uid,
@@ -392,7 +400,7 @@ export default function PastPaperUploaderPage() {
             const result = await processPastPaper({
               docId: docRef.id,
               userId: user.uid,
-              subject: pair.paper.subject,
+              subject: pair.subject,
               grade: 12,
               year: parseInt(pair.paper.year),
               paperDataUri,
@@ -637,13 +645,18 @@ export default function PastPaperUploaderPage() {
                            {unpairedPapers.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No papers to pair.</p> : unpairedPapers.map(p => (
                                 <div key={p.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted">
                                     <FileIcon className="h-4 w-4 shrink-0" />
-                                    <div className="flex-1 text-sm">
+                                    <div className="flex-1 text-sm space-y-1">
                                         <p className="font-medium truncate">{p.file.name}</p>
-                                        <p className="text-xs text-muted-foreground">{p.subject} / {p.year} / P{p.paperNumber} / {p.language}</p>
+                                        <div className="flex gap-2 items-center">
+                                            <Input value={p.subject} onChange={(e) => handleSubjectChange(p.id, e.target.value, 'staged')} className="h-7 text-xs" />
+                                            <span className="text-xs text-muted-foreground">{p.year}</span>
+                                            <span className="text-xs text-muted-foreground">P{p.paperNumber}</span>
+                                            <span className="text-xs text-muted-foreground">{p.language}</span>
+                                        </div>
                                     </div>
                                     <Dialog>
                                         <DialogTrigger asChild>
-                                            <Button size="sm" variant="outline" className="shrink-0"><Link2 className="h-4 w-4 mr-2"/>Pair with Memo</Button>
+                                            <Button size="sm" variant="outline" className="shrink-0"><Link2 className="h-4 w-4 mr-2"/>Pair</Button>
                                         </DialogTrigger>
                                         <DialogContent>
                                             <DialogHeader>
@@ -678,9 +691,12 @@ export default function PastPaperUploaderPage() {
                            {unpairedMemos.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No memos available for pairing.</p> : unpairedMemos.map(m => (
                                 <div key={m.id} className="flex items-center gap-2 p-2 rounded-md">
                                     <FileIcon className="h-4 w-4 shrink-0" />
-                                    <div className="flex-1 text-sm">
+                                    <div className="flex-1 text-sm space-y-1">
                                         <p className="font-medium truncate">{m.file.name}</p>
-                                        <p className="text-xs text-muted-foreground">{m.subject} / {m.year}</p>
+                                        <div className="flex gap-2 items-center">
+                                          <Input value={m.subject} onChange={(e) => handleSubjectChange(m.id, e.target.value, 'staged')} className="h-7 text-xs" />
+                                          <span className="text-xs text-muted-foreground">{m.year}</span>
+                                        </div>
                                     </div>
                                     <Button size="icon" variant="ghost" onClick={() => removeStagedFile(m.id)}><Trash2 className="h-4 w-4"/></Button>
                                 </div>
@@ -699,15 +715,32 @@ export default function PastPaperUploaderPage() {
             {pairedFiles.length > 0 && (
                 <>
                     <CardContent>
-                        <div className="space-y-2">
+                        <div className="space-y-4">
                             {pairedFiles.map(pair => (
-                                <div key={pair.id} className="flex items-center gap-3 p-2 rounded-lg border">
-                                    <Link2 className="h-5 w-5 text-green-500 shrink-0"/>
-                                    <div className="flex-1 grid grid-cols-2 gap-2 text-sm">
-                                        <p className="font-medium truncate"><span className="text-muted-foreground">Paper:</span> {pair.paper.file.name}</p>
-                                        <p className="font-medium truncate"><span className="text-muted-foreground">Memo:</span> {pair.memo.file.name}</p>
+                                <div key={pair.id} className="flex items-start gap-3 p-3 rounded-lg border">
+                                    <Link2 className="h-5 w-5 text-green-500 shrink-0 mt-2"/>
+                                    <div className="flex-1 space-y-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                                            <div className="text-sm">
+                                                <Label className="text-xs text-muted-foreground">Paper</Label>
+                                                <p className="font-medium truncate">{pair.paper.file.name}</p>
+                                            </div>
+                                             <div className="text-sm">
+                                                <Label className="text-xs text-muted-foreground">Memo</Label>
+                                                <p className="font-medium truncate">{pair.memo.file.name}</p>
+                                            </div>
+                                        </div>
+                                         <div>
+                                            <Label htmlFor={`subject-${pair.id}`} className="text-xs">Subject</Label>
+                                            <Input 
+                                                id={`subject-${pair.id}`}
+                                                value={pair.subject} 
+                                                onChange={(e) => handleSubjectChange(pair.id, e.target.value, 'paired')} 
+                                                className="h-8"
+                                            />
+                                        </div>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removePairedFile(pair.id)}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removePairedFile(pair.id)}>
                                         <X className="h-4 w-4" />
                                     </Button>
                                 </div>
