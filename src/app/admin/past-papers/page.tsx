@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,7 +99,7 @@ const subjectKeywords: Record<string, string[]> = {
     "Dramatic Arts": ["dramatic arts"],
     "Electrical Technology": ["electrical technology", "electrical tech"],
     "Agricultural Management Practices": ["agricultural management practices", "agric management"],
-    "Agricultural Sciences": ["agricultural sciences", "agric sci"],
+    "Agricultural Sciences": ["agricultural sciences", "agric sci", "agricultural science"],
     "Agricultural Technology": ["agricultural technology", "agric tech"],
     "English FAL": ["english fal", "english first additional language"],
     "English HL": ["english hl", "english home language"],
@@ -188,15 +188,15 @@ export default function PastPaperUploaderPage() {
   const getPairingKey = useCallback((fileName: string) => {
     const noise = [
       'memo', 'memorandum', 'answer book', 'marking guidelines', 'addendum',
-      'nsc', 'ieb', 'sc', '.pdf', '.docx', '.doc'
+      'nsc', 'ieb', 'sc', '.pdf', '.docx', '.doc', 'eng', 'afr', '&'
     ];
     const regex = new RegExp(noise.join('|'), 'gi');
     
     return fileName
       .toLowerCase()
       .replace(regex, '')
-      .replace(/[^a-z0-9]/gi, ' ') // Replace non-alphanumeric with space
-      .replace(/\s+/g, ' ') // Condense multiple spaces to one
+      .replace(/[^a-z0-9]/gi, ' ')
+      .replace(/\s+/g, ' ')
       .trim();
   }, []);
 
@@ -483,27 +483,25 @@ export default function PastPaperUploaderPage() {
   const handleDeleteProcessedPaper = async (id: string) => {
     if (!user || !firestore) return;
     const docRef = doc(firestore, `users/${user.uid}/pastPapers`, id);
-    try {
-        await deleteDoc(docRef);
+    
+    deleteDoc(docRef)
+      .then(() => {
         toast({
-            title: "Entry Deleted",
-            description: "The past paper entry has been removed.",
+          title: "Entry Deleted",
+          description: "The past paper entry has been removed.",
         });
-    } catch (error) {
+      })
+      .catch((serverError) => {
         const permissionError = new FirestorePermissionError({
-            path: docRef.path,
-            operation: 'delete',
+          path: docRef.path,
+          operation: 'delete',
         });
         errorEmitter.emit('permission-error', permissionError);
-        toast({
-            variant: "destructive",
-            title: "Deletion Failed",
-            description: "You do not have permission to delete this entry.",
-        });
-    }
+        // We don't show a toast here because the global listener will handle it.
+      });
   };
 
-  const handleBulkDelete = async (paperIds?: string[]) => {
+  const handleBulkDelete = (paperIds?: string[]) => {
     const idsToDelete = paperIds || selectedPapers;
     if (!user || !firestore || idsToDelete.length === 0) return;
     
@@ -513,8 +511,8 @@ export default function PastPaperUploaderPage() {
         batch.delete(docRef);
     });
 
-    try {
-        await batch.commit();
+    batch.commit()
+      .then(() => {
         toast({
             title: "Bulk Delete Successful",
             description: `${idsToDelete.length} entries have been removed.`,
@@ -522,13 +520,17 @@ export default function PastPaperUploaderPage() {
         if (!paperIds) {
           setSelectedPapers([]);
         }
-    } catch (error) {
-         toast({
-            variant: "destructive",
-            title: "Bulk Deletion Failed",
-            description: "Could not remove the selected entries. Please try again.",
+      })
+      .catch(serverError => {
+        // For simplicity, we'll just emit an error for the first failed delete
+        // A more complex implementation could try to identify which one failed
+        const firstDocRef = doc(firestore, `users/${user.uid}/pastPapers`, idsToDelete[0]);
+        const permissionError = new FirestorePermissionError({
+          path: firstDocRef.path, // This isn't perfect, but good for a general error
+          operation: 'delete',
         });
-    }
+        errorEmitter.emit('permission-error', permissionError);
+      });
   }
 
   const unpairedPapers = useMemo(() => stagedFiles.filter(f => f.type === 'paper'), [stagedFiles]);
