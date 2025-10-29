@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader, FileText, Clock, HelpCircle, ArrowRight, AlertTriangle, ArrowLeft, Bot } from 'lucide-react';
+import { Loader, FileText, Clock, AlertTriangle, ArrowRight, ArrowLeft, Bot } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from '@/components/ui/textarea';
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
@@ -41,7 +41,6 @@ export default function PastPaperSessionPage() {
     const params = useParams();
     const paperId = params.id as string;
     const firestore = useFirestore();
-    const { user } = useUser();
     const { toast } = useToast();
 
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -57,10 +56,17 @@ export default function PastPaperSessionPage() {
 
     const { data: paper, isLoading } = useDoc<PastPaper>(paperRef);
 
+    useEffect(() => {
+        if (paper && paper.generatedQuestions) {
+            setQuestions(paper.generatedQuestions.map(q => ({...q, studentAnswer: '', feedback: null, isChecking: false })));
+        }
+    }, [paper]);
+
     const handleStartSession = () => {
-        if (paper?.generatedQuestions) {
-            setQuestions(paper.generatedQuestions);
+        if (paper?.generatedQuestions && paper.generatedQuestions.length > 0) {
             setIsSessionStarted(true);
+        } else {
+             toast({ variant: 'destructive', title: 'Cannot Start Session', description: 'No questions are available for this paper.' });
         }
     }
 
@@ -178,16 +184,16 @@ export default function PastPaperSessionPage() {
                                 <p className="text-sm text-muted-foreground">Questions</p>
                             </div>
                             <div className="rounded-lg border p-4">
-                                <h4 className="font-bold text-2xl text-primary">3 hours</h4>
-                                <p className="text-sm text-muted-foreground">Time Limit</p>
+                                <h4 className="font-bold text-2xl text-primary">Self-Paced</h4>
+                                <p className="text-sm text-muted-foreground">Practice Mode</p>
                             </div>
                         </div>
                     
                         <Alert>
                             <Clock className="h-4 w-4" />
-                            <AlertTitle>Timed Session</AlertTitle>
+                            <AlertTitle>Practice Session</AlertTitle>
                             <AlertDescription>
-                                This will be a timed practice session to simulate real exam conditions. Once you start, a timer will begin.
+                                Answer each question and get immediate feedback from the AI tutor. You must answer correctly to proceed to the next question.
                             </AlertDescription>
                         </Alert>
 
@@ -197,7 +203,7 @@ export default function PastPaperSessionPage() {
                             onClick={handleStartSession}
                         >
                             <ArrowRight className="mr-2 h-5 w-5" />
-                            Start Timed Session
+                            Start Practice Session
                         </Button>
                     </CardContent>
                 </Card>
@@ -206,7 +212,6 @@ export default function PastPaperSessionPage() {
     }
 
     if (!currentQuestion) {
-        // This case handles when the session has started but there are no questions
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Alert variant="destructive">
@@ -297,3 +302,5 @@ export default function PastPaperSessionPage() {
         </div>
     )
 }
+
+    
