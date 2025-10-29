@@ -57,6 +57,13 @@ interface PairedFile {
   subject: string;
 }
 
+interface GeneratedQuestion {
+    questionNumber: string;
+    questionText: string;
+    marks: number;
+    answer: string;
+}
+
 interface ProcessedPaper {
     id: string;
     subject: string;
@@ -68,6 +75,7 @@ interface ProcessedPaper {
     fileUrl?: string;
     teacherId?: string;
     gradeLevel?: number;
+    generatedQuestions?: GeneratedQuestion[];
 }
 
 interface DuplicateFile {
@@ -406,7 +414,7 @@ export default function PastPaperUploaderPage() {
     const filesToProcess = [...pairedFiles];
     setPairedFiles([]); // Clear the queue visually
 
-    for (const pair of filesToProcess) {
+    for (const [index, pair] of filesToProcess.entries()) {
       const subjectName = pair.paper.paperNumber 
         ? `${pair.subject} Paper ${pair.paper.paperNumber}` 
         : pair.subject;
@@ -421,13 +429,14 @@ export default function PastPaperUploaderPage() {
         status: "Processing" as const,
         questionCount: 0,
         fileUrl: '',
+        generatedQuestions: [],
       };
 
       try {
         const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
         setProcessedInBatch(prev => prev + 1);
 
-        // This part runs in the background without blocking the loop.
+        // This part runs in the background. No `await` on the async IIFE.
         (async () => {
           try {
             const paperDataUri = await toDataUri(pair.paper.file);
@@ -445,7 +454,8 @@ export default function PastPaperUploaderPage() {
 
             await updateDoc(docRef, {
                 status: result.success ? 'Processed' : 'Failed',
-                questionCount: result.questionCount
+                questionCount: result.generatedQuestions?.length || 0,
+                generatedQuestions: result.generatedQuestions || [],
             });
 
             if (!result.success) {
@@ -478,24 +488,23 @@ export default function PastPaperUploaderPage() {
           description: `Could not queue ${pair.paper.file.name}. Stopping process.`
         });
         // Put the remaining files back in the queue
-        const remainingFiles = filesToProcess.slice(filesToProcess.indexOf(pair));
+        const remainingFiles = filesToProcess.slice(index);
         setPairedFiles(remainingFiles);
         setIsProcessing(false);
         return; // Stop the whole process on a firestore error
       }
     }
     
-    // Finished processing
     setIsProcessing(false);
     toast({
-        title: "Batch Processing Complete",
-        description: `${totalBatchSize} files have been queued for AI analysis.`
+        title: "Batch Processing Started",
+        description: `${filesToProcess.length} files have been queued for AI analysis in the background.`
     });
-    // Reset batch tracking after a short delay
+    
     setTimeout(() => {
         setTotalBatchSize(0);
         setProcessedInBatch(0);
-    }, 4000);
+    }, 5000);
   };
   
   useEffect(() => {
@@ -523,7 +532,7 @@ export default function PastPaperUploaderPage() {
     const docRef = doc(firestore, `pastPapers`, paper.id);
 
     try {
-        await updateDoc(docRef, { status: 'Processing', questionCount: 0 });
+        await updateDoc(docRef, { status: 'Processing', questionCount: 0, generatedQuestions: [] });
 
         const result = await processPastPaper({
             docId: paper.id,
@@ -535,7 +544,8 @@ export default function PastPaperUploaderPage() {
 
         await updateDoc(docRef, {
             status: result.success ? 'Processed' : 'Failed',
-            questionCount: result.questionCount
+            questionCount: result.generatedQuestions?.length || 0,
+            generatedQuestions: result.generatedQuestions || [],
         });
 
         if(result.success) {
