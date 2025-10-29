@@ -667,16 +667,16 @@ export default function PastPaperUploaderPage() {
               <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/> Duplicate File(s) Detected</AlertDialogTitle>
               <AlertDialogDescription>
                 You uploaded {duplicateFiles.length} file(s) that match entries already processed. What would you like to do?
-                <ScrollArea className="mt-4 h-40 rounded-md border p-2">
-                  {duplicateFiles.map((d, i) => (
-                    <div key={i} className="mb-2 rounded-md border bg-muted p-2 text-sm">
-                      <div><b>New file:</b> {d.newFile.file.name}</div>
-                      <div><b>Matches:</b> {d.existingPaper.paperName}</div>
-                    </div>
-                  ))}
-                </ScrollArea>
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <ScrollArea className="mt-4 h-40 rounded-md border p-2">
+                {duplicateFiles.map((d, i) => (
+                <div key={i} className="mb-2 rounded-md border bg-muted p-2 text-sm">
+                    <div><b>New file:</b> {d.newFile.file.name}</div>
+                    <div><b>Matches:</b> {d.existingPaper.paperName}</div>
+                </div>
+                ))}
+            </ScrollArea>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => handleDuplicateDecision(false)}>Skip Duplicates</AlertDialogCancel>
               <AlertDialogAction onClick={() => handleDuplicateDecision(true)} className={buttonVariants({ variant: "destructive" })}>Replace Existing</AlertDialogAction>
@@ -1044,6 +1044,8 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
+
+    
 
     
 
