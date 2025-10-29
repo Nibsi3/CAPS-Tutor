@@ -187,36 +187,46 @@ export default function PastPaperUploaderPage() {
   
   const getPairingKey = useCallback((fileName: string) => {
     const noise = [
-      'memo', 'memorandum', 'answer book', 'marking guidelines', 'addendum',
-      'nsc', 'ieb', 'sc', '.pdf', '.docx', '.doc', 'eng', 'afr', '&'
+      'memo', 'memorandum', 'answer book', 'marking guidelines', 'addendum', 'nsc', 'ieb', 'sc', 'eng', 'afr', 'fs', 'gp', 'wc', 'ec', 'nc', 'nw', 'lp', 'mp',
+      'english', 'afrikaans',
+      /\.pdf|\.docx|\.doc/g, // regex for file extensions
+      /&\s*/g, // ampersand and following space
+      /\(\d+\)/g, // numbers in parentheses e.g. (1), (2)
     ];
-    const regex = new RegExp(noise.join('|'), 'gi');
     
-    return fileName
-      .toLowerCase()
-      .replace(regex, '')
-      .replace(/[^a-z0-9]/gi, ' ')
-      .replace(/\s+/g, ' ')
+    let cleanName = fileName.toLowerCase();
+    
+    for (const pattern of noise) {
+        cleanName = cleanName.replace(new RegExp(typeof pattern === 'string' ? pattern : pattern.source, 'gi'), '');
+    }
+
+    return cleanName
+      .replace(/[^a-z0-9]/gi, ' ') // remove remaining special chars
+      .replace(/\s+/g, ' ') // collapse multiple spaces
       .trim();
   }, []);
 
 
   const autoPairFiles = useCallback((allFiles: StagedFile[]) => {
-    const fileGroups = new Map<string, { paper?: StagedFile, memo?: StagedFile }>();
-    const remainingFiles: StagedFile[] = [];
+    const fileGroups = new Map<string, StagedFile[]>();
     const newPairs: PairedFile[] = [];
+    let remainingFiles: StagedFile[] = [...allFiles];
 
-    const keys = new Set(allFiles.map(f => getPairingKey(f.file.name)));
-
-    for (const key of keys) {
-        const groupFiles = allFiles.filter(f => getPairingKey(f.file.name) === key);
+    for (const file of allFiles) {
+        const key = getPairingKey(file.file.name);
+        if (!fileGroups.has(key)) {
+            fileGroups.set(key, []);
+        }
+        fileGroups.get(key)!.push(file);
+    }
+    
+    for (const [key, groupFiles] of fileGroups.entries()) {
         const paper = groupFiles.find(f => f.type === 'paper');
         const memo = groupFiles.find(f => f.type === 'memo');
 
         if (paper && memo) {
             newPairs.push({ id: `${paper.id}-${memo.id}`, paper, memo });
-        } else {
-            remainingFiles.push(...groupFiles);
+            remainingFiles = remainingFiles.filter(f => f.id !== paper.id && f.id !== memo.id);
         }
     }
     
@@ -272,7 +282,6 @@ export default function PastPaperUploaderPage() {
 
   const handleDuplicateDecision = (replace: boolean) => {
     if (replace) {
-      const filesToStage: StagedFile[] = [];
       const paperIdsToDelete: string[] = duplicateFiles.map(d => d.existingPaper.id);
 
       // We'll delete the old ones and add the new ones to be processed
@@ -344,6 +353,7 @@ export default function PastPaperUploaderPage() {
     }
     setIsProcessing(true);
     let successCount = 0;
+    let failureCount = 0;
     
     const pairsToProcess = [...pairedFiles];
     setPairedFiles([]);
@@ -365,66 +375,72 @@ export default function PastPaperUploaderPage() {
         fileUrl: '',
       };
       
-      try {
-        const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
+      const docRefPromise = addDoc(pastPapersCollectionRef, paperDocData);
+      
+      docRefPromise.then(docRef => {
         successCount++;
-        
+        toast({
+          title: `Queued: ${pair.paper.file.name}`,
+          description: "Analysis will begin shortly.",
+        });
+
+        // Continue processing in the background without awaiting
         (async () => {
-            try {
-                const paperDataUri = await toDataUri(pair.paper.file);
-                const memoDataUri = await toDataUri(pair.memo.file);
-                
-                const result = await processPastPaper({
-                  docId: docRef.id,
-                  userId: user.uid,
-                  subject: pair.paper.subject,
-                  grade: 12,
-                  year: parseInt(pair.paper.year),
-                  paperDataUri,
-                  memoDataUri,
-                });
+          try {
+            const paperDataUri = await toDataUri(pair.paper.file);
+            const memoDataUri = await toDataUri(pair.memo.file);
+            
+            const result = await processPastPaper({
+              docId: docRef.id,
+              userId: user.uid,
+              subject: pair.paper.subject,
+              grade: 12,
+              year: parseInt(pair.paper.year),
+              paperDataUri,
+              memoDataUri,
+            });
 
-                await updateDoc(docRef, {
-                    status: result.success ? 'Processed' : 'Failed',
-                    questionCount: result.questionCount
-                });
+            await updateDoc(docRef, {
+                status: result.success ? 'Processed' : 'Failed',
+                questionCount: result.questionCount
+            });
 
-                if (!result.success) {
-                  toast({
-                      variant: "destructive",
-                      title: `Processing Failed: ${pair.paper.file.name}`,
-                      description: result.message,
-                  });
-                }
-            } catch (error) {
-                console.error("AI flow or update failed for doc ID:", docRef.id, error);
-                await updateDoc(docRef, { status: 'Failed' });
-                 toast({
-                      variant: "destructive",
-                      title: `Processing Error: ${pair.paper.file.name}`,
-                      description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
-                });
+            if (!result.success) {
+              toast({
+                  variant: "destructive",
+                  title: `Processing Failed: ${pair.paper.file.name}`,
+                  description: result.message,
+              });
             }
+          } catch (error) {
+              console.error("AI flow or update failed for doc ID:", docRef.id, error);
+              await updateDoc(docRef, { status: 'Failed' });
+              toast({
+                    variant: "destructive",
+                    title: `Processing Error: ${pair.paper.file.name}`,
+                    description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
+              });
+          }
         })();
 
-
-      } catch (error) {
-        console.error("Failed to create Firestore record for:", pair.paper.file.name, error);
-        toast({
-          variant: "destructive",
-          title: `Failed to queue ${pair.paper.file.name}`,
-          description: "Could not save initial record to the database.",
+      }).catch(serverError => {
+        failureCount++;
+        const permissionError = new FirestorePermissionError({
+          path: pastPapersCollectionRef.path,
+          operation: 'create',
+          requestResourceData: paperDocData,
         });
-      }
-    }
-    
-    if (successCount > 0) {
-      toast({
-          title: "Processing Started",
-          description: `${successCount} pair(s) have been queued for analysis. Their status will update in the table below.`,
+        errorEmitter.emit('permission-error', permissionError);
       });
     }
 
+    if (failureCount === 0) {
+       toast({
+          title: "Processing Started",
+          description: `${pairsToProcess.length} pair(s) have been queued for analysis.`,
+      });
+    }
+    
     setIsProcessing(false);
   };
   
@@ -443,7 +459,6 @@ export default function PastPaperUploaderPage() {
             subject: paper.subject,
             grade: paper.gradeLevel || 12,
             year: parseInt(paper.year),
-            // We don't have the data URIs here, the flow needs to handle this
             paperDataUri: '', 
             memoDataUri: '',
         });
@@ -497,7 +512,6 @@ export default function PastPaperUploaderPage() {
           operation: 'delete',
         });
         errorEmitter.emit('permission-error', permissionError);
-        // We don't show a toast here because the global listener will handle it.
       });
   };
 
@@ -522,11 +536,9 @@ export default function PastPaperUploaderPage() {
         }
       })
       .catch(serverError => {
-        // For simplicity, we'll just emit an error for the first failed delete
-        // A more complex implementation could try to identify which one failed
         const firstDocRef = doc(firestore, `users/${user.uid}/pastPapers`, idsToDelete[0]);
         const permissionError = new FirestorePermissionError({
-          path: firstDocRef.path, // This isn't perfect, but good for a general error
+          path: firstDocRef.path,
           operation: 'delete',
         });
         errorEmitter.emit('permission-error', permissionError);
