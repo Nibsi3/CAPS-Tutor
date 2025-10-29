@@ -164,7 +164,7 @@ export default function PastPaperUploaderPage() {
       for (const [lang, keywords] of Object.entries(languageKeywords)) {
           if (keywords.some(kw => name.includes(kw))) {
               language = lang;
-              break;
+              // Do not break; allows for "Eng & Afr" to be found
           }
       }
 
@@ -180,16 +180,19 @@ export default function PastPaperUploaderPage() {
   const getPairingKey = (stagedFile: StagedFile) => {
     const noise = [
       'memo', 'memorandum', 'answer book', 'marking guidelines', 'nsc', 'ieb',
+      'addendum', 'afr', 'eng',
       '.pdf', '.docx', '.doc'
     ];
+    // This regex will be more robust
     const regex = new RegExp(noise.join('|'), 'gi');
     return stagedFile.file.name
         .toLowerCase()
-        .replace(regex, '')
-        .replace(/[^a-z0-9]/gi, ' ')
-        .replace(/\s+/g, ' ')
+        .replace(regex, '') // Remove all noise words
+        .replace(/[^a-z0-9]/gi, ' ') // Replace non-alphanumeric with space
+        .replace(/\s+/g, ' ') // Collapse multiple spaces
         .trim();
   };
+
 
   const autoPairFiles = useCallback((allFiles: StagedFile[]) => {
     const fileGroups = new Map<string, { paper?: StagedFile, memo?: StagedFile }>();
@@ -328,8 +331,10 @@ export default function PastPaperUploaderPage() {
       try {
         docRef = await addDoc(pastPapersCollectionRef, paperDocData);
         successCount++;
+        
+        const processingDocRef = docRef; // Capture the correct docRef for the async block
 
-        (async (processingDocRef: DocumentReference) => {
+        (async () => {
             try {
                 const paperDataUri = await toDataUri(pair.paper.file);
                 const memoDataUri = await toDataUri(pair.memo.file);
@@ -370,7 +375,7 @@ export default function PastPaperUploaderPage() {
                       description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
                 });
             }
-        })(docRef);
+        })();
 
 
       } catch (error) {
@@ -494,7 +499,7 @@ export default function PastPaperUploaderPage() {
                 <CardDescription>Bulk upload all your paper and memo PDF files. The system will attempt to auto-pair them. Unpaired files will go to Step 2.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Label htmlFor="paper-files" className="sr-only">Past Papers & Memos</Label>
+                <Label htmlFor="paper-files" className="sr-only">Past Papers &amp; Memos</Label>
                 <Input id="paper-files" type="file" accept=".pdf,.doc,.docx" multiple onChange={handleFileChange} />
             </CardContent>
         </Card>
@@ -754,6 +759,8 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
+
+    
 
     
 
