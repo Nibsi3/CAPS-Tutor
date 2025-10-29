@@ -114,11 +114,14 @@ export default function SettingsPage() {
   
   const { control, formState, reset } = form;
   const watchedSubjects = useWatch({ control, name: 'subjects' });
+  const watchedGrade = useWatch({ control, name: 'gradeLevel' });
 
   useEffect(() => {
     if (userProfile && !formState.isDirty) {
       reset({
         ...userProfile,
+        firstName: userProfile.firstName || '',
+        lastName: userProfile.lastName || '',
         gradeLevel: userProfile.gradeLevel ? userProfile.gradeLevel.toString() : '',
         subjects: userProfile.subjects || [],
         literature: userProfile.literature || {
@@ -373,7 +376,7 @@ export default function SettingsPage() {
           <LiteratureSelection
             control={control}
             selectedSubjects={watchedSubjects || []}
-            selectedGrade={useWatch({ control, name: 'gradeLevel' })}
+            selectedGrade={watchedGrade}
           />
           
           <Button type="submit" disabled={!formState.isDirty || formState.isSubmitting}>
