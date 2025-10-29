@@ -83,7 +83,7 @@ const subjectKeywords: Record<string, string[]> = {
     "Computer Applications Technology": ["cat", "computer applications technology"],
     "Information Technology": ["it", "information technology"],
     "Consumer Studies": ["consumer studies", "verbruikerstudie"],
-    "Engineering Graphics & Design": ["egd", "engineering graphics"],
+    "Engineering Graphics & Design": ["egd", "engineering graphics", "engineering graphics & design"],
     "Mathematical Literacy": ["maths lit", "math lit", "mathematical literacy", "wiskundige geletterdheid"],
     "Technical Sciences": ["technical sciences"],
     "Visual Arts": ["visual arts"],
@@ -93,6 +93,10 @@ const subjectKeywords: Record<string, string[]> = {
     "Dramatic Arts": ["dramatic arts"],
     "Electrical Technology": ["electrical technology"],
     "Agricultural Management Practices": ["agricultural management practices"],
+    "English FAL": ["english fal", "english first additional language"],
+    "English HL": ["english hl", "english home language"],
+    "Afrikaans HT": ["afrikaans ht", "afrikaans huistaal"],
+    "Afrikaans EAT": ["afrikaans eat", "afrikaans eerste addisionele taal"],
 };
 
 const languageKeywords: Record<string, string[]> = {
@@ -169,20 +173,14 @@ export default function PastPaperUploaderPage() {
       
       return { subject, year, type, paperNumber, language };
   }
-
-  const getPairingKey = (fileInfo: Omit<StagedFile, 'id' | 'file' | 'type'> & {file: File}) => {
-    let name = fileInfo.file.name.toLowerCase();
-    name = name
+  
+  const getPairingKey = (file: File) => {
+    return file.name
+      .toLowerCase()
       .replace(/\.pdf|\.docx|\.doc/, '')
       .replace(/memo(randum)?/, '')
-      .replace(/paper|p\d/, '')
-      .replace(/20\d{2Gist Code}/, '')
-      .replace(/eng(lish)?|afr(ikaans)?/, '')
-      .replace(/[\s\-_]/g, '');
-      
-    return `${fileInfo.subject}-${name}`;
-  }
-
+      .trim();
+  };
 
   const autoPairFiles = useCallback((allFiles: StagedFile[]) => {
     const fileGroups = new Map<string, { paper?: StagedFile, memo?: StagedFile }>();
@@ -190,8 +188,7 @@ export default function PastPaperUploaderPage() {
     const newPairs: PairedFile[] = [];
 
     for (const file of allFiles) {
-      const parsedInfo = parseFileName(file.file);
-      const key = getPairingKey({ ...parsedInfo, file: file.file });
+      const key = getPairingKey(file.file);
 
       if (!fileGroups.has(key)) {
         fileGroups.set(key, {});
@@ -387,7 +384,7 @@ export default function PastPaperUploaderPage() {
   };
   
   const handleDeleteProcessedPaper = async (id: string) => {
-    if (!user) return;
+    if (!user || !firestore) return;
     const docRef = doc(firestore, `users/${user.uid}/pastPapers`, id);
     try {
         await deleteDoc(docRef);
@@ -440,10 +437,10 @@ export default function PastPaperUploaderPage() {
   const sortedAndFilteredPapers = useMemo(() => {
     if (!processedPapers) return [];
     return [...processedPapers]
-      .filter(p => p.subject.toLowerCase().includes(searchTerm.toLowerCase()) || p.year.includes(searchTerm))
+      .filter(p => p.subject.toLowerCase().includes(searchTerm.toLowerCase()) || (p.year && p.year.includes(searchTerm)))
       .sort((a, b) => {
-        const valA = a[sortKey].toLowerCase();
-        const valB = b[sortKey].toLowerCase();
+        const valA = a[sortKey]?.toLowerCase() ?? '';
+        const valB = b[sortKey]?.toLowerCase() ?? '';
         if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
         if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
         return 0;
@@ -746,5 +743,7 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
+
+    
 
     
