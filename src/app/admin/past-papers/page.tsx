@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -33,7 +32,7 @@ import { processPastPaper } from "@/ai/flows/past-paper-processing";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, addDoc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, addDoc, deleteDoc, updateDoc, writeBatch, DocumentReference } from 'firebase/firestore';
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -177,7 +176,7 @@ export default function PastPaperUploaderPage() {
       .replace(/\.pdf|\.docx|\.doc/, '')
       .replace(/memo(randum)?/, '')
       .replace(/paper|p\d/, '')
-      .replace(/20\d{2}/, '')
+      .replace(/20\d{2Gist Code}/, '')
       .replace(/eng(lish)?|afr(ikaans)?/, '')
       .replace(/[\s\-_]/g, '');
       
@@ -246,7 +245,6 @@ export default function PastPaperUploaderPage() {
             });
         }
         
-        // Ensure remainingFiles are unique
         const remainingFileMap = new Map(remainingFiles.map(f => [f.id, f]));
         return Array.from(remainingFileMap.values());
     });
@@ -317,7 +315,7 @@ export default function PastPaperUploaderPage() {
         fileUrl: '',
       };
       
-      let docRef;
+      let docRef: DocumentReference | null = null;
       try {
         docRef = await addDoc(pastPapersCollectionRef, paperDocData);
         successCount++;
@@ -331,46 +329,51 @@ export default function PastPaperUploaderPage() {
         continue;
       }
 
-      (async () => {
-        try {
-          const paperDataUri = await toDataUri(pair.paper.file);
-          const memoDataUri = await toDataUri(pair.memo.file);
-          
-          const result = await processPastPaper({
-            docId: docRef.id,
-            userId: user.uid,
-            subject: pair.paper.subject,
-            grade: 12,
-            year: parseInt(pair.paper.year),
-            paperDataUri,
-            memoDataUri,
-          });
-
-          const finalDocRef = doc(firestore, `users/${user.uid}/pastPapers`, docRef.id);
-          if (result.success) {
-            await updateDoc(finalDocRef, {
-              status: 'Processed',
-              questionCount: result.questionCount
+      if (docRef) {
+        const processingDocRef = docRef;
+        (async () => {
+          try {
+            const paperDataUri = await toDataUri(pair.paper.file);
+            const memoDataUri = await toDataUri(pair.memo.file);
+            
+            const result = await processPastPaper({
+              docId: processingDocRef.id,
+              userId: user.uid,
+              subject: pair.paper.subject,
+              grade: 12,
+              year: parseInt(pair.paper.year),
+              paperDataUri,
+              memoDataUri,
             });
-          } else {
-            await updateDoc(finalDocRef, { status: 'Failed' });
-             toast({
-                variant: "destructive",
-                title: `Processing Failed: ${pair.paper.file.name}`,
-                description: result.message,
+
+            if (result.success) {
+              await updateDoc(processingDocRef, {
+                status: 'Processed',
+                questionCount: result.questionCount
+              });
+            } else {
+              await updateDoc(processingDocRef, { status: 'Failed' });
+              toast({
+                  variant: "destructive",
+                  title: `Processing Failed: ${pair.paper.file.name}`,
+                  description: result.message,
+              });
+            }
+          } catch (error) {
+            console.error("AI flow or update failed for doc ID:", processingDocRef.id, error);
+            try {
+                await updateDoc(processingDocRef, { status: 'Failed' });
+            } catch (updateError) {
+                 console.error("Failed to even update the status to Failed for doc ID:", processingDocRef.id, updateError);
+            }
+            toast({
+                  variant: "destructive",
+                  title: `Processing Error: ${pair.paper.file.name}`,
+                  description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
             });
           }
-        } catch (error) {
-          console.error("AI flow or update failed for doc ID:", docRef.id, error);
-          const finalDocRef = doc(firestore, `users/${user.uid}/pastPapers`, docRef.id);
-          await updateDoc(finalDocRef, { status: 'Failed' });
-           toast({
-                variant: "destructive",
-                title: `Processing Error: ${pair.paper.file.name}`,
-                description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
-            });
-        }
-      })();
+        })();
+      }
     }
     
     if (successCount > 0) {
@@ -743,9 +746,5 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
-
-    
-
-    
 
     
