@@ -355,11 +355,6 @@ export default function PastPaperUploaderPage() {
     if(pairToRemove) {
       setStagedFiles(prev => [...prev, pairToRemove.paper, pairToRemove.memo]);
       setPairedFiles(prev => prev.filter(p => p.id !== id));
-      // If a file is removed from a batch, the batch is effectively cancelled
-      if(totalBatchSize > 0) {
-        setTotalBatchSize(0);
-        setProcessedInBatch(0);
-      }
     }
   }
 
@@ -403,78 +398,72 @@ export default function PastPaperUploaderPage() {
     if (isProcessing) return;
 
     setIsProcessing(true);
+    setTotalBatchSize(pairedFiles.length);
+    setProcessedInBatch(0);
     
-    // If this is the start of a new batch, set the total size.
-    if(totalBatchSize === 0) {
-        setTotalBatchSize(pairedFiles.length);
-        setProcessedInBatch(0);
-    }
-    
-    // Process only the FIRST file in the queue
-    const pair = pairedFiles[0];
+    const filesToProcess = [...pairedFiles];
+    setPairedFiles([]); // Clear the queue visually
 
-    const subjectName = pair.paper.paperNumber 
-      ? `${pair.subject} Paper ${pair.paper.paperNumber}` 
-      : pair.subject;
+    for (const pair of filesToProcess) {
+      const subjectName = pair.paper.paperNumber 
+        ? `${pair.subject} Paper ${pair.paper.paperNumber}` 
+        : pair.subject;
 
-    const paperDocData = {
-      teacherId: user.uid,
-      gradeLevel: 12,
-      subject: subjectName,
-      year: pair.paper.year,
-      paperName: pair.paper.file.name,
-      memoName: pair.memo.file.name,
-      status: "Processing" as const,
-      questionCount: 0,
-      fileUrl: '',
-    };
-    
-    addDoc(pastPapersCollectionRef, paperDocData)
-      .then(docRef => {
-          // Update progress and remove the processed file from the queue
-          setProcessedInBatch(prev => prev + 1);
-          setPairedFiles(current => current.slice(1));
-          
-          // This part runs in the background.
-          (async () => {
-            try {
-              const paperDataUri = await toDataUri(pair.paper.file);
-              const memoDataUri = await toDataUri(pair.memo.file);
-              
-              const result = await processPastPaper({
-                docId: docRef.id,
-                userId: user.uid,
-                subject: pair.subject,
-                grade: 12,
-                year: parseInt(pair.paper.year),
-                paperDataUri,
-                memoDataUri,
+      const paperDocData = {
+        teacherId: user.uid,
+        gradeLevel: 12,
+        subject: subjectName,
+        year: pair.paper.year,
+        paperName: pair.paper.file.name,
+        memoName: pair.memo.file.name,
+        status: "Processing" as const,
+        questionCount: 0,
+        fileUrl: '',
+      };
+
+      try {
+        const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
+        setProcessedInBatch(prev => prev + 1);
+
+        // This part runs in the background without blocking the loop.
+        (async () => {
+          try {
+            const paperDataUri = await toDataUri(pair.paper.file);
+            const memoDataUri = await toDataUri(pair.memo.file);
+            
+            const result = await processPastPaper({
+              docId: docRef.id,
+              userId: user.uid,
+              subject: pair.subject,
+              grade: 12,
+              year: parseInt(pair.paper.year),
+              paperDataUri,
+              memoDataUri,
+            });
+
+            await updateDoc(docRef, {
+                status: result.success ? 'Processed' : 'Failed',
+                questionCount: result.questionCount
+            });
+
+            if (!result.success) {
+              toast({
+                  variant: "destructive",
+                  title: `Processing Failed: ${pair.paper.file.name}`,
+                  description: result.message,
               });
-
-              await updateDoc(docRef, {
-                  status: result.success ? 'Processed' : 'Failed',
-                  questionCount: result.questionCount
-              });
-
-              if (!result.success) {
-                toast({
-                    variant: "destructive",
-                    title: `Processing Failed: ${pair.paper.file.name}`,
-                    description: result.message,
-                });
-              }
-            } catch (error) {
-                console.error("AI flow or update failed for doc ID:", docRef.id, error);
-                await updateDoc(docRef, { status: 'Failed' });
-                toast({
-                      variant: "destructive",
-                      title: `Processing Error: ${pair.paper.file.name}`,
-                      description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
-                });
             }
-          })();
-      })
-      .catch((serverError) => {
+          } catch (error) {
+              console.error("AI flow or update failed for doc ID:", docRef.id, error);
+              await updateDoc(docRef, { status: 'Failed' });
+              toast({
+                    variant: "destructive",
+                    title: `Processing Error: ${pair.paper.file.name}`,
+                    description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
+              });
+          }
+        })();
+      } catch (serverError) {
         const permissionError = new FirestorePermissionError({
           path: pastPapersCollectionRef.path,
           operation: 'create',
@@ -486,15 +475,25 @@ export default function PastPaperUploaderPage() {
           title: 'Upload Failed',
           description: `Could not queue ${pair.paper.file.name}. Stopping process.`
         });
-      })
-      .finally(() => {
-          setIsProcessing(false);
-          // If that was the last file, reset the batch tracking
-          if(pairedFiles.length === 1) {
-              setTotalBatchSize(0);
-              setProcessedInBatch(0);
-          }
-      });
+        // Put the remaining files back in the queue
+        const remainingFiles = filesToProcess.slice(filesToProcess.indexOf(pair));
+        setPairedFiles(remainingFiles);
+        setIsProcessing(false);
+        return; // Stop the whole process on a firestore error
+      }
+    }
+    
+    // Finished processing
+    setIsProcessing(false);
+    toast({
+        title: "Batch Processing Complete",
+        description: `${totalBatchSize} files have been queued for AI analysis.`
+    });
+    // Reset batch tracking after a short delay
+    setTimeout(() => {
+        setTotalBatchSize(0);
+        setProcessedInBatch(0);
+    }, 4000);
   };
   
   const handleReprocessPaper = async (paper: ProcessedPaper) => {
@@ -786,14 +785,8 @@ export default function PastPaperUploaderPage() {
                 <div className="flex justify-between items-start">
                     <div>
                         <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">3</span>Ready to Process ({pairedFiles.length})</CardTitle>
-                        <CardDescription>These pairs are ready for AI analysis. Click "Process" to begin queuing them one by one.</CardDescription>
+                        <CardDescription>These pairs are ready for AI analysis. Click "Process" to begin queuing them.</CardDescription>
                     </div>
-                    {totalBatchSize > 0 && pairedFiles.length > 0 && (
-                         <Button onClick={handleProcessUploads} disabled={isProcessing}>
-                            {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> }
-                            Continue Processing ({pairedFiles.length} left)
-                        </Button>
-                    )}
                 </div>
             </CardHeader>
             {pairedFiles.length > 0 && (
@@ -831,23 +824,22 @@ export default function PastPaperUploaderPage() {
                             ))}
                         </div>
                     </CardContent>
-                    <CardFooter className="flex-col items-start gap-4">
-                        {totalBatchSize > 0 && (
-                            <div className="w-full">
-                                <Progress value={(processedInBatch / totalBatchSize) * 100} className="w-full" />
-                                <p className="text-sm text-muted-foreground mt-2">
-                                    Queued {processedInBatch} of {totalBatchSize} files.
-                                    {pairedFiles.length > 0 && ` ${pairedFiles.length} remaining.`}
-                                </p>
-                            </div>
-                        )}
-                        <Button onClick={handleProcessUploads} disabled={isProcessing || pairedFiles.length === 0} className="w-full sm:w-auto">
-                            {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" /> }
-                            {isProcessing ? `Processing ${processedInBatch + 1} of ${totalBatchSize}...` : `Process ${pairedFiles.length} Paired File(s)`}
-                        </Button>
-                    </CardFooter>
                 </>
             )}
+             <CardFooter className="flex-col items-start gap-4">
+                {(isProcessing || totalBatchSize > 0) && (
+                    <div className="w-full">
+                        <Progress value={(processedInBatch / totalBatchSize) * 100} className="w-full" />
+                        <p className="text-sm text-muted-foreground mt-2">
+                            Queued {processedInBatch} of {totalBatchSize} files.
+                        </p>
+                    </div>
+                )}
+                <Button onClick={handleProcessUploads} disabled={isProcessing || pairedFiles.length === 0} className="w-full sm:w-auto">
+                    {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" /> }
+                    {isProcessing ? `Processing...` : `Process ${pairedFiles.length} Paired File(s)`}
+                </Button>
+            </CardFooter>
         </Card>
         
 
@@ -1044,6 +1036,8 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
+
+    
 
     
 
