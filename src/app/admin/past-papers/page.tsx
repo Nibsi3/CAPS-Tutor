@@ -120,7 +120,7 @@ export default function PastPaperUploaderPage() {
   const firestore = useFirestore();
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [pairedFiles, setPairedFiles] = useState<PairedFile[]>([]);
-  const [isProcessing, setIsProcessing] = useState(isProcessing);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('subject');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
