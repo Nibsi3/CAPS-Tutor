@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -127,7 +128,7 @@ export default function PastPaperUploaderPage() {
       });
     }
     prevPairedCount.current = pairedFiles.length;
-  }, [pairedFiles, toast]);
+  }, [pairedFiles.length, toast]);
 
 
   const pastPapersCollectionRef = useMemoFirebase(() => {
@@ -141,7 +142,7 @@ export default function PastPaperUploaderPage() {
   const parseFileName = (file: File): Omit<StagedFile, 'id' | 'file'> => {
       const name = file.name.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ');
       
-      const type = (name.includes('memo') || name.includes('memorandum')) ? 'memo' : 'paper';
+      const type = (name.includes('memo') || name.includes('memorandum') || name.includes('answer book')) ? 'memo' : 'paper';
       
       const yearMatch = name.match(/20\d{2}/) || name.match(/(?<=\s)\d{2}(?=\s|$)/);
       const year = yearMatch ? (yearMatch[0].length === 2 ? `20${yearMatch[0]}` : yearMatch[0]) : '';
@@ -174,12 +175,18 @@ export default function PastPaperUploaderPage() {
       return { subject, year, type, paperNumber, language };
   }
   
-  const getPairingKey = (file: File) => {
-    return file.name
-      .toLowerCase()
-      .replace(/\.pdf|\.docx|\.doc/, '')
-      .replace(/memo(randum)?/, '')
-      .trim();
+  const getPairingKey = (stagedFile: StagedFile) => {
+    const noise = [
+        'memo', 'memorandum', 'answer book', 'nsc', 'eng', 'afr',
+        'english', 'afrikaans', '.pdf', '.docx', '.doc',
+    ];
+    const regex = new RegExp(noise.join('|'), 'gi');
+    return stagedFile.file.name
+        .toLowerCase()
+        .replace(regex, '')
+        .replace(/[^a-z0-9]/gi, ' ') // Replace non-alphanumeric with space
+        .replace(/\s+/, ' ') // Collapse whitespace
+        .trim();
   };
 
   const autoPairFiles = useCallback((allFiles: StagedFile[]) => {
@@ -188,7 +195,7 @@ export default function PastPaperUploaderPage() {
     const newPairs: PairedFile[] = [];
 
     for (const file of allFiles) {
-      const key = getPairingKey(file.file);
+      const key = getPairingKey(file);
 
       if (!fileGroups.has(key)) {
         fileGroups.set(key, {});
@@ -217,7 +224,7 @@ export default function PastPaperUploaderPage() {
     }
     
     return { newPairs, remainingFiles };
-  }, []);
+  }, [getPairingKey]);
 
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -281,7 +288,7 @@ export default function PastPaperUploaderPage() {
   };
 
   const handleProcessUploads = async () => {
-    if (!user || !pastPapersCollectionRef) {
+    if (!user || !pastPapersCollectionRef || !firestore) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -316,6 +323,56 @@ export default function PastPaperUploaderPage() {
       try {
         docRef = await addDoc(pastPapersCollectionRef, paperDocData);
         successCount++;
+
+        // Immediately start processing, passing the valid docRef
+        // This IIFE (Immediately Invoked Function Expression) allows an async operation
+        // to be kicked off for each file without blocking the main loop.
+        (async () => {
+            const processingDocRef = docRef!; // We know docRef is valid here
+            try {
+                const paperDataUri = await toDataUri(pair.paper.file);
+                const memoDataUri = await toDataUri(pair.memo.file);
+                
+                const result = await processPastPaper({
+                docId: processingDocRef.id,
+                userId: user.uid,
+                subject: pair.paper.subject,
+                grade: 12,
+                year: parseInt(pair.paper.year),
+                paperDataUri,
+                memoDataUri,
+                });
+
+                if (result.success) {
+                await updateDoc(processingDocRef, {
+                    status: 'Processed',
+                    questionCount: result.questionCount
+                });
+                } else {
+                await updateDoc(processingDocRef, { status: 'Failed' });
+                toast({
+                    variant: "destructive",
+                    title: `Processing Failed: ${pair.paper.file.name}`,
+                    description: result.message,
+                });
+                }
+            } catch (error) {
+                console.error("AI flow or update failed for doc ID:", processingDocRef.id, error);
+                try {
+                  // Ensure status is updated to Failed even if AI flow throws an unhandled error
+                  await updateDoc(processingDocRef, { status: 'Failed' });
+                } catch (updateError) {
+                  console.error("Failed to even update the status to Failed for doc ID:", processingDocRef.id, updateError);
+                }
+                toast({
+                      variant: "destructive",
+                      title: `Processing Error: ${pair.paper.file.name}`,
+                      description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
+                });
+            }
+        })();
+
+
       } catch (error) {
         console.error("Failed to create Firestore record for:", pair.paper.file.name, error);
         toast({
@@ -324,52 +381,6 @@ export default function PastPaperUploaderPage() {
           description: "Could not save initial record to the database.",
         });
         continue;
-      }
-
-      if (docRef) {
-        const processingDocRef = docRef;
-        (async () => {
-          try {
-            const paperDataUri = await toDataUri(pair.paper.file);
-            const memoDataUri = await toDataUri(pair.memo.file);
-            
-            const result = await processPastPaper({
-              docId: processingDocRef.id,
-              userId: user.uid,
-              subject: pair.paper.subject,
-              grade: 12,
-              year: parseInt(pair.paper.year),
-              paperDataUri,
-              memoDataUri,
-            });
-
-            if (result.success) {
-              await updateDoc(processingDocRef, {
-                status: 'Processed',
-                questionCount: result.questionCount
-              });
-            } else {
-              await updateDoc(processingDocRef, { status: 'Failed' });
-              toast({
-                  variant: "destructive",
-                  title: `Processing Failed: ${pair.paper.file.name}`,
-                  description: result.message,
-              });
-            }
-          } catch (error) {
-            console.error("AI flow or update failed for doc ID:", processingDocRef.id, error);
-            try {
-                await updateDoc(processingDocRef, { status: 'Failed' });
-            } catch (updateError) {
-                 console.error("Failed to even update the status to Failed for doc ID:", processingDocRef.id, updateError);
-            }
-            toast({
-                  variant: "destructive",
-                  title: `Processing Error: ${pair.paper.file.name}`,
-                  description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
-            });
-          }
-        })();
       }
     }
     
@@ -484,7 +495,7 @@ export default function PastPaperUploaderPage() {
             </CardHeader>
             <CardContent>
                 <Label htmlFor="paper-files" className="sr-only">Past Papers & Memos</Label>
-                <Input id="paper-files" type="file" accept=".pdf" multiple onChange={handleFileChange} />
+                <Input id="paper-files" type="file" accept=".pdf,.doc,.docx" multiple onChange={handleFileChange} />
             </CardContent>
         </Card>
         
@@ -743,6 +754,8 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
+
+    
 
     
 
