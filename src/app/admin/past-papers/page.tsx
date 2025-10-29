@@ -53,7 +53,7 @@ interface StagedFile {
   file: File;
   subject: string;
   year: string;
-  type: 'paper' | 'memo' | 'unknown';
+  type: 'paper' | 'memo';
   paperNumber: string;
   isDuplicate?: boolean; // To highlight replaced files
 }
@@ -317,9 +317,9 @@ export default function PastPaperUploaderPage() {
                     <TableCell className="font-medium">{item.memo}</TableCell>
                     <TableCell>
                       {item.status === 'Processing' ? (
-                        <div className="flex items-center gap-2">
-                           <Progress value={item.progress} className="w-24" />
-                           <span className="text-muted-foreground text-xs">{Math.round(item.progress)}%</span>
+                        <div className="flex items-center gap-2 w-32">
+                           <Progress value={item.progress} className="flex-1" />
+                           <span className="text-muted-foreground text-xs font-medium">{Math.round(item.progress)}%</span>
                         </div>
                       ) : (
                          <span className="text-green-600 font-medium">Processed</span>
