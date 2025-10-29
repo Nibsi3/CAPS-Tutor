@@ -62,8 +62,8 @@ const processPastPaperFlow = ai.defineFlow(
       const processingTime = 10000 + Math.random() * 15000;
       await new Promise(resolve => setTimeout(resolve, processingTime));
 
-      // Simulate the AI extracting a random number of questions
-      const extractedQuestionCount = Math.floor(Math.random() * 20) + 5; // e.g., 5 to 24 questions
+      // Simulate the AI extracting a random number of questions, now in a more realistic range
+      const extractedQuestionCount = Math.floor(Math.random() * 101) + 50; // e.g., 50 to 150 questions
 
       return {
           success: true,

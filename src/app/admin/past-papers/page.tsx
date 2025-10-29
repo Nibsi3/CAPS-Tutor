@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -31,12 +30,12 @@ import {
 } from "@/components/ui/dialog"
 import { processPastPaper } from "@/ai/flows/past-paper-processing";
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 interface StagedFile {
@@ -63,14 +62,13 @@ interface ProcessedPaper {
     memoName: string;
     status: 'Processing' | 'Processed' | 'Failed';
     questionCount?: number;
-    fileUrl?: string; // from PastPaper entity, not used yet
-    teacherId?: string; // from PastPaper entity
-    gradeLevel?: number; // from PastPaper entity
+    fileUrl?: string;
+    teacherId?: string;
+    gradeLevel?: number;
 }
 
 type SortKey = 'subject' | 'year';
 
-// Add more specific keywords for subject detection. Longer, more unique keywords first.
 const subjectKeywords: Record<string, string[]> = {
     "Mathematics": ["mathematics", "maths", "wiskunde"],
     "Physical Sciences": ["physical sciences", "physical science", "phys sci", "fisiese wetenskappe"],
@@ -82,6 +80,14 @@ const subjectKeywords: Record<string, string[]> = {
     "History": ["history", "geskiedenis"],
     "English": ["english", "eng"],
     "Afrikaans": ["afrikaans", "afr"],
+    "Tourism": ["tourism", "toerisme"],
+    "Computer Applications Technology": ["cat", "computer applications"],
+    "Information Technology": ["it", "information technology"],
+    "Consumer Studies": ["consumer studies", "verbruikerstudie"],
+    "Engineering Graphics & Design": ["egd", "engineering graphics"],
+    "Mathematical Literacy": ["maths lit", "math lit", "mathematical literacy", "wiskundige geletterdheid"],
+    "Technical Sciences": ["technical sciences"],
+    "Visual Arts": ["visual arts"],
 };
 
 const languageKeywords: Record<string, string[]> = {
@@ -99,6 +105,7 @@ export default function PastPaperUploaderPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('subject');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedPapers, setSelectedPapers] = useState<string[]>([]);
 
   const pastPapersCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -107,16 +114,13 @@ export default function PastPaperUploaderPage() {
 
   const { data: processedPapers, isLoading: arePapersLoading } = useCollection<ProcessedPaper>(pastPapersCollectionRef);
 
-  const prevPairedCount = useRef(0);
   useEffect(() => {
-    if (pairedFiles.length > prevPairedCount.current) {
-      const newPairsCount = pairedFiles.length - prevPairedCount.current;
-      toast({
-        title: "Files Paired Automatically",
-        description: `${newPairsCount} paper(s) and memo(s) were successfully paired.`,
-      });
+    if (pairedFiles.length > 0) {
+        toast({
+            title: "Files Paired Automatically",
+            description: `${pairedFiles.length} paper(s) and memo(s) were successfully paired.`,
+        });
     }
-    prevPairedCount.current = pairedFiles.length;
   }, [pairedFiles, toast]);
 
 
@@ -158,16 +162,14 @@ export default function PastPaperUploaderPage() {
 
   const getPairingKey = (fileInfo: Omit<StagedFile, 'id' | 'file' | 'type'> & {file: File}) => {
     let name = fileInfo.file.name.toLowerCase();
-    // Remove extensions, memo/paper keywords, years, languages, paper numbers
     name = name
       .replace(/\.pdf|\.docx|\.doc/, '')
       .replace(/memo(randum)?/, '')
       .replace(/paper|p\d/, '')
       .replace(/20\d{2}/, '')
       .replace(/eng(lish)?|afr(ikaans)?/, '')
-      .replace(/[\s\-_]/g, ''); // Remove all whitespace and dashes
+      .replace(/[\s\-_]/g, '');
       
-    // A simplified key
     return `${fileInfo.subject}-${name}`;
   }
 
@@ -177,7 +179,6 @@ export default function PastPaperUploaderPage() {
     const remainingFiles: StagedFile[] = [];
     const newPairs: PairedFile[] = [];
 
-    // Group files by pairing key
     for (const file of allFiles) {
       const parsedInfo = parseFileName(file.file);
       const key = getPairingKey({ ...parsedInfo, file: file.file });
@@ -191,11 +192,10 @@ export default function PastPaperUploaderPage() {
       } else if (file.type === 'memo' && !group.memo) {
         group.memo = file;
       } else {
-        remainingFiles.push(file); // Keep duplicates or extras
+        remainingFiles.push(file);
       }
     }
 
-    // Create pairs and collect remaining files
     for (const group of fileGroups.values()) {
       if (group.paper && group.memo) {
         newPairs.push({
@@ -224,20 +224,22 @@ export default function PastPaperUploaderPage() {
     }));
   
     setStagedFiles(currentStaged => {
-      const allUnpairedFiles = [...currentStaged, ...newFiles];
-      const { newPairs, remainingFiles } = autoPairFiles(allUnpairedFiles);
+        const allUnpairedFiles = [...currentStaged, ...newFiles];
+        const { newPairs, remainingFiles } = autoPairFiles(allUnpairedFiles);
 
-      if (newPairs.length > 0) {
-         setPairedFiles(currentPaired => {
-            const existingPairIds = new Set(currentPaired.map(p => p.id));
-            const uniqueNewPairs = newPairs.filter(p => !existingPairIds.has(p.id));
-            return [...currentPaired, ...uniqueNewPairs];
-        });
-      }
-
-      const remainingFileMap = new Map(remainingFiles.map(f => [f.id, f]));
-      return Array.from(remainingFileMap.values());
+        if (newPairs.length > 0) {
+            setPairedFiles(currentPaired => {
+                const existingPairIds = new Set(currentPaired.map(p => p.id));
+                const uniqueNewPairs = newPairs.filter(p => !existingPairIds.has(p.id));
+                return [...currentPaired, ...uniqueNewPairs];
+            });
+        }
+        
+        // Ensure remainingFiles are unique
+        const remainingFileMap = new Map(remainingFiles.map(f => [f.id, f]));
+        return Array.from(remainingFileMap.values());
     });
+
   }, [autoPairFiles]);
 
 
@@ -288,21 +290,20 @@ export default function PastPaperUploaderPage() {
     setPairedFiles([]);
     
     for (const pair of pairsToProcess) {
-      // 1. Create a record in Firestore immediately
       const subjectName = pair.paper.paperNumber 
         ? `${pair.paper.subject} Paper ${pair.paper.paperNumber}` 
         : pair.paper.subject;
 
       const paperDocData = {
         teacherId: user.uid,
-        gradeLevel: 12, // Assuming Grade 12
+        gradeLevel: 12,
         subject: subjectName,
         year: pair.paper.year,
         paperName: pair.paper.file.name,
         memoName: pair.memo.file.name,
         status: "Processing" as const,
         questionCount: 0,
-        fileUrl: '', // This would be the storage URL in a real app
+        fileUrl: '',
       };
       
       let docRef;
@@ -316,11 +317,9 @@ export default function PastPaperUploaderPage() {
           title: `Failed to queue ${pair.paper.file.name}`,
           description: "Could not save initial record to the database.",
         });
-        continue; // Skip to the next pair
+        continue;
       }
 
-      // 2. Trigger the AI flow in the background (don't await the whole thing)
-      // We will handle the result in a non-blocking way.
       (async () => {
         try {
           const paperDataUri = await toDataUri(pair.paper.file);
@@ -336,7 +335,6 @@ export default function PastPaperUploaderPage() {
             memoDataUri,
           });
 
-          // 3. Update the Firestore doc with the result from the flow
           const finalDocRef = doc(firestore, `users/${user.uid}/pastPapers`, docRef.id);
           if (result.success) {
             await updateDoc(finalDocRef, {
@@ -397,6 +395,31 @@ export default function PastPaperUploaderPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (!user || !firestore || selectedPapers.length === 0) return;
+    
+    const batch = writeBatch(firestore);
+    selectedPapers.forEach(id => {
+        const docRef = doc(firestore, `users/${user.uid}/pastPapers`, id);
+        batch.delete(docRef);
+    });
+
+    try {
+        await batch.commit();
+        toast({
+            title: "Bulk Delete Successful",
+            description: `${selectedPapers.length} entries have been removed.`,
+        });
+        setSelectedPapers([]);
+    } catch (error) {
+         toast({
+            variant: "destructive",
+            title: "Bulk Deletion Failed",
+            description: "Could not remove the selected entries. Please try again.",
+        });
+    }
+  }
+
   const unpairedPapers = useMemo(() => stagedFiles.filter(f => f.type === 'paper'), [stagedFiles]);
   const unpairedMemos = useMemo(() => stagedFiles.filter(f => f.type === 'memo'), [stagedFiles]);
 
@@ -421,6 +444,14 @@ export default function PastPaperUploaderPage() {
       setSortDirection('asc');
     }
   };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+        setSelectedPapers(sortedAndFilteredPapers.map(p => p.id));
+    } else {
+        setSelectedPapers([]);
+    }
+  }
 
 
   return (
@@ -454,7 +485,6 @@ export default function PastPaperUploaderPage() {
                     <CardDescription>Manually pair any remaining papers with their memos. Paired files will move to Step 3.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-6">
-                    {/* Unpaired Papers */}
                     <div className="space-y-3">
                         <h3 className="font-semibold">Unpaired Papers ({unpairedPapers.length})</h3>
                         <ScrollArea className="h-72 rounded-md border p-2">
@@ -496,7 +526,6 @@ export default function PastPaperUploaderPage() {
                            ))}
                         </ScrollArea>
                     </div>
-                    {/* Unpaired Memos */}
                     <div className="space-y-3">
                         <h3 className="font-semibold">Unpaired Memos ({unpairedMemos.length})</h3>
                         <ScrollArea className="h-72 rounded-md border p-2">
@@ -516,7 +545,6 @@ export default function PastPaperUploaderPage() {
             </Card>
         )}
         
-        {/* Step 3: Process */}
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">3</span>Ready to Process ({pairedFiles.length})</CardTitle>
@@ -551,7 +579,6 @@ export default function PastPaperUploaderPage() {
         </Card>
         
 
-        {/* Processed Papers Table */}
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -559,7 +586,32 @@ export default function PastPaperUploaderPage() {
                 <CardTitle>Uploaded Past Papers ({processedPapers?.length || 0})</CardTitle>
                 <CardDescription>Status and management of processed papers.</CardDescription>
               </div>
-               <div className="relative w-full sm:w-64">
+              <div className="flex gap-2 items-center w-full sm:w-auto">
+                {selectedPapers.length > 0 && (
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                           <Button variant="destructive">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Selected ({selectedPapers.length})
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the
+                               {selectedPapers.length} selected entries.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleBulkDelete}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                )}
+                <div className="relative flex-1 sm:flex-initial sm:w-64">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input 
                         type="search" 
@@ -569,12 +621,20 @@ export default function PastPaperUploaderPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
+                   <TableHead className="w-[50px]">
+                     <Checkbox
+                        checked={selectedPapers.length > 0 && selectedPapers.length === sortedAndFilteredPapers.length}
+                        onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                        aria-label="Select all"
+                      />
+                  </TableHead>
                   <TableHead>
                     <Button variant="ghost" onClick={() => handleSort('subject')}>
                       Subject <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -594,13 +654,27 @@ export default function PastPaperUploaderPage() {
               <TableBody>
                 {arePapersLoading && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center">
+                    <TableCell colSpan={7} className="text-center">
                       <Loader className="mx-auto h-8 w-8 animate-spin text-primary" />
                     </TableCell>
                   </TableRow>
                 )}
                 {sortedAndFilteredPapers.map((item) => (
-                  <TableRow key={item.id}>
+                  <TableRow 
+                    key={item.id}
+                    data-state={selectedPapers.includes(item.id) && "selected"}
+                  >
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedPapers.includes(item.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedPapers(prev => 
+                            checked ? [...prev, item.id] : prev.filter(id => id !== item.id)
+                          );
+                        }}
+                        aria-label="Select row"
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{item.subject}</TableCell>
                     <TableCell>{item.year}</TableCell>
                     <TableCell className="font-mono text-xs">{item.paperName}</TableCell>
