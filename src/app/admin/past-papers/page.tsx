@@ -18,7 +18,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -29,6 +28,7 @@ import {
   DialogClose,
   DialogDescription,
 } from "@/components/ui/dialog"
+import { AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { processPastPaper } from "@/ai/flows/past-paper-processing";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -95,6 +95,7 @@ const subjectKeywords: Record<string, string[]> = {
     "Electrical Technology": ["electrical technology", "electrical tech"],
     "Agricultural Management Practices": ["agricultural management practices", "agric management"],
     "Agricultural Sciences": ["agricultural sciences", "agric sci"],
+    "Agricultural Technology": ["agricultural technology", "agric tech"],
     "English FAL": ["english fal", "english first additional language"],
     "English HL": ["english hl", "english home language"],
     "Afrikaans HT": ["afrikaans ht", "afrikaans huistaal"],
@@ -178,14 +179,15 @@ export default function PastPaperUploaderPage() {
   
   const getPairingKey = (stagedFile: StagedFile) => {
     const noise = [
-      'memo', 'memorandum', 'answer book', 'marking guidelines', '.pdf', '.docx', '.doc'
+      'memo', 'memorandum', 'answer book', 'marking guidelines', 'nsc', 'ieb',
+      '.pdf', '.docx', '.doc'
     ];
     const regex = new RegExp(noise.join('|'), 'gi');
     return stagedFile.file.name
         .toLowerCase()
-        .replace(regex, '') // Remove only memo-related words and extensions
-        .replace(/[^a-z0-9]/gi, ' ') // Replace all non-alphanumeric with a space
-        .replace(/\s+/g, ' ') // Collapse multiple spaces into one
+        .replace(regex, '')
+        .replace(/[^a-z0-9]/gi, ' ')
+        .replace(/\s+/g, ' ')
         .trim();
   };
 
@@ -256,7 +258,7 @@ export default function PastPaperUploaderPage() {
         return Array.from(remainingFileMap.values());
     });
 
-  }, [autoPairFiles]);
+  }, [autoPairFiles, parseFileName]);
 
 
   const removeStagedFile = (id: string) => {
@@ -327,42 +329,37 @@ export default function PastPaperUploaderPage() {
         docRef = await addDoc(pastPapersCollectionRef, paperDocData);
         successCount++;
 
-        // Immediately start processing, passing the valid docRef
-        // This IIFE (Immediately Invoked Function Expression) allows an async operation
-        // to be kicked off for each file without blocking the main loop.
-        (async () => {
-            const processingDocRef = docRef!; // We know docRef is valid here
+        (async (processingDocRef: DocumentReference) => {
             try {
                 const paperDataUri = await toDataUri(pair.paper.file);
                 const memoDataUri = await toDataUri(pair.memo.file);
                 
                 const result = await processPastPaper({
-                docId: processingDocRef.id,
-                userId: user.uid,
-                subject: pair.paper.subject,
-                grade: 12,
-                year: parseInt(pair.paper.year),
-                paperDataUri,
-                memoDataUri,
+                  docId: processingDocRef.id,
+                  userId: user.uid,
+                  subject: pair.paper.subject,
+                  grade: 12,
+                  year: parseInt(pair.paper.year),
+                  paperDataUri,
+                  memoDataUri,
                 });
 
                 if (result.success) {
-                await updateDoc(processingDocRef, {
-                    status: 'Processed',
-                    questionCount: result.questionCount
-                });
+                  await updateDoc(processingDocRef, {
+                      status: 'Processed',
+                      questionCount: result.questionCount
+                  });
                 } else {
-                await updateDoc(processingDocRef, { status: 'Failed' });
-                toast({
-                    variant: "destructive",
-                    title: `Processing Failed: ${pair.paper.file.name}`,
-                    description: result.message,
-                });
+                  await updateDoc(processingDocRef, { status: 'Failed' });
+                  toast({
+                      variant: "destructive",
+                      title: `Processing Failed: ${pair.paper.file.name}`,
+                      description: result.message,
+                  });
                 }
             } catch (error) {
                 console.error("AI flow or update failed for doc ID:", processingDocRef.id, error);
                 try {
-                  // Ensure status is updated to Failed even if AI flow throws an unhandled error
                   await updateDoc(processingDocRef, { status: 'Failed' });
                 } catch (updateError) {
                   console.error("Failed to even update the status to Failed for doc ID:", processingDocRef.id, updateError);
@@ -373,7 +370,7 @@ export default function PastPaperUploaderPage() {
                       description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
                 });
             }
-        })();
+        })(docRef);
 
 
       } catch (error) {
