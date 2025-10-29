@@ -18,7 +18,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -116,7 +115,7 @@ export default function PastPaperUploaderPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const parseFileName = (file: File): Omit<StagedFile, 'id'> => {
+  const parseFileName = (file: File): Omit<StagedFile, 'id' | 'file'> => {
       const name = file.name.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ');
       
       const type = (name.includes('memo') || name.includes('memorandum')) ? 'memo' : 'paper';
@@ -149,24 +148,80 @@ export default function PastPaperUploaderPage() {
           paperNumber = paperMatch[1] || paperMatch[2];
       }
       
-      return { file, subject, year, type, paperNumber, language };
+      return { subject, year, type, paperNumber, language };
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const getPairingKey = (file: StagedFile) => {
+    return `${file.subject}-${file.year}-${file.language}-${file.paperNumber}`.toLowerCase();
+  }
+
+  const autoPairFiles = useCallback((allFiles: StagedFile[]) => {
+    const fileGroups = new Map<string, { paper?: StagedFile, memo?: StagedFile }>();
+    const remainingFiles: StagedFile[] = [];
+    const newPairs: PairedFile[] = [];
+
+    // Group files by pairing key
+    for (const file of allFiles) {
+      const key = getPairingKey(file);
+      if (!fileGroups.has(key)) {
+        fileGroups.set(key, {});
+      }
+      const group = fileGroups.get(key)!;
+      if (file.type === 'paper' && !group.paper) {
+        group.paper = file;
+      } else if (file.type === 'memo' && !group.memo) {
+        group.memo = file;
+      } else {
+        remainingFiles.push(file); // Keep duplicates or extras
+      }
+    }
+
+    // Create pairs and collect remaining files
+    for (const [key, group] of fileGroups.entries()) {
+      if (group.paper && group.memo) {
+        newPairs.push({
+          id: `${group.paper.id}-${group.memo.id}`,
+          paper: group.paper,
+          memo: group.memo,
+        });
+      } else {
+        if (group.paper) remainingFiles.push(group.paper);
+        if (group.memo) remainingFiles.push(group.memo);
+      }
+    }
+    
+    return { newPairs, remainingFiles };
+  }, []);
+
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
   
     const newFiles: StagedFile[] = Array.from(files).map((file, i) => ({
       id: `${file.name}-${Date.now()}-${i}`,
+      file,
       ...parseFileName(file)
     }));
   
-    setStagedFiles(prev => {
-        const fileMap = new Map(prev.map(f => [f.file.name, f]));
-        newFiles.forEach(nf => fileMap.set(nf.file.name, nf));
-        return Array.from(fileMap.values());
+    setStagedFiles(currentStaged => {
+      const allUnpairedFiles = [...currentStaged, ...newFiles];
+      const { newPairs, remainingFiles } = autoPairFiles(allUnpairedFiles);
+
+      if (newPairs.length > 0) {
+        setPairedFiles(currentPaired => [...currentPaired, ...newPairs]);
+        toast({
+          title: "Files Paired Automatically",
+          description: `${newPairs.length} paper(s) and memo(s) were successfully paired.`,
+        });
+      }
+
+      // To avoid duplicates, we create a map of the remaining files
+      const remainingFileMap = new Map(remainingFiles.map(f => [f.id, f]));
+      return Array.from(remainingFileMap.values());
     });
-  };
+  }, [autoPairFiles, toast]);
+
 
   const removeStagedFile = (id: string) => {
     setStagedFiles(prev => prev.filter(f => f.id !== id));
@@ -293,7 +348,7 @@ export default function PastPaperUploaderPage() {
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">1</span>Upload Documents</CardTitle>
-                <CardDescription>Bulk upload all your paper and memo PDF files. The system will attempt to auto-detect details from the filename.</CardDescription>
+                <CardDescription>Bulk upload all your paper and memo PDF files. The system will attempt to auto-pair them. Unpaired files will go to Step 2.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Label htmlFor="paper-files" className="sr-only">Past Papers & Memos</Label>
@@ -305,8 +360,8 @@ export default function PastPaperUploaderPage() {
         {stagedFiles.length > 0 && (
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">2</span>Staging & Pairing</CardTitle>
-                    <CardDescription>Manually pair papers with their corresponding memos for 100% accuracy. Unpaired files will remain here until paired.</CardDescription>
+                    <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">2</span>Manual Pairing</CardTitle>
+                    <CardDescription>Manually pair any remaining papers with their memos. Paired files will move to Step 3.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-6">
                     {/* Unpaired Papers */}
@@ -499,5 +554,7 @@ export default function PastPaperUploaderPage() {
   );
 }
 
+
+    
 
     
