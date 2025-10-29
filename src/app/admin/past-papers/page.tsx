@@ -17,27 +17,28 @@ const grade12Subjects = allSubjects.filter(s =>
   !["Creative Arts", "Mathematical Literacy"].includes(s.label)
 );
 
-// Add keywords for subject detection
+// Add more specific keywords for subject detection. Longer, more unique keywords first.
 const subjectKeywords: Record<string, string[]> = {
-    "Mathematics": ["math", "wiskunde"],
-    "Physical Sciences": ["phys", "physics", "science", "fisies", "wetenskap"],
-    "Life Sciences": ["life", "bio", "lewe"],
-    "Accounting": ["acc", "rekeningkunde"],
-    "Business Studies": ["business", "besigheid"],
-    "Economics": ["econ", "ekonomie"],
-    "Geography": ["geo", "aardrykskunde"],
-    "History": ["hist", "geskiedenis"],
-    "Information Technology": ["it", "info"],
-    "Computer Applications Technology (CAT)": ["cat", "rit"],
+    "Mathematics": ["mathematics", "maths", "math", "wiskunde"],
+    "Physical Sciences": ["physical sciences", "physics", "phys sci", "fisies", "wetenskap"],
+    "Life Sciences": ["life sciences", "life sci", "bio", "lewe"],
+    "Accounting": ["accounting", "acc", "rekeningkunde"],
+    "Business Studies": ["business studies", "bus stud", "besigheidstudies", "besigheid"],
+    "Economics": ["economics", "econ", "ekonomie"],
+    "Geography": ["geography", "geo", "aardrykskunde"],
+    "History": ["history", "hist", "geskiedenis"],
+    "Information Technology": ["information technology", "it"],
+    "Computer Applications Technology (CAT)": ["computer applications", "cat", "rit"],
     "Tourism": ["tourism", "toerisme"],
-    "Consumer Studies": ["consumer", "verbruiker"],
+    "Consumer Studies": ["consumer studies", "consumer", "verbruikerstudies", "verbruiker"],
     "Hospitality Studies": ["hospitality", "gasvryheid"],
-    "Engineering Graphics & Design": ["egd", "ing"],
-    "English Home Language": ["eng", "hl"],
-    "English First Additional Language": ["eng", "fal"],
-    "Afrikaans Huistaal": ["afr", "ht"],
-    "Afrikaans Eerste Addisionele Taal": ["afr", "eat"],
+    "Engineering Graphics & Design": ["engineering graphics", "egd", "ing"],
+    "English Home Language": ["english hl", "eng hl"],
+    "English First Additional Language": ["english fal", "eng fal"],
+    "Afrikaans Huistaal": ["afrikaans ht", "afr ht"],
+    "Afrikaans Eerste Addisionele Taal": ["afrikaans eat", "afr eat"],
 };
+
 
 interface StagedFile {
   file: File;
@@ -60,7 +61,7 @@ export default function PastPaperUploaderPage() {
     if (!files) return;
 
     const newFiles: StagedFile[] = Array.from(files).map(file => {
-      const name = file.name.toLowerCase();
+      const name = file.name.toLowerCase().replace(/_/g, ' '); // Replace underscores for better matching
       let type: StagedFile['type'] = 'unknown';
       if (name.includes('memo')) {
         type = 'memo';
@@ -72,11 +73,16 @@ export default function PastPaperUploaderPage() {
       const year = yearMatch ? yearMatch[0] : '';
       
       let subject = '';
+      let bestMatchLength = 0;
+
+      // New logic: Find the best, most specific keyword match
       for (const subj of grade12Subjects) {
         const keywords = subjectKeywords[subj.label] || [];
-        if (keywords.some(kw => name.includes(kw))) {
-          subject = subj.label;
-          break;
+        for (const kw of keywords) {
+            if (name.includes(kw) && kw.length > bestMatchLength) {
+                subject = subj.label;
+                bestMatchLength = kw.length;
+            }
         }
       }
 
