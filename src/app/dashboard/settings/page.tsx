@@ -111,7 +111,7 @@ export default function SettingsPage() {
     },
     mode: 'onChange',
   });
-
+  
   const { control, formState, reset } = form;
   const watchedSubjects = useWatch({ control, name: 'subjects' });
 
