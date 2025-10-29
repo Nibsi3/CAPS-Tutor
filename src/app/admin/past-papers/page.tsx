@@ -180,81 +180,95 @@ export default function PastPaperUploaderPage() {
     });
   };
 
+  const getBaseName = (name: string): string => {
+      return name
+          .toLowerCase()
+          .replace(/_/g, ' ')
+          .replace(/-/g, ' ')
+          .replace(/memo(randum)?/g, '')
+          .replace(/paper/g, '')
+          .replace(/p\d/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+  };
+
   const processUploads = async () => {
     setIsProcessing(true);
     
-    const fileGroups = new Map<string, { paper?: StagedFile, memo?: StagedFile }>();
-
-    // Group files by a common identifier (subject, year, paper number)
-    stagedFiles.forEach(stagedFile => {
-      if (stagedFile.type === 'unknown' || !stagedFile.subject || !stagedFile.year) return;
-      
-      const key = `${stagedFile.subject}-${stagedFile.year}-${stagedFile.paperNumber}`;
-      
-      if (!fileGroups.has(key)) {
-        fileGroups.set(key, {});
-      }
-      
-      const group = fileGroups.get(key)!;
-      if (stagedFile.type === 'paper') group.paper = stagedFile;
-      if (stagedFile.type === 'memo') group.memo = stagedFile;
-    });
-
     let successCount = 0;
     let failedPairs = 0;
-    const processedKeys = new Set<string>();
+    const remainingFiles = [...stagedFiles];
 
-    for (const [key, group] of fileGroups.entries()) {
-      if (group.paper && group.memo) {
+    const papers = stagedFiles.filter(f => f.type === 'paper');
+    const memos = stagedFiles.filter(f => f.type === 'memo');
+    const usedMemoIndices = new Set<number>();
+
+    for (const paper of papers) {
+      const paperBaseName = getBaseName(paper.file.name);
+      let foundMemo: StagedFile | null = null;
+      let foundMemoIndex = -1;
+
+      for (let i = 0; i < memos.length; i++) {
+        if (usedMemoIndices.has(i)) continue;
+        const memo = memos[i];
+        const memoBaseName = getBaseName(memo.file.name);
+        if (paperBaseName === memoBaseName) {
+          foundMemo = memo;
+          foundMemoIndex = i;
+          break;
+        }
+      }
+
+      if (foundMemo) {
         try {
-          toast({ title: `Processing: ${group.paper.file.name}` });
-          const paperDataUri = await toDataUri(group.paper.file);
-          const memoDataUri = await toDataUri(group.memo.file);
+          usedMemoIndices.add(foundMemoIndex);
+          toast({ title: `Processing pair: ${paper.file.name}` });
+
+          const paperDataUri = await toDataUri(paper.file);
+          const memoDataUri = await toDataUri(foundMemo.file);
           
           const result = await processPastPaper({
-            subject: group.paper.subject,
+            subject: paper.subject,
             grade: 12, // Defaulting to Grade 12 as requested
-            year: parseInt(group.paper.year),
+            year: parseInt(paper.year),
             paperDataUri,
             memoDataUri,
           });
 
           if (result.success) {
-            const subjectName = group.paper.paperNumber 
-              ? `${group.paper.subject} Paper ${group.paper.paperNumber}` 
-              : group.paper.subject;
+            const subjectName = paper.paperNumber 
+              ? `${paper.subject} Paper ${paper.paperNumber}` 
+              : paper.subject;
 
-            setProcessedPapers(prev => [...prev, { subject: subjectName, year: group.paper!.year, paper: group.paper!.file.name, memo: group.memo!.file.name, status: "Processing", progress: 0 }]);
+            setProcessedPapers(prev => [...prev, { subject: subjectName, year: paper.year, paper: paper.file.name, memo: foundMemo!.file.name, status: "Processing", progress: 0 }]);
             successCount++;
-            processedKeys.add(key);
           } else {
              throw new Error(result.message);
           }
         } catch (error) {
           failedPairs++;
-          console.error("Upload failed for pair:", key, error);
+          console.error("Upload failed for pair:", paper.file.name, error);
           toast({
             variant: "destructive",
-            title: `Failed to process ${group.paper?.file?.name || 'a paper'}`,
+            title: `Failed to process ${paper.file.name}`,
             description: error instanceof Error ? error.message : "An unknown error occurred.",
           });
         }
       }
     }
     
-    if (successCount > 0 || failedPairs > 0) {
-        const totalPairs = fileGroups.size;
-        const unpairedCount = totalPairs - successCount - failedPairs;
+    const unpairedCount = stagedFiles.length - (successCount * 2);
 
+    if (successCount > 0 || failedPairs > 0) {
         toast({
-            title: "Bulk Processing Initiated",
-            description: `${successCount} pairs successfully queued. ${failedPairs} failed. ${unpairedCount} files could not be paired.`,
+            title: "Bulk Processing Complete",
+            description: `${successCount} pairs successfully queued. ${failedPairs} pairs failed. ${unpairedCount} files could not be paired.`,
         });
     } else {
         toast({
             variant: "destructive",
             title: "No Pairs Found",
-            description: "Could not find any matching paper and memo pairs in the staged files.",
+            description: "Could not find any matching paper and memo pairs in the staged files. Please check file names.",
         });
     }
 
