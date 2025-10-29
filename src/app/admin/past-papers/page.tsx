@@ -80,16 +80,20 @@ const subjectKeywords: Record<string, string[]> = {
     "Economics": ["economics", "ekonomie"],
     "Geography": ["geography", "geo", "aardrykskunde"],
     "History": ["history", "geskiedenis"],
-    "English": ["english", "eng"],
-    "Afrikaans": ["afrikaans", "afr"],
     "Tourism": ["tourism", "toerisme"],
-    "Computer Applications Technology": ["cat", "computer applications"],
+    "Computer Applications Technology": ["cat", "computer applications technology"],
     "Information Technology": ["it", "information technology"],
     "Consumer Studies": ["consumer studies", "verbruikerstudie"],
     "Engineering Graphics & Design": ["egd", "engineering graphics"],
     "Mathematical Literacy": ["maths lit", "math lit", "mathematical literacy", "wiskundige geletterdheid"],
     "Technical Sciences": ["technical sciences"],
     "Visual Arts": ["visual arts"],
+    "Mechanical Technology": ["mechanical technology"],
+    "Dance Studies": ["dance studies"],
+    "Civil Technology": ["civil technology"],
+    "Dramatic Arts": ["dramatic arts"],
+    "Electrical Technology": ["electrical technology"],
+    "Agricultural Management Practices": ["agricultural management practices"],
 };
 
 const languageKeywords: Record<string, string[]> = {
@@ -686,7 +690,7 @@ export default function PastPaperUploaderPage() {
                     <TableCell>{item.year}</TableCell>
                     <TableCell className="font-mono text-xs">{item.paperName}</TableCell>
                     <TableCell>
-                      <div className="w-32 flex items-center gap-2">
+                      <div className="w-36 flex items-center gap-2">
                          <Progress 
                             value={item.status === 'Processed' ? 100 : item.status === 'Processing' ? 50 : 0} 
                             className={cn('h-2 flex-1', item.status === 'Failed' && '[&>*]:bg-destructive')}
@@ -739,6 +743,8 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
+
+    
 
     
 
