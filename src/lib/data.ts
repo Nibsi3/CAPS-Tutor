@@ -330,3 +330,101 @@ export const mathQuestionsByGrade: Record<string, { question: string, answer: st
     "11": { question: "Find the value of sin(30°) + cos(60°)", answer: "1" },
     "12": { question: "Find the derivative of f(x) = 3x² + 2x - 1", answer: "f'(x) = 6x + 2" },
 };
+
+export const literatureOptions = {
+  grade12: {
+    'english-hl': {
+      novels: ["The Picture of Dorian Gray by Oscar Wilde", "Life of Pi by Yann Martel", "Things Fall Apart by Chinua Achebe"],
+      dramas: ["Hamlet by William Shakespeare", "The Crucible by Arthur Miller", "Othello by William Shakespeare"],
+      poems: [
+        "Sonnet 130 - William Shakespeare",
+        "The child who was shot dead by soldiers at Nyanga - Ingrid Jonker",
+        "An African Elegy - Ben Okri",
+        "First day after the war - Mazisi Kunene",
+        "A Hard Frost - Cecil Day Lewis",
+        "Vultures - Chinua Achebe",
+        "The garden of love - William Blake",
+        "At a funeral - Dennis Brutus",
+        "Remember - Christina Rossetti",
+        "An African thunderstorm - David Rubadiri",
+        "Somewhere I have never travelled, gladly beyond - e.e. cummings",
+        "The Zulu Girl - Roy Campbell",
+      ]
+    },
+    'english-fal': {
+      novels: ["Cry, the Beloved Country by Alan Paton", "Strange Case of Dr Jekyll and Mr Hyde by Robert Louis Stevenson"],
+      dramas: ["Macbeth by William Shakespeare", "My Children! My Africa! by Athol Fugard"],
+      poems: [
+          "Sonnet 18 – William Shakespeare",
+          "Everything has changed (except graves) – Mzi Mahola",
+          "The first day after the war – Mazisi Kunene",
+          "The herb garden – Katherine Beeman",
+          "The slave dealer – Thomas Pringle",
+          "To learn how to speak – Jeremy Cronin",
+      ]
+    },
+    'afrikaans-ht': {
+      novels: ["Fiela se Kind deur Dalene Matthee", "Die Kruppel Engel deur Francois Smith", "Onderwêreld deur Fanie Viljoen"],
+      dramas: ["Die Koning Sterf deur Eugène Ionesco", "Mis deur Reza de Wet"],
+      poems: [
+        "Die huis luister - D.J. Opperman",
+        "Middelburg - T.T. Cloete",
+        "swettertjie - A.G. Visser",
+        "Strelitzia - T.T. Cloete",
+        "Verlore stad - F.I.S.F. Marais",
+        "Die boodskapper - S.J. Pretorius",
+        "Die nuwe kind - Lina Spies",
+        "Touloper - Boerneef",
+        "Mevrou van Skewes - Lina Spies",
+        "Spore op die maan - Koos du Plessis",
+        "Geboorte - I.L. de Villiers",
+        "My venster is ’n blank reghoek - I.L. de Villiers",
+      ]
+    },
+    'afrikaans-eat': {
+      novels: ["Asem deur Jan van Tonder", "Lien se Lankstaanskoene deur Derick van der Walt"],
+      dramas: ["Paljas deur Chris Barnard"],
+      poems: [
+        "Huiskat – Elisabeth Eybers",
+        "Die boodskapper – S.J. Pretorius",
+        "Ek het ‘n huisie by die see – H.A. Fagan",
+        "Die wereld het so klein geword – Totius",
+        "Staan op! – F.P. van der Merwe",
+        "Resep – C.J. Langenhoven",
+      ]
+    }
+  },
+  grade11: {
+      'english-hl': {
+          novels: ["Tsotsi by Athol Fugard", "The Great Gatsby by F. Scott Fitzgerald"],
+          dramas: ["My Children! My Africa! by Athol Fugard", "A Doll's House by Henrik Ibsen"],
+          poems: [
+            "Sonnet 73 - William Shakespeare",
+            "The wind begun to rock the grass - Emily Dickinson",
+            "Dulce et Decorum Est - Wilfred Owen",
+            "Ozymandias - Percy Bysshe Shelley",
+            "The Tyger - William Blake",
+            "Funeral Blues - W.H. Auden",
+            "Dover Beach - Matthew Arnold",
+            "Auto Wreck - Karl Shapiro",
+            "On his blindness - John Milton",
+            "To the virgins, to make much of time - Robert Herrick",
+          ]
+      },
+      // ... more FAL, HT, EAT for Grade 11
+  },
+  grade10: {
+      'english-hl': {
+          novels: ["Lord of the Flies by William Golding", "To Kill a Mockingbird by Harper Lee"],
+          dramas: ["Romeo and Juliet by William Shakespeare"],
+          poems: [
+            "The Road Not Taken - Robert Frost",
+            "I Know Why the Caged Bird Sings - Maya Angelou",
+            "A Dream Deferred - Langston Hughes",
+            "Sonnet 18 - William Shakespeare",
+            "Still I Rise - Maya Angelou",
+          ]
+      },
+      // ... more FAL, HT, EAT for Grade 10
+  }
+};
