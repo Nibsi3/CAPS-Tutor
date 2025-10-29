@@ -531,8 +531,6 @@ export default function PastPaperUploaderPage() {
             subject: paper.subject,
             grade: paper.gradeLevel || 12,
             year: parseInt(paper.year),
-            paperDataUri: '', 
-            memoDataUri: '',
         });
 
         await updateDoc(docRef, {
@@ -1062,11 +1060,3 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
-
-    
-
-    
-
-    
-
-    
