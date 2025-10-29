@@ -114,6 +114,19 @@ export default function PastPaperUploaderPage() {
 
     return () => clearInterval(interval);
   }, []);
+  
+  const prevPairedCount = useRef(0);
+  useEffect(() => {
+    if (pairedFiles.length > prevPairedCount.current) {
+      const newPairsCount = pairedFiles.length - prevPairedCount.current;
+      toast({
+        title: "Files Paired Automatically",
+        description: `${newPairsCount} paper(s) and memo(s) were successfully paired.`,
+      });
+    }
+    prevPairedCount.current = pairedFiles.length;
+  }, [pairedFiles, toast]);
+
 
   const parseFileName = (file: File): Omit<StagedFile, 'id' | 'file'> => {
       const name = file.name.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ');
@@ -151,19 +164,21 @@ export default function PastPaperUploaderPage() {
       return { subject, year, type, paperNumber, language };
   }
 
-  const getPairingKey = (file: Omit<StagedFile, 'id' | 'file'>) => {
-    // Normalize the filename to create a more robust key
-    let key = file.subject.toLowerCase();
-    key += `-${file.year}`;
-    if (file.language !== 'Unknown') {
-        key += `-${file.language.toLowerCase()}`;
-    }
-    if (file.paperNumber) {
-        key += `-p${file.paperNumber}`;
-    }
-    // A further step could be to remove common words like 'june', 'nov', etc.
-    return key;
+  const getPairingKey = (fileInfo: Omit<StagedFile, 'id' | 'file' | 'type'> & {file: File}) => {
+    let name = fileInfo.file.name.toLowerCase();
+    // Remove extensions, memo/paper keywords, years, languages, paper numbers
+    name = name
+      .replace(/\.pdf|\.docx|\.doc/, '')
+      .replace(/memo(randum)?/, '')
+      .replace(/paper|p\d/, '')
+      .replace(/20\d{2}/, '')
+      .replace(/eng(lish)?|afr(ikaans)?/, '')
+      .replace(/[\s\-_]/g, ''); // Remove all whitespace and dashes
+      
+    // A simplified key
+    return `${fileInfo.subject}-${name}`;
   }
+
 
   const autoPairFiles = useCallback((allFiles: StagedFile[]) => {
     const fileGroups = new Map<string, { paper?: StagedFile, memo?: StagedFile }>();
@@ -173,7 +188,7 @@ export default function PastPaperUploaderPage() {
     // Group files by pairing key
     for (const file of allFiles) {
       const parsedInfo = parseFileName(file.file);
-      const key = getPairingKey(parsedInfo);
+      const key = getPairingKey({ ...parsedInfo, file: file.file });
 
       if (!fileGroups.has(key)) {
         fileGroups.set(key, {});
@@ -224,12 +239,6 @@ export default function PastPaperUploaderPage() {
          setPairedFiles(currentPaired => {
             const existingPairIds = new Set(currentPaired.map(p => p.id));
             const uniqueNewPairs = newPairs.filter(p => !existingPairIds.has(p.id));
-            if (uniqueNewPairs.length > 0) {
-              toast({
-                title: "Files Paired Automatically",
-                description: `${uniqueNewPairs.length} paper(s) and memo(s) were successfully paired.`,
-              });
-            }
             return [...currentPaired, ...uniqueNewPairs];
         });
       }
@@ -237,7 +246,7 @@ export default function PastPaperUploaderPage() {
       const remainingFileMap = new Map(remainingFiles.map(f => [f.id, f]));
       return Array.from(remainingFileMap.values());
     });
-  }, [autoPairFiles, toast]);
+  }, [autoPairFiles]);
 
 
   const removeStagedFile = (id: string) => {
