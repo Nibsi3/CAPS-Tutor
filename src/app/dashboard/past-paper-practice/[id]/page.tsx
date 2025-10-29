@@ -7,7 +7,7 @@ import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader, FileText, Clock, AlertTriangle, ArrowRight, ArrowLeft, Bot } from 'lucide-react';
+import { Loader, FileText, Clock, AlertTriangle, ArrowRight, ArrowLeft, Bot, BrainCircuit } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from '@/components/ui/textarea';
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
@@ -47,6 +47,7 @@ export default function PastPaperSessionPage() {
     const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
     const [isSessionStarted, setIsSessionStarted] = useState(false);
     const [score, setScore] = useState(0);
+    const [isFinished, setIsFinished] = useState(false);
 
 
     const paperRef = useMemoFirebase(() => {
@@ -57,18 +58,11 @@ export default function PastPaperSessionPage() {
     const { data: paper, isLoading } = useDoc<PastPaper>(paperRef);
 
     useEffect(() => {
-        if (paper && paper.generatedQuestions) {
+        if (paper && paper.status === 'Processed' && paper.generatedQuestions && paper.generatedQuestions.length > 0) {
             setQuestions(paper.generatedQuestions.map(q => ({...q, studentAnswer: '', feedback: null, isChecking: false })));
+            setIsSessionStarted(true); // Automatically start the session
         }
     }, [paper]);
-
-    const handleStartSession = () => {
-        if (paper?.generatedQuestions && paper.generatedQuestions.length > 0) {
-            setIsSessionStarted(true);
-        } else {
-             toast({ variant: 'destructive', title: 'Cannot Start Session', description: 'No questions are available for this paper.' });
-        }
-    }
 
     const handleAnswerChange = (index: number, answer: string) => {
         const newQuestions = [...questions];
@@ -107,6 +101,14 @@ export default function PastPaperSessionPage() {
             setQuestions(newQuestions);
         }
     };
+
+    const handleNextQuestion = () => {
+        if (currentQuestionIndex < questions.length - 1) {
+            setCurrentQuestionIndex(prev => prev + 1);
+        } else {
+            setIsFinished(true);
+        }
+    };
     
     const currentQuestion = isSessionStarted && questions.length > 0 ? questions[currentQuestionIndex] : null;
     const currentQuestionCorrect = !!currentQuestion?.feedback?.isCorrect;
@@ -135,92 +137,53 @@ export default function PastPaperSessionPage() {
         )
     }
 
-     if (paper.status !== 'Processed' || !paper.generatedQuestions || paper.generatedQuestions.length === 0) {
+    if (paper.status !== 'Processed' || !paper.generatedQuestions || paper.generatedQuestions.length === 0) {
         return (
              <div className="flex h-full w-full items-center justify-center">
-                <Alert className="max-w-lg">
-                    <Loader className="h-4 w-4" />
-                    <AlertTitle>Paper Not Ready</AlertTitle>
-                    <AlertDescription>
-                        This past paper has not been processed by the AI yet or no questions were found. Please check back later or ask an admin to process the paper.
-                    </AlertDescription>
-                </Alert>
+                <Card className="max-w-xl text-center">
+                    <CardHeader>
+                        <CardTitle className="flex items-center justify-center gap-3"><AlertTriangle className="h-8 w-8 text-destructive"/>Paper Not Ready</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-muted-foreground">This past paper has not been processed by the AI yet, or no questions were found inside it.</p>
+                        <p className="text-muted-foreground mt-2">Please ask an administrator to process the paper from the admin panel.</p>
+                        <Button variant="outline" className="mt-6" onClick={() => window.history.back()}>Go Back</Button>
+                    </CardContent>
+                </Card>
             </div>
         )
     }
     
-    if (!isSessionStarted) {
+    if (isFinished) {
         return (
             <div className="flex-1 space-y-6">
-                <Card className="max-w-3xl mx-auto">
+                 <Card className="max-w-3xl mx-auto text-center">
                     <CardHeader>
-                        <CardTitle className="font-headline text-3xl flex items-center gap-3">
-                            <FileText className="w-8 h-8 text-primary" />
-                            Practice Session Ready
-                        </CardTitle>
-                        <CardDescription>
-                            You are about to start a practice session for the following paper.
-                        </CardDescription>
+                        <CardTitle className="font-headline text-3xl">Practice Complete!</CardTitle>
+                        <CardDescription>Well done on completing the practice session for {paper.subject} - {paper.year}.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="rounded-lg border bg-muted/50 p-6 space-y-4">
-                            <div className="space-y-1">
-                                <p className="text-sm font-medium text-muted-foreground">Subject</p>
-                                <p className="font-semibold text-lg">{paper.subject}</p>
-                            </div>
-                            <div className="space-y-1">
-                                <p className="text-sm font-medium text-muted-foreground">Year</p>
-                                <p className="font-semibold text-lg">{paper.year}</p>
-                            </div>
-                            <div className="space-y-1">
-                                <p className="text-sm font-medium text-muted-foreground">Original File</p>
-                                <p className="font-mono text-sm">{paper.paperName}</p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 text-center">
-                            <div className="rounded-lg border p-4">
-                                <h4 className="font-bold text-2xl text-primary">{paper.questionCount}</h4>
-                                <p className="text-sm text-muted-foreground">Questions</p>
-                            </div>
-                            <div className="rounded-lg border p-4">
-                                <h4 className="font-bold text-2xl text-primary">Self-Paced</h4>
-                                <p className="text-sm text-muted-foreground">Practice Mode</p>
-                            </div>
-                        </div>
-                    
-                        <Alert>
-                            <Clock className="h-4 w-4" />
-                            <AlertTitle>Practice Session</AlertTitle>
-                            <AlertDescription>
-                                Answer each question and get immediate feedback from the AI tutor. You must answer correctly to proceed to the next question.
-                            </AlertDescription>
-                        </Alert>
-
-                        <Button 
-                            size="lg" 
-                            className="w-full" 
-                            onClick={handleStartSession}
-                        >
-                            <ArrowRight className="mr-2 h-5 w-5" />
-                            Start Practice Session
-                        </Button>
+                    <CardContent className="space-y-4">
+                        <p className="text-5xl font-bold font-headline text-primary">{score} / {questions.length}</p>
+                        <p className="text-lg text-muted-foreground">You got {Math.round((score / questions.length) * 100)}% correct.</p>
                     </CardContent>
-                </Card>
+                     <CardFooter className="flex-col gap-4">
+                        <Button onClick={() => { setIsFinished(false); setCurrentQuestionIndex(0); setScore(0); }} className="w-full">
+                            Try Again
+                        </Button>
+                         <Button variant="outline" className="w-full" onClick={() => window.history.back()}>
+                            Choose Another Paper
+                        </Button>
+                    </CardFooter>
+                 </Card>
             </div>
         );
     }
-
+    
     if (!currentQuestion) {
-        return (
+         return (
             <div className="flex h-full w-full items-center justify-center">
-                <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>
-                        Could not load questions for this practice session.
-                    </AlertDescription>
-                </Alert>
+                <Loader className="h-12 w-12 animate-spin text-primary" />
+                <p className="ml-4 text-muted-foreground">Loading Questions...</p>
             </div>
         );
     }
@@ -292,13 +255,15 @@ export default function PastPaperSessionPage() {
                     </Button>
                     
                     <Button
-                        onClick={() => setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1))}
-                        disabled={currentQuestionIndex === questions.length - 1 || !currentQuestionCorrect}
+                        onClick={handleNextQuestion}
+                        disabled={!currentQuestionCorrect}
                     >
-                        Next <ArrowRight className="ml-2 h-4 w-4" />
+                        {currentQuestionIndex === questions.length - 1 ? 'Finish' : 'Next'} <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 </CardFooter>
             </Card>
         </div>
     )
 }
+
+    
