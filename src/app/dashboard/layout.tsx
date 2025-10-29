@@ -9,7 +9,8 @@ import {
   Users,
   BarChart,
   Bot,
-  Award
+  Award,
+  FileText
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -68,6 +69,13 @@ export default function DashboardLayout({
               >
                 <Target className="h-4 w-4" />
                 Practice
+              </Link>
+               <Link
+                href="/dashboard/past-paper-practice"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <FileText className="h-4 w-4" />
+                Past Paper Practice
               </Link>
                <Link
                 href="/dashboard/tutor"
