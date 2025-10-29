@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader, FileText, Clock, HelpCircle, ArrowRight, AlertTriangle, ArrowLeft, Bot } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -102,7 +102,7 @@ export default function PastPaperSessionPage() {
         }
     };
     
-    const currentQuestion = questions[currentQuestionIndex];
+    const currentQuestion = isSessionStarted && questions.length > 0 ? questions[currentQuestionIndex] : null;
     const currentQuestionCorrect = !!currentQuestion?.feedback?.isCorrect;
 
 
@@ -201,6 +201,21 @@ export default function PastPaperSessionPage() {
                         </Button>
                     </CardContent>
                 </Card>
+            </div>
+        );
+    }
+
+    if (!currentQuestion) {
+        // This case handles when the session has started but there are no questions
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>
+                        Could not load questions for this practice session.
+                    </AlertDescription>
+                </Alert>
             </div>
         );
     }

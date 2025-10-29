@@ -659,10 +659,10 @@ export default function PastPaperUploaderPage() {
   const sortedAndFilteredPapers = useMemo(() => {
     if (!processedPapers) return [];
     return [...processedPapers]
-      .filter(p => p.subject.toLowerCase().includes(searchTerm.toLowerCase()) || (p.year && p.year.includes(searchTerm)))
+      .filter(p => p.subject.toLowerCase().includes(searchTerm.toLowerCase()) || (p.year && p.year.toString().includes(searchTerm)))
       .sort((a, b) => {
-        const valA = a[sortKey]?.toLowerCase() ?? '';
-        const valB = b[sortKey]?.toLowerCase() ?? '';
+        const valA = a[sortKey]?.toString().toLowerCase() ?? '';
+        const valB = b[sortKey]?.toString().toLowerCase() ?? '';
         if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
         if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
         return 0;
