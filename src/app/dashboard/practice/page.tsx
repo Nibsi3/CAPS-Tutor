@@ -397,7 +397,7 @@ export default function PracticePage() {
                         onKeyDown={(e) => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
-                            handleSendMessage();
+                            handleTutorSendMessage();
                             }
                         }}
                         disabled={isTutorLoading}
@@ -406,7 +406,7 @@ export default function PracticePage() {
                         type="submit"
                         size="sm"
                         className="absolute right-2 top-1/2 -translate-y-1/2"
-                        onClick={() => handleSendMessage()}
+                        onClick={handleTutorSendMessage}
                         disabled={isTutorLoading || !tutorPrompt.trim()}
                         >
                         Send
@@ -419,5 +419,3 @@ export default function PracticePage() {
     </div>
   )
 }
-
-    

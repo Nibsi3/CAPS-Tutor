@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/componentsui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Upload, Loader, File as FileIcon, X, Trash2, Link2, Search, ArrowUpDown, RefreshCw, AlertTriangle } from "lucide-react";
@@ -428,7 +428,6 @@ export default function PastPaperUploaderPage() {
         memoName: pair.memo.file.name,
         status: "Processing" as const,
         questionCount: 0,
-        fileUrl: '',
         generatedQuestions: [],
       };
 
@@ -436,45 +435,43 @@ export default function PastPaperUploaderPage() {
         const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
         setProcessedInBatch(prev => prev + 1);
 
-        // This part runs in the background. No `await` on the async IIFE.
-        (async () => {
-          try {
-            const paperDataUri = await toDataUri(pair.paper.file);
-            const memoDataUri = await toDataUri(pair.memo.file);
-            
-            const result = await processPastPaper({
-              docId: docRef.id,
-              userId: user.uid,
-              subject: pair.subject,
-              grade: 12,
-              year: parseInt(pair.paper.year),
-              paperDataUri,
-              memoDataUri,
-            });
+        // This part now runs sequentially for each file
+        try {
+          const paperDataUri = await toDataUri(pair.paper.file);
+          const memoDataUri = await toDataUri(pair.memo.file);
+          
+          const result = await processPastPaper({
+            docId: docRef.id,
+            userId: user.uid,
+            subject: pair.subject,
+            grade: 12,
+            year: parseInt(pair.paper.year),
+            paperDataUri,
+            memoDataUri,
+          });
 
-            await updateDoc(docRef, {
-                status: result.success ? 'Processed' : 'Failed',
-                questionCount: result.generatedQuestions?.length || 0,
-                generatedQuestions: result.generatedQuestions || [],
-            });
+          await updateDoc(docRef, {
+              status: result.success ? 'Processed' : 'Failed',
+              questionCount: result.generatedQuestions?.length || 0,
+              generatedQuestions: result.generatedQuestions || [],
+          });
 
-            if (!result.success) {
-              toast({
-                  variant: "destructive",
-                  title: `Processing Failed: ${pair.paper.file.name}`,
-                  description: result.message,
-              });
-            }
-          } catch (error) {
-              console.error("AI flow or update failed for doc ID:", docRef.id, error);
-              await updateDoc(docRef, { status: 'Failed' });
-              toast({
-                    variant: "destructive",
-                    title: `Processing Error: ${pair.paper.file.name}`,
-                    description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
-              });
+          if (!result.success) {
+            toast({
+                variant: "destructive",
+                title: `Processing Failed: ${pair.paper.file.name}`,
+                description: result.message,
+            });
           }
-        })();
+        } catch (error) {
+            console.error("AI flow or update failed for doc ID:", docRef.id, error);
+            await updateDoc(docRef, { status: 'Failed' });
+            toast({
+                  variant: "destructive",
+                  title: `Processing Error: ${pair.paper.file.name}`,
+                  description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
+            });
+        }
       } catch (serverError) {
         const permissionError = new FirestorePermissionError({
           path: pastPapersCollectionRef.path,
@@ -497,8 +494,8 @@ export default function PastPaperUploaderPage() {
     
     setIsProcessing(false);
     toast({
-        title: "Batch Processing Started",
-        description: `${filesToProcess.length} files have been queued for AI analysis in the background.`
+        title: "Batch Processing Complete",
+        description: `${filesToProcess.length} files have been processed.`
     });
     
     setTimeout(() => {
@@ -534,12 +531,16 @@ export default function PastPaperUploaderPage() {
     try {
         await updateDoc(docRef, { status: 'Processing', questionCount: 0, generatedQuestions: [] });
 
+        // This is a key limitation: we do not have the file content here anymore.
+        // The AI flow MUST be able to re-process without the original PDFs.
+        // The prompt is updated to generate questions based on metadata only.
         const result = await processPastPaper({
             docId: paper.id,
             userId: user.uid,
-            subject: paper.subject,
+            subject: paper.subject.replace(/ Paper \d/,''), // Send base subject
             grade: paper.gradeLevel || 12,
             year: parseInt(paper.year),
+            // paperDataUri and memoDataUri are omitted
         });
 
         await updateDoc(docRef, {
