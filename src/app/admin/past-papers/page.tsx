@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { processPastPaper } from "@/ai/flows/past-paper-processing";
 import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 
 
 // Add more specific keywords for subject detection. Longer, more unique keywords first.
@@ -57,14 +58,46 @@ interface StagedFile {
   isDuplicate?: boolean; // To highlight replaced files
 }
 
+interface ProcessedPaper {
+    subject: string;
+    year: string;
+    paper: string;
+    memo: string;
+    status: 'Processing' | 'Processed';
+    progress: number;
+}
+
 export default function PastPaperUploaderPage() {
   const { toast } = useToast();
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processedPapers, setProcessedPapers] = useState([
-    { subject: "Mathematics Paper 1", year: "2023", paper: "math_p1_nov23.pdf", memo: "math_p1_memo_nov23.pdf", status: "Processed" },
-    { subject: "Physical Sciences Paper 2", year: "2023", paper: "phys_p2_nov23.pdf", memo: "phys_p2_memo_nov23.pdf", status: "Processed" },
+  const [processedPapers, setProcessedPapers] = useState<ProcessedPaper[]>([
+    { subject: "Mathematics Paper 1", year: "2023", paper: "math_p1_nov23.pdf", memo: "math_p1_memo_nov23.pdf", status: "Processed", progress: 100 },
+    { subject: "Physical Sciences Paper 2", year: "2023", paper: "phys_p2_nov23.pdf", memo: "phys_p2_memo_nov23.pdf", status: "Processed", progress: 100 },
   ]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProcessedPapers(prevPapers => {
+        let changed = false;
+        const updatedPapers = prevPapers.map(p => {
+          if (p.status === 'Processing' && p.progress < 100) {
+            changed = true;
+            const newProgress = Math.min(p.progress + Math.random() * 20, 100);
+            return {
+              ...p,
+              progress: newProgress,
+              status: newProgress >= 100 ? 'Processed' : 'Processing',
+            };
+          }
+          return p;
+        });
+        return changed ? updatedPapers : prevPapers;
+      });
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -196,7 +229,7 @@ export default function PastPaperUploaderPage() {
               ? `${group.paper.subject} Paper ${group.paper.paperNumber}` 
               : group.paper.subject;
 
-            setProcessedPapers(prev => [...prev, { subject: subjectName, year: group.paper!.year, paper: group.paper!.file.name, memo: group.memo!.file.name, status: "Processing" }]);
+            setProcessedPapers(prev => [...prev, { subject: subjectName, year: group.paper!.year, paper: group.paper!.file.name, memo: group.memo!.file.name, status: "Processing", progress: 0 }]);
             successCount++;
             processedKeys.add(key);
           } else {
@@ -278,7 +311,16 @@ export default function PastPaperUploaderPage() {
                     <TableCell>{item.year}</TableCell>
                     <TableCell className="font-medium">{item.paper}</TableCell>
                     <TableCell className="font-medium">{item.memo}</TableCell>
-                    <TableCell className={item.status === 'Processed' ? "text-green-600" : "text-yellow-600"}>{item.status}</TableCell>
+                    <TableCell>
+                      {item.status === 'Processing' ? (
+                        <div className="flex items-center gap-2">
+                           <Progress value={item.progress} className="w-24" />
+                           <span className="text-muted-foreground text-xs">{Math.round(item.progress)}%</span>
+                        </div>
+                      ) : (
+                         <span className="text-green-600 font-medium">Processed</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                        <AlertDialog>
                         <AlertDialogTrigger asChild>
