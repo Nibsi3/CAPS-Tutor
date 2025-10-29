@@ -136,6 +136,8 @@ export default function PastPaperUploaderPage() {
   const [totalBatchSize, setTotalBatchSize] = useState(0);
   const [processedInBatch, setProcessedInBatch] = useState(0);
 
+  const [reprocessingProgress, setReprocessingProgress] = useState(0);
+
 
   const prevPairedCount = useRef(0);
 
@@ -496,6 +498,24 @@ export default function PastPaperUploaderPage() {
     }, 4000);
   };
   
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (reprocessingId) {
+      setReprocessingProgress(0);
+      let progress = 0;
+      interval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress >= 100) {
+          // Don't set to 100, let the final status update handle it
+          clearInterval(interval);
+        } else {
+          setReprocessingProgress(progress);
+        }
+      }, 500);
+    }
+    return () => clearInterval(interval);
+  }, [reprocessingId]);
+
   const handleReprocessPaper = async (paper: ProcessedPaper) => {
     if (!user || !firestore) return;
     setReprocessingId(paper.id);
@@ -543,6 +563,7 @@ export default function PastPaperUploaderPage() {
         });
     } finally {
         setReprocessingId(null);
+        setReprocessingProgress(0);
     }
   };
 
@@ -923,7 +944,11 @@ export default function PastPaperUploaderPage() {
                     </TableCell>
                   </TableRow>
                 )}
-                {sortedAndFilteredPapers.map((item) => (
+                {sortedAndFilteredPapers.map((item) => {
+                   const isReprocessingThisItem = reprocessingId === item.id;
+                   const progressValue = isReprocessingThisItem ? reprocessingProgress : item.status === 'Processed' ? 100 : item.status === 'Processing' ? 50 : 0;
+                   const displayValue = isReprocessingThisItem ? `${Math.round(progressValue)}%` : item.status === 'Processed' ? `100%` : item.status === 'Processing' ? `...` : '';
+                  return (
                   <TableRow 
                     key={item.id}
                     data-state={selectedPapers.includes(item.id) && "selected"}
@@ -967,8 +992,9 @@ export default function PastPaperUploaderPage() {
                     <TableCell>
                       <div className="w-36 flex items-center gap-2">
                          <Progress 
-                            value={item.status === 'Processed' ? 100 : item.status === 'Processing' ? 50 : 0} 
-                            className={cn('h-2 flex-1', item.status === 'Failed' && '[&>*]:bg-destructive')}
+                            value={progressValue}
+                            displayValue={displayValue}
+                            className={cn('h-6 flex-1', item.status === 'Failed' && '[&>*]:bg-destructive')}
                          />
                          <span className={cn("font-medium text-xs", 
                             item.status === 'Processed' ? "text-green-600" : 
@@ -989,7 +1015,7 @@ export default function PastPaperUploaderPage() {
                                 disabled={reprocessingId === item.id || item.status === 'Processing'}
                                 aria-label="Reprocess"
                             >
-                                {reprocessingId === item.id ? (
+                                {isReprocessingThisItem ? (
                                     <Loader className="h-4 w-4 animate-spin" />
                                 ) : (
                                     <RefreshCw className="h-4 w-4" />
@@ -1023,7 +1049,7 @@ export default function PastPaperUploaderPage() {
                       </AlertDialog>
                     </TableCell>
                   </TableRow>
-                ))}
+                )})}
               </TableBody>
             </Table>
              {!arePapersLoading && sortedAndFilteredPapers.length === 0 && (
