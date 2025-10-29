@@ -120,7 +120,7 @@ export default function PastPaperUploaderPage() {
   const firestore = useFirestore();
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [pairedFiles, setPairedFiles] = useState<PairedFile[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(isProcessing);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('subject');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -129,6 +129,10 @@ export default function PastPaperUploaderPage() {
   
   const [duplicateFiles, setDuplicateFiles] = useState<DuplicateFile[]>([]);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingSubject, setEditingSubject] = useState<string>('');
+
 
   const prevPairedCount = useRef(0);
 
@@ -188,23 +192,29 @@ export default function PastPaperUploaderPage() {
   }
   
   const getPairingKey = useCallback((fileName: string): string => {
-    const noiseWords = [
-      'memo', 'memorandum', 'answer book', 'marking guidelines', 'addendum', 'nsc', 'ieb', 'sc', 'eng', 'afr', 'fs', 'gp', 'wc', 'ec', 'nc', 'nw', 'lp', 'mp',
-      'english', 'afrikaans', 'huistaal', 'eerste addisionele taal', 'home language', 'first additional language'
-    ];
-    
-    // Create a regex to match any noise word as a whole word
-    const noiseRegex = new RegExp(`\\b(${noiseWords.join('|')})\\b`, 'gi');
-    
-    let cleanName = fileName.toLowerCase()
-      .replace(/\.(pdf|docx|doc)$/i, '') // Remove file extensions
-      .replace(noiseRegex, '') // Remove noise words
-      .replace(/\(1\)|\(2\)|\(3\)/g, '') // Remove copy indicators like (1), (2)
-      .replace(/[^a-z0-9]/gi, ' ') // Replace non-alphanumeric chars with a space
-      .replace(/\s+/g, ' ') // Collapse multiple spaces into one
-      .trim();
+      const noiseWords = [
+          'memo', 'memorandum', 'answer book', 'marking guidelines', 'addendum',
+          'nsc', 'ieb', 'sc', 
+          'eng', 'afr', 'english', 'afrikaans',
+          'hl', 'ht', 'fal', 'eat', 'huistaal', 'eerste addisionele taal', 'home language', 'first additional language',
+          'fs', 'gp', 'wc', 'ec', 'nc', 'nw', 'lp', 'mp', // Provinces
+      ];
 
-    return cleanName;
+      const noiseRegex = new RegExp(`\\b(${noiseWords.join('|')})\\b`, 'gi');
+      
+      let cleanName = fileName.toLowerCase()
+        .replace(/\.(pdf|docx|doc)$/i, '') // Remove file extensions
+        .replace(noiseRegex, '') // Remove specific noise words
+        .replace(/p\d/gi, '') // Remove paper numbers like p1, p2
+        .replace(/\(1\)|\(2\)|\(3\)/g, '') // Remove copy indicators
+        .replace(/[^a-z0-9]/gi, ' ') // Replace non-alphanumeric chars with a space
+        .replace(/\s+/g, ' ') // Collapse multiple spaces
+        .trim();
+        
+      // Also remove year from the key to avoid mismatches
+      cleanName = cleanName.replace(/20\d{2}/g, '').trim();
+
+      return cleanName;
   }, []);
 
   const autoPairFiles = useCallback((allFiles: StagedFile[]) => {
@@ -212,21 +222,43 @@ export default function PastPaperUploaderPage() {
     const newPairs: PairedFile[] = [];
     let remainingFiles: StagedFile[] = [...allFiles];
 
+    // Attempt to pair using subject, year, and paper number first
+    const specificFileGroups = new Map<string, StagedFile[]>();
     for (const file of allFiles) {
-        const key = getPairingKey(file.file.name);
-        if (!fileGroups.has(key)) {
-            fileGroups.set(key, []);
+        if (file.subject !== 'Unknown' && file.year && file.paperNumber) {
+            const key = `${file.subject}-${file.year}-p${file.paperNumber}-${file.language}`;
+            if (!specificFileGroups.has(key)) specificFileGroups.set(key, []);
+            specificFileGroups.get(key)!.push(file);
         }
-        fileGroups.get(key)!.push(file);
     }
-    
-    for (const [key, groupFiles] of fileGroups.entries()) {
+
+    for (const [key, groupFiles] of specificFileGroups.entries()) {
         const paper = groupFiles.find(f => f.type === 'paper');
         const memo = groupFiles.find(f => f.type === 'memo');
 
         if (paper && memo) {
             newPairs.push({ id: `${paper.id}-${memo.id}`, paper, memo, subject: paper.subject });
             remainingFiles = remainingFiles.filter(f => f.id !== paper.id && f.id !== memo.id);
+        }
+    }
+
+    // Fallback to more generic pairing key for remaining files
+    const genericFileGroups = new Map<string, StagedFile[]>();
+    for (const file of remainingFiles) {
+        const key = getPairingKey(file.file.name);
+        if (!genericFileGroups.has(key)) genericFileGroups.set(key, []);
+        genericFileGroups.get(key)!.push(file);
+    }
+
+    for (const [key, groupFiles] of genericFileGroups.entries()) {
+        if (key && groupFiles.length >= 2) {
+            const paper = groupFiles.find(f => f.type === 'paper');
+            const memo = groupFiles.find(f => f.type === 'memo');
+
+            if (paper && memo) {
+                newPairs.push({ id: `${paper.id}-${memo.id}`, paper, memo, subject: paper.subject });
+                remainingFiles = remainingFiles.filter(f => f.id !== paper.id && f.id !== memo.id);
+            }
         }
     }
     
@@ -502,8 +534,8 @@ export default function PastPaperUploaderPage() {
 
 
   const handleDeleteProcessedPaper = async (id: string) => {
-    if (!firestore || !pastPapersCollectionRef) return;
-    const docRef = doc(firestore, `pastPapers`, id);
+    if (!firestore) return;
+    const docRef = doc(firestore, 'pastPapers', id);
     
     deleteDoc(docRef)
       .then(() => {
@@ -542,14 +574,48 @@ export default function PastPaperUploaderPage() {
         }
       })
       .catch(serverError => {
-        const firstDocRef = doc(firestore, `pastPapers`, idsToDelete[0]);
-        const permissionError = new FirestorePermissionError({
-          path: firstDocRef.path,
-          operation: 'delete',
-        });
-        errorEmitter.emit('permission-error', permissionError);
+        // Find the first doc to get the path for the error
+        if (idsToDelete.length > 0) {
+            const firstDocRef = doc(firestore, `pastPapers`, idsToDelete[0]);
+            const permissionError = new FirestorePermissionError({
+                path: firstDocRef.path,
+                operation: 'delete',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
       });
   }
+  
+  const handleSubjectUpdate = async () => {
+    if (!editingId || !firestore) return;
+
+    const docRef = doc(firestore, 'pastPapers', editingId);
+    
+    try {
+      await updateDoc(docRef, { subject: editingSubject });
+      toast({
+        title: "Subject Updated",
+        description: "The subject name has been saved.",
+      });
+    } catch (error) {
+       console.error("Subject update failed:", error);
+       const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: { subject: editingSubject },
+        });
+       errorEmitter.emit('permission-error', permissionError);
+       toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Could not save the new subject name.",
+      });
+    } finally {
+      setEditingId(null);
+      setEditingSubject('');
+    }
+  };
+
 
   const unpairedPapers = useMemo(() => stagedFiles.filter(f => f.type === 'paper'), [stagedFiles]);
   const unpairedMemos = useMemo(() => stagedFiles.filter(f => f.type === 'memo'), [stagedFiles]);
@@ -854,7 +920,29 @@ export default function PastPaperUploaderPage() {
                         aria-label="Select row"
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{item.subject}</TableCell>
+                    <TableCell 
+                      className="font-medium"
+                      onDoubleClick={() => {
+                        setEditingId(item.id);
+                        setEditingSubject(item.subject);
+                      }}
+                    >
+                      {editingId === item.id ? (
+                        <Input
+                          value={editingSubject}
+                          onChange={(e) => setEditingSubject(e.target.value)}
+                          onBlur={handleSubjectUpdate}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSubjectUpdate();
+                            if (e.key === 'Escape') setEditingId(null);
+                          }}
+                          autoFocus
+                          className="h-8"
+                        />
+                      ) : (
+                        item.subject
+                      )}
+                    </TableCell>
                     <TableCell>{item.year}</TableCell>
                     <TableCell className="font-mono text-xs">{item.paperName}</TableCell>
                     <TableCell>
@@ -929,3 +1017,5 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
+
+    
