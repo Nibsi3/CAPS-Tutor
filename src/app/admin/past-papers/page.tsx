@@ -106,7 +106,7 @@ export default function PastPaperUploaderPage() {
     const newFiles: StagedFile[] = Array.from(files).map(file => {
       const name = file.name.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ');
 
-      let type: StagedFile['type'] = 'paper'; // Default to 'paper'
+      let type: StagedFile['type'] = 'paper';
       if (name.includes('memo') || name.includes('memorandum')) {
         type = 'memo';
       }
@@ -153,7 +153,6 @@ export default function PastPaperUploaderPage() {
       return { file, subject, year, type, paperNumber };
     });
 
-    // **FIXED LOGIC**: Correctly merge new files with existing staged files.
     setStagedFiles(prevStagedFiles => {
         const updatedFilesMap = new Map(prevStagedFiles.map(f => [f.file.name, f]));
         newFiles.forEach(nf => {
