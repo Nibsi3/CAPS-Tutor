@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -36,6 +37,7 @@ import { collection, doc, addDoc, deleteDoc, updateDoc, writeBatch } from 'fireb
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 
 
 interface StagedFile {
@@ -106,6 +108,20 @@ export default function PastPaperUploaderPage() {
   const [sortKey, setSortKey] = useState<SortKey>('subject');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedPapers, setSelectedPapers] = useState<string[]>([]);
+  
+  const prevPairedCount = useRef(0);
+
+  useEffect(() => {
+    if (pairedFiles.length > prevPairedCount.current) {
+      const newPairsCount = pairedFiles.length - prevPairedCount.current;
+      toast({
+          title: "Files Paired Automatically",
+          description: `${newPairsCount} paper(s) and memo(s) were successfully paired.`,
+      });
+    }
+    prevPairedCount.current = pairedFiles.length;
+  }, [pairedFiles, toast]);
+
 
   const pastPapersCollectionRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -113,15 +129,6 @@ export default function PastPaperUploaderPage() {
   }, [user, firestore]);
 
   const { data: processedPapers, isLoading: arePapersLoading } = useCollection<ProcessedPaper>(pastPapersCollectionRef);
-
-  useEffect(() => {
-    if (pairedFiles.length > 0) {
-        toast({
-            title: "Files Paired Automatically",
-            description: `${pairedFiles.length} paper(s) and memo(s) were successfully paired.`,
-        });
-    }
-  }, [pairedFiles, toast]);
 
 
   const parseFileName = (file: File): Omit<StagedFile, 'id' | 'file'> => {
@@ -630,7 +637,7 @@ export default function PastPaperUploaderPage() {
                 <TableRow>
                    <TableHead className="w-[50px]">
                      <Checkbox
-                        checked={selectedPapers.length > 0 && selectedPapers.length === sortedAndFilteredPapers.length}
+                        checked={selectedPapers.length > 0 && !!sortedAndFilteredPapers.length && selectedPapers.length === sortedAndFilteredPapers.length}
                         onCheckedChange={(checked) => handleSelectAll(!!checked)}
                         aria-label="Select all"
                       />
@@ -679,13 +686,19 @@ export default function PastPaperUploaderPage() {
                     <TableCell>{item.year}</TableCell>
                     <TableCell className="font-mono text-xs">{item.paperName}</TableCell>
                     <TableCell>
-                       <span className={cn("font-medium px-2 py-1 rounded-full text-xs", 
-                          item.status === 'Processed' ? "bg-green-100 text-green-800" : 
-                          item.status === 'Failed' ? "bg-red-100 text-red-800" :
-                          "bg-yellow-100 text-yellow-800 animate-pulse"
-                        )}>
-                          {item.status}
-                        </span>
+                      <div className="w-32 flex items-center gap-2">
+                         <Progress 
+                            value={item.status === 'Processed' ? 100 : item.status === 'Processing' ? 50 : 0} 
+                            className={cn('h-2 flex-1', item.status === 'Failed' && '[&>*]:bg-destructive')}
+                         />
+                         <span className={cn("font-medium text-xs", 
+                            item.status === 'Processed' ? "text-green-600" : 
+                            item.status === 'Failed' ? "text-red-600" :
+                            "text-yellow-600 animate-pulse"
+                          )}>
+                            {item.status}
+                          </span>
+                      </div>
                     </TableCell>
                      <TableCell className="font-semibold text-center">{item.questionCount ?? 'N/A'}</TableCell>
                     <TableCell className="text-right">
