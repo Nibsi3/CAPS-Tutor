@@ -151,8 +151,18 @@ export default function PastPaperUploaderPage() {
       return { subject, year, type, paperNumber, language };
   }
 
-  const getPairingKey = (file: StagedFile) => {
-    return `${file.subject}-${file.year}-${file.language}-${file.paperNumber}`.toLowerCase();
+  const getPairingKey = (file: Omit<StagedFile, 'id' | 'file'>) => {
+    // Normalize the filename to create a more robust key
+    let key = file.subject.toLowerCase();
+    key += `-${file.year}`;
+    if (file.language !== 'Unknown') {
+        key += `-${file.language.toLowerCase()}`;
+    }
+    if (file.paperNumber) {
+        key += `-p${file.paperNumber}`;
+    }
+    // A further step could be to remove common words like 'june', 'nov', etc.
+    return key;
   }
 
   const autoPairFiles = useCallback((allFiles: StagedFile[]) => {
@@ -162,7 +172,9 @@ export default function PastPaperUploaderPage() {
 
     // Group files by pairing key
     for (const file of allFiles) {
-      const key = getPairingKey(file);
+      const parsedInfo = parseFileName(file.file);
+      const key = getPairingKey(parsedInfo);
+
       if (!fileGroups.has(key)) {
         fileGroups.set(key, {});
       }
@@ -177,7 +189,7 @@ export default function PastPaperUploaderPage() {
     }
 
     // Create pairs and collect remaining files
-    for (const [key, group] of fileGroups.entries()) {
+    for (const group of fileGroups.values()) {
       if (group.paper && group.memo) {
         newPairs.push({
           id: `${group.paper.id}-${group.memo.id}`,
@@ -209,14 +221,19 @@ export default function PastPaperUploaderPage() {
       const { newPairs, remainingFiles } = autoPairFiles(allUnpairedFiles);
 
       if (newPairs.length > 0) {
-        setPairedFiles(currentPaired => [...currentPaired, ...newPairs]);
-        toast({
-          title: "Files Paired Automatically",
-          description: `${newPairs.length} paper(s) and memo(s) were successfully paired.`,
+         setPairedFiles(currentPaired => {
+            const existingPairIds = new Set(currentPaired.map(p => p.id));
+            const uniqueNewPairs = newPairs.filter(p => !existingPairIds.has(p.id));
+            if (uniqueNewPairs.length > 0) {
+              toast({
+                title: "Files Paired Automatically",
+                description: `${uniqueNewPairs.length} paper(s) and memo(s) were successfully paired.`,
+              });
+            }
+            return [...currentPaired, ...uniqueNewPairs];
         });
       }
 
-      // To avoid duplicates, we create a map of the remaining files
       const remainingFileMap = new Map(remainingFiles.map(f => [f.id, f]));
       return Array.from(remainingFileMap.values());
     });
