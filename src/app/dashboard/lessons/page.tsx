@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { lessons, grades, placeholderLessons } from "@/lib/data";
+import { lessons, grades, placeholderLessons, subjectColors } from "@/lib/data";
 import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator, Loader, UserCheck, Settings, MessageSquare } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
@@ -41,49 +41,6 @@ const subjectIcons: Record<string, React.ElementType> = {
   "Afrikaans Huistaal": MessageSquare,
   "Afrikaans Eerste Addisionele Taal": MessageSquare,
   // Add more icons for other subjects if needed
-};
-
-const subjectColors: Record<string, { bg: string, text: string }> = {
-    "Mathematics": {
-      bg: "bg-blue-100 dark:bg-blue-900/30",
-      text: "text-blue-600 dark:text-blue-400"
-    },
-    "Physical Sciences": {
-      bg: "bg-purple-100 dark:bg-purple-900/30",
-      text: "text-purple-600 dark:text-purple-400"
-    },
-    "Life Sciences": {
-      bg: "bg-green-100 dark:bg-green-900/30",
-      text: "text-green-600 dark:text-green-400"
-    },
-    "Geography": {
-      bg: "bg-orange-100 dark:bg-orange-900/30",
-      text: "text-orange-600 dark:text-orange-400"
-    },
-    "Accounting": {
-      bg: "bg-indigo-100 dark:bg-indigo-900/30",
-      text: "text-indigo-600 dark:text-indigo-400"
-    },
-    "Business Studies": {
-      bg: "bg-pink-100 dark:bg-pink-900/30",
-      text: "text-pink-600 dark:text-pink-400"
-    },
-    "English Home Language": {
-      bg: "bg-red-100 dark:bg-red-900/30",
-      text: "text-red-600 dark:text-red-400"
-    },
-    "English First Additional Language": {
-      bg: "bg-red-100 dark:bg-red-900/30",
-      text: "text-red-600 dark:text-red-400"
-    },
-    "Afrikaans Huistaal": {
-      bg: "bg-yellow-100 dark:bg-yellow-900/30",
-      text: "text-yellow-600 dark:text-yellow-400"
-    },
-    "Afrikaans Eerste Addisionele Taal": {
-      bg: "bg-yellow-100 dark:bg-yellow-900/30",
-      text: "text-yellow-600 dark:text-yellow-400"
-    },
 };
 
 

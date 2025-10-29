@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Loader, Search, FileText, ArrowRight, BrainCircuit } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { subjects as allSubjects, grades as allGrades } from '@/lib/data';
+import { subjects as allSubjects, grades as allGrades, subjectColors } from '@/lib/data';
+import { cn } from '@/lib/utils';
 
 interface PastPaper {
     id: string;
@@ -111,11 +112,20 @@ export default function PastPaperPracticePage() {
                         </div>
                     ) : filteredPapers.length > 0 ? (
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {filteredPapers.map(paper => (
+                            {filteredPapers.map(paper => {
+                                // Find the base subject name (e.g., "Mathematics" from "Mathematics Paper 1")
+                                const baseSubject = allSubjects.find(s => paper.subject.startsWith(s.label))?.label || paper.subject;
+                                const colors = subjectColors[baseSubject] || { bg: "bg-muted", text: "text-muted-foreground" };
+                                return (
                                 <Card key={paper.id} className="flex flex-col hover:shadow-lg transition-shadow duration-300">
                                     <CardHeader>
-                                        <CardTitle className="text-xl">{paper.subject}</CardTitle>
-                                        <CardDescription>{paper.year} Examination Paper</CardDescription>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className={cn("p-2 rounded-lg", colors.bg)}>
+                                                <FileText className={cn("w-5 h-5", colors.text)} />
+                                            </div>
+                                            <CardTitle className="text-xl">{paper.subject}</CardTitle>
+                                        </div>
+                                        <CardDescription className={cn("font-semibold", colors.text)}>{paper.year} Examination Paper</CardDescription>
                                     </CardHeader>
                                     <CardContent className="flex-1">
                                         <div className="space-y-2 text-sm text-muted-foreground">
@@ -137,7 +147,7 @@ export default function PastPaperPracticePage() {
                                         </Button>
                                     </CardFooter>
                                 </Card>
-                            ))}
+                            )})}
                         </div>
                     ) : (
                          <div className="flex flex-col items-center justify-center text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
