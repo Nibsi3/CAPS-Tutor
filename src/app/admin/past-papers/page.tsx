@@ -88,12 +88,13 @@ const subjectKeywords: Record<string, string[]> = {
     "Mathematical Literacy": ["maths lit", "math lit", "mathematical literacy", "wiskundige geletterdheid"],
     "Technical Sciences": ["technical sciences"],
     "Visual Arts": ["visual arts"],
-    "Mechanical Technology": ["mechanical technology"],
+    "Mechanical Technology": ["mechanical technology", "mechanical tech"],
     "Dance Studies": ["dance studies"],
-    "Civil Technology": ["civil technology"],
+    "Civil Technology": ["civil technology", "civil tech"],
     "Dramatic Arts": ["dramatic arts"],
-    "Electrical Technology": ["electrical technology"],
-    "Agricultural Management Practices": ["agricultural management practices"],
+    "Electrical Technology": ["electrical technology", "electrical tech"],
+    "Agricultural Management Practices": ["agricultural management practices", "agric management"],
+    "Agricultural Sciences": ["agricultural sciences", "agric sci"],
     "English FAL": ["english fal", "english first additional language"],
     "English HL": ["english hl", "english home language"],
     "Afrikaans HT": ["afrikaans ht", "afrikaans huistaal"],
@@ -177,15 +178,14 @@ export default function PastPaperUploaderPage() {
   
   const getPairingKey = (stagedFile: StagedFile) => {
     const noise = [
-        'memo', 'memorandum', 'answer book', 'nsc', 'eng', 'afr',
-        'english', 'afrikaans', '.pdf', '.docx', '.doc',
+      'memo', 'memorandum', 'answer book', 'marking guidelines', '.pdf', '.docx', '.doc'
     ];
     const regex = new RegExp(noise.join('|'), 'gi');
     return stagedFile.file.name
         .toLowerCase()
-        .replace(regex, '')
-        .replace(/[^a-z0-9]/gi, ' ') // Replace non-alphanumeric with space
-        .replace(/\s+/, ' ') // Collapse whitespace
+        .replace(regex, '') // Remove only memo-related words and extensions
+        .replace(/[^a-z0-9]/gi, ' ') // Replace all non-alphanumeric with a space
+        .replace(/\s+/g, ' ') // Collapse multiple spaces into one
         .trim();
   };
 
@@ -194,6 +194,7 @@ export default function PastPaperUploaderPage() {
     const remainingFiles: StagedFile[] = [];
     const newPairs: PairedFile[] = [];
 
+    // First pass: Group by the generated pairing key
     for (const file of allFiles) {
       const key = getPairingKey(file);
 
@@ -206,10 +207,11 @@ export default function PastPaperUploaderPage() {
       } else if (file.type === 'memo' && !group.memo) {
         group.memo = file;
       } else {
-        remainingFiles.push(file);
+        remainingFiles.push(file); // This file is a duplicate or doesn't fit
       }
     }
-
+    
+    // Second pass: Create pairs and collect leftovers
     for (const group of fileGroups.values()) {
       if (group.paper && group.memo) {
         newPairs.push({
@@ -218,6 +220,7 @@ export default function PastPaperUploaderPage() {
           memo: group.memo,
         });
       } else {
+        // If a group isn't complete, put its member(s) back into the remaining list
         if (group.paper) remainingFiles.push(group.paper);
         if (group.memo) remainingFiles.push(group.memo);
       }
