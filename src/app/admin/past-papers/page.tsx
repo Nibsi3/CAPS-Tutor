@@ -131,7 +131,7 @@ export default function PastPaperUploaderPage() {
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingSubject, setEditingSubject] useState<string>('');
+  const [editingSubject, setEditingSubject] = useState<string>('');
 
   const [totalBatchSize, setTotalBatchSize] = useState(0);
   const [processedInBatch, setProcessedInBatch] = useState(0);
@@ -659,16 +659,6 @@ export default function PastPaperUploaderPage() {
     }
   }
 
-  const getButtonText = () => {
-    if (isProcessing) {
-        return `Processing ${processedInBatch + 1} of ${totalBatchSize}...`;
-    }
-    if (totalBatchSize > 0 && pairedFiles.length > 0) {
-        return `Continue Processing (${pairedFiles.length} left)`;
-    }
-    return `Process ${pairedFiles.length} Paired File(s)`;
-  };
-
 
   return (
     <div className="flex-1 space-y-6">
@@ -794,8 +784,18 @@ export default function PastPaperUploaderPage() {
         
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">3</span>Ready to Process ({pairedFiles.length})</CardTitle>
-                <CardDescription>These pairs are ready to be sent to the AI for analysis. Click "Process" to begin queuing them one by one.</CardDescription>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">3</span>Ready to Process ({pairedFiles.length})</CardTitle>
+                        <CardDescription>These pairs are ready for AI analysis. Click "Process" to begin queuing them one by one.</CardDescription>
+                    </div>
+                    {totalBatchSize > 0 && pairedFiles.length > 0 && (
+                         <Button onClick={handleProcessUploads} disabled={isProcessing}>
+                            {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" /> }
+                            Continue Processing ({pairedFiles.length} left)
+                        </Button>
+                    )}
+                </div>
             </CardHeader>
             {pairedFiles.length > 0 && (
                 <>
@@ -844,7 +844,7 @@ export default function PastPaperUploaderPage() {
                         )}
                         <Button onClick={handleProcessUploads} disabled={isProcessing || pairedFiles.length === 0} className="w-full sm:w-auto">
                             {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" /> }
-                            {getButtonText()}
+                            {isProcessing ? `Processing ${processedInBatch + 1} of ${totalBatchSize}...` : `Process ${pairedFiles.length} Paired File(s)`}
                         </Button>
                     </CardFooter>
                 </>
@@ -1045,9 +1045,5 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
-
-    
-
-    
 
     
