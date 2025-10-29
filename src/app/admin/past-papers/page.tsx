@@ -7,9 +7,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Loader, File as FileIcon, X } from "lucide-react";
+import { Upload, Loader, File as FileIcon, X, Trash2 } from "lucide-react";
 import { subjects as allSubjects } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 // import { processPastPaper } from "@/ai/flows/past-paper-processing";
 
 const grade12Subjects = allSubjects.filter(s => 
@@ -109,7 +120,6 @@ export default function PastPaperUploaderPage() {
   const processUploads = async () => {
     setIsProcessing(true);
     
-    // Group files by a common base name (e.g., 'math_p1_2023')
     const fileGroups = new Map<string, { paper?: StagedFile, memo?: StagedFile }>();
 
     stagedFiles.forEach(stagedFile => {
@@ -176,6 +186,14 @@ export default function PastPaperUploaderPage() {
     setStagedFiles([]);
     setIsProcessing(false);
   };
+  
+  const handleDeleteProcessedPaper = (index: number) => {
+    setProcessedPapers(prev => prev.filter((_, i) => i !== index));
+    toast({
+      title: "Entry Deleted",
+      description: "The past paper entry has been removed.",
+    });
+  };
 
   return (
     <div className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
@@ -203,6 +221,7 @@ export default function PastPaperUploaderPage() {
                   <TableHead>Paper</TableHead>
                   <TableHead>Memo</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -213,6 +232,30 @@ export default function PastPaperUploaderPage() {
                     <TableCell className="font-medium">{item.paper}</TableCell>
                     <TableCell className="font-medium">{item.memo}</TableCell>
                     <TableCell className={item.status === 'Processed' ? "text-green-600" : "text-yellow-600"}>{item.status}</TableCell>
+                    <TableCell>
+                       <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                           <Button variant="destructive" size="icon">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the
+                              past paper entry.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteProcessedPaper(index)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -281,3 +324,5 @@ export default function PastPaperUploaderPage() {
     </div>
   )
 }
+
+    
