@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader, FileText, Clock, AlertTriangle, ArrowRight, ArrowLeft, Bot, BrainCircuit } from 'lucide-react';
+import { Loader, FileText, AlertTriangle, ArrowRight, ArrowLeft, Bot } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from '@/components/ui/textarea';
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
@@ -39,13 +39,13 @@ interface PastPaper {
 
 export default function PastPaperSessionPage() {
     const params = useParams();
+    const router = useRouter();
     const paperId = params.id as string;
     const firestore = useFirestore();
     const { toast } = useToast();
 
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
-    const [isSessionStarted, setIsSessionStarted] = useState(false);
     const [score, setScore] = useState(0);
     const [isFinished, setIsFinished] = useState(false);
 
@@ -58,9 +58,8 @@ export default function PastPaperSessionPage() {
     const { data: paper, isLoading } = useDoc<PastPaper>(paperRef);
 
     useEffect(() => {
-        if (paper && paper.status === 'Processed' && paper.generatedQuestions && paper.generatedQuestions.length > 0) {
+        if (paper?.status === 'Processed' && paper.generatedQuestions && paper.generatedQuestions.length > 0) {
             setQuestions(paper.generatedQuestions.map(q => ({...q, studentAnswer: '', feedback: null, isChecking: false })));
-            setIsSessionStarted(true); // Automatically start the session
         }
     }, [paper]);
 
@@ -110,7 +109,7 @@ export default function PastPaperSessionPage() {
         }
     };
     
-    const currentQuestion = isSessionStarted && questions.length > 0 ? questions[currentQuestionIndex] : null;
+    const currentQuestion = questions.length > 0 ? questions[currentQuestionIndex] : null;
     const currentQuestionCorrect = !!currentQuestion?.feedback?.isCorrect;
 
 
@@ -147,7 +146,7 @@ export default function PastPaperSessionPage() {
                     <CardContent>
                         <p className="text-muted-foreground">This past paper has not been processed by the AI yet, or no questions were found inside it.</p>
                         <p className="text-muted-foreground mt-2">Please ask an administrator to process the paper from the admin panel.</p>
-                        <Button variant="outline" className="mt-6" onClick={() => window.history.back()}>Go Back</Button>
+                        <Button variant="outline" className="mt-6" onClick={() => router.back()}>Go Back</Button>
                     </CardContent>
                 </Card>
             </div>
@@ -170,7 +169,7 @@ export default function PastPaperSessionPage() {
                         <Button onClick={() => { setIsFinished(false); setCurrentQuestionIndex(0); setScore(0); }} className="w-full">
                             Try Again
                         </Button>
-                         <Button variant="outline" className="w-full" onClick={() => window.history.back()}>
+                         <Button variant="outline" className="w-full" onClick={() => router.back()}>
                             Choose Another Paper
                         </Button>
                     </CardFooter>

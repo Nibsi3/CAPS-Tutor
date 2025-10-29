@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from '@/components/ui/textarea';
@@ -36,6 +36,7 @@ const strugglingTopics = [
 export default function PracticePage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
   const [exam, setExam] = useState<{ examQuestions: QuestionWithFeedback[] } | null>(null);
@@ -68,7 +69,7 @@ export default function PracticePage() {
       toast({ variant: "destructive", title: "No Questions Found", description: "We don't have practice questions for this topic yet." });
       setExam({ examQuestions: [] });
     } else {
-      setExam({ examQuestions: questions.map(q => ({ ...q })) });
+      setExam({ examQuestions: questions.map(q => ({ ...q, studentAnswer: '', feedback: null, isChecking: false })) });
     }
     
     setIsLoading(false);
@@ -134,7 +135,7 @@ export default function PracticePage() {
       toast({ variant: "destructive", title: "Feedback Failed", description: "Could not get feedback for this answer." });
       newQuestions[index].feedback = null;
     } finally {
-      newQuestions[index].isChecking = false;
+      question.isChecking = false;
       setExam({ examQuestions: newQuestions });
     }
   };
@@ -280,10 +281,10 @@ export default function PracticePage() {
                     <CardContent className="space-y-4 pt-6 flex-1">
                         
                         {exam.examQuestions.map((q, index) => (
-                            <div key={index} className={currentQuestionIndex === index ? 'block' : 'hidden'}>
+                            <div key={q.id} className={currentQuestionIndex === index ? 'block' : 'hidden'}>
                                 <div className="rounded-xl border bg-card text-card-foreground shadow p-6 space-y-4">
                                     <p className="font-semibold text-lg">Question {index + 1}: <span className="text-sm font-normal text-muted-foreground">({q.topic})</span></p>
-                                    <p className="text-base">{q.question}</p>
+                                    <div className="text-base prose max-w-none"><ReactMarkdown>{q.question}</ReactMarkdown></div>
                                     
                                     <Textarea 
                                     placeholder="Your answer..."
@@ -343,6 +344,9 @@ export default function PracticePage() {
                             <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
                             <p className="font-semibold">Could not find practice questions for "{topic}".</p>
                             <p>We are working on adding more topics. Please try a different one for now.</p>
+                             <Button asChild className="mt-4">
+                                <Link href="/dashboard/lessons">Browse Lessons</Link>
+                            </Button>
                         </div>
                     </Card>
             )}
@@ -393,7 +397,7 @@ export default function PracticePage() {
                         onKeyDown={(e) => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
-                            handleTutorSendMessage();
+                            handleSendMessage();
                             }
                         }}
                         disabled={isTutorLoading}
@@ -402,7 +406,7 @@ export default function PracticePage() {
                         type="submit"
                         size="sm"
                         className="absolute right-2 top-1/2 -translate-y-1/2"
-                        onClick={handleTutorSendMessage}
+                        onClick={() => handleSendMessage()}
                         disabled={isTutorLoading || !tutorPrompt.trim()}
                         >
                         Send
@@ -415,3 +419,5 @@ export default function PracticePage() {
     </div>
   )
 }
+
+    
