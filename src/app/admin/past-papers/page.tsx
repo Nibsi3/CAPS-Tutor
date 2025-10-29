@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Loader, File as FileIcon, X, Trash2 } from "lucide-react";
+import { Upload, Loader, File as FileIcon, X, Trash2, Link2, Search, ArrowUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -20,61 +20,78 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { processPastPaper } from "@/ai/flows/past-paper-processing";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
+
+interface StagedFile {
+  id: string;
+  file: File;
+  subject: string;
+  year: string;
+  type: 'paper' | 'memo';
+  language: string;
+  paperNumber: string;
+}
+
+interface PairedFile {
+  id: string;
+  paper: StagedFile;
+  memo: StagedFile;
+}
+
+interface ProcessedPaper {
+    id: string;
+    subject: string;
+    year: string;
+    paperName: string;
+    memoName: string;
+    status: 'Processing' | 'Processed' | 'Failed';
+    progress: number;
+}
+
+type SortKey = 'subject' | 'year';
 
 // Add more specific keywords for subject detection. Longer, more unique keywords first.
 const subjectKeywords: Record<string, string[]> = {
     "Mathematics": ["mathematics", "maths", "wiskunde"],
-    "Physical Sciences": ["physical sciences", "physical science", "phys sci", "fisiese wetenskappe", "fisies"],
-    "Life Sciences": ["life sciences", "life science", "life sci", "bio", "lewenswetenskappe", "lewe"],
+    "Physical Sciences": ["physical sciences", "physical science", "phys sci", "fisiese wetenskappe"],
+    "Life Sciences": ["life sciences", "life science", "life sci", "bio", "lewenswetenskappe"],
     "Accounting": ["accounting", "rekeningkunde"],
     "Business Studies": ["business studies", "bus stud", "besigheidstudies"],
     "Economics": ["economics", "ekonomie"],
     "Geography": ["geography", "geo", "aardrykskunde"],
     "History": ["history", "geskiedenis"],
-    "Information Technology": ["information technology", "it"],
-    "Computer Applications Technology (CAT)": ["computer applications technology", "cat", "rit"],
-    "Tourism": ["tourism", "toerisme"],
-    "Consumer Studies": ["consumer studies", "verbruikerstudies"],
-    "Hospitality Studies": ["hospitality studies", "gasvryheidstudies"],
-    "Engineering Graphics & Design": ["engineering graphics and design", "egd", "ingenieursgrafika en ontwerp"],
-    "Visual Arts": ["visual arts"],
-    "English Home Language": ["english hl", "eng hl"],
-    "English First Additional Language": ["english fal", "eng fal"],
-    "Afrikaans Huistaal": ["afrikaans ht", "afr ht"],
-    "Afrikaans Eerste Addisionele Taal": ["afrikaans eat", "afr eat"],
+    "English": ["english", "eng"],
+    "Afrikaans": ["afrikaans", "afr"],
 };
 
-
-interface StagedFile {
-  file: File;
-  subject: string;
-  year: string;
-  type: 'paper' | 'memo';
-  paperNumber: string;
-  isDuplicate?: boolean; // To highlight replaced files
-}
-
-interface ProcessedPaper {
-    subject: string;
-    year: string;
-    paper: string;
-    memo: string;
-    status: 'Processing' | 'Processed';
-    progress: number;
+const languageKeywords: Record<string, string[]> = {
+    "ENG": ["english", "eng"],
+    "AFR": ["afrikaans", "afr"],
 }
 
 export default function PastPaperUploaderPage() {
   const { toast } = useToast();
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
+  const [pairedFiles, setPairedFiles] = useState<PairedFile[]>([]);
+  const [processedPapers, setProcessedPapers] = useState<ProcessedPaper[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processedPapers, setProcessedPapers] = useState<ProcessedPaper[]>([
-    { subject: "Mathematics Paper 1", year: "2023", paper: "math_p1_nov23.pdf", memo: "math_p1_memo_nov23.pdf", status: "Processed", progress: 100 },
-    { subject: "Physical Sciences Paper 2", year: "2023", paper: "phys_p2_nov23.pdf", memo: "phys_p2_memo_nov23.pdf", status: "Processed", progress: 100 },
-  ]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('subject');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -94,29 +111,21 @@ export default function PastPaperUploaderPage() {
         });
         return changed ? updatedPapers : prevPapers;
       });
-    }, 500);
+    }, 800);
 
     return () => clearInterval(interval);
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-  
-    const newFiles: StagedFile[] = Array.from(files).map(file => {
+  const parseFileName = (file: File): Omit<StagedFile, 'id'> => {
       const name = file.name.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ');
-  
-      let type: StagedFile['type'] = 'paper';
-      if (name.includes('memo') || name.includes('memorandum')) {
-        type = 'memo';
-      }
-  
+      
+      const type = (name.includes('memo') || name.includes('memorandum')) ? 'memo' : 'paper';
+      
       const yearMatch = name.match(/20\d{2}/) || name.match(/(?<=\s)\d{2}(?=\s|$)/);
       const year = yearMatch ? (yearMatch[0].length === 2 ? `20${yearMatch[0]}` : yearMatch[0]) : '';
       
-      let subject = '';
+      let subject = 'Unknown';
       let bestMatchLength = 0;
-  
       for (const [subj, keywords] of Object.entries(subjectKeywords)) {
         for (const kw of keywords) {
             if (name.includes(kw) && kw.length > bestMatchLength) {
@@ -125,46 +134,60 @@ export default function PastPaperUploaderPage() {
             }
         }
       }
-      
-      if (!subject) {
-        const nameWithoutExt = name.split('.pdf')[0];
-        let potentialSubject = nameWithoutExt;
-        potentialSubject = potentialSubject.replace(/(nov|jun|feb|march|afr|eng)\s*$/, '').trim();
-        potentialSubject = potentialSubject.replace(/20\d{2}\s*$/, '').trim();
-        potentialSubject = potentialSubject.replace(/p\d\s*$/, '').trim();
-        potentialSubject = potentialSubject.replace(/paper\s\d\s*$/, '').trim();
-        potentialSubject = potentialSubject.replace(/memo(randum)?\s*$/, '').trim();
-  
-        if(potentialSubject) {
-            subject = potentialSubject.replace(/\b\w/g, l => l.toUpperCase()).trim();
-        }
+
+      let language = 'Unknown';
+      for (const [lang, keywords] of Object.entries(languageKeywords)) {
+          if (keywords.some(kw => name.includes(kw))) {
+              language = lang;
+              break;
+          }
       }
-  
+
       let paperNumber = '';
       const paperMatch = name.match(/p(\d)|paper\s?(\d)/);
       if (paperMatch) {
           paperNumber = paperMatch[1] || paperMatch[2];
       }
       
-      return { file, subject, year, type, paperNumber };
-    });
+      return { file, subject, year, type, paperNumber, language };
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
   
-    setStagedFiles(prevStagedFiles => {
-        const updatedFilesMap = new Map(prevStagedFiles.map(f => [f.file.name, f]));
-        newFiles.forEach(nf => {
-            const isDuplicate = updatedFilesMap.has(nf.file.name);
-            updatedFilesMap.set(nf.file.name, { ...nf, isDuplicate });
-        });
-        return Array.from(updatedFilesMap.values());
+    const newFiles: StagedFile[] = Array.from(files).map((file, i) => ({
+      id: `${file.name}-${Date.now()}-${i}`,
+      ...parseFileName(file)
+    }));
+  
+    setStagedFiles(prev => {
+        const fileMap = new Map(prev.map(f => [f.file.name, f]));
+        newFiles.forEach(nf => fileMap.set(nf.file.name, nf));
+        return Array.from(fileMap.values());
     });
   };
-  
-  const removeStagedFile = (index: number) => {
-    setStagedFiles(prev => prev.filter((_, i) => i !== index));
+
+  const removeStagedFile = (id: string) => {
+    setStagedFiles(prev => prev.filter(f => f.id !== id));
   }
-  
-  const updateStagedFile = (index: number, newProps: Partial<StagedFile>) => {
-    setStagedFiles(prev => prev.map((f, i) => i === index ? { ...f, ...newProps } : f));
+
+  const removePairedFile = (id: string) => {
+    const pairToRemove = pairedFiles.find(p => p.id === id);
+    if(pairToRemove) {
+      setStagedFiles(prev => [...prev, pairToRemove.paper, pairToRemove.memo]);
+      setPairedFiles(prev => prev.filter(p => p.id !== id));
+    }
+  }
+
+  const pairFiles = (paperId: string, memoId: string) => {
+    const paper = stagedFiles.find(f => f.id === paperId);
+    const memo = stagedFiles.find(f => f.id === memoId);
+
+    if (paper && memo) {
+      setPairedFiles(prev => [...prev, { id: `${paper.id}-${memo.id}`, paper, memo }]);
+      setStagedFiles(prev => prev.filter(f => f.id !== paperId && f.id !== memoId));
+    }
   }
 
   const toDataUri = (file: File): Promise<string> => {
@@ -176,145 +199,257 @@ export default function PastPaperUploaderPage() {
     });
   };
 
-  const getBaseName = (name: string): string => {
-      return name
-          .toLowerCase()
-          .replace(/_/g, ' ')
-          .replace(/-/g, ' ')
-          .replace(/memo(randum)?/g, '')
-          .replace(/paper/g, '')
-          .replace(/p\d/g, '')
-          .replace(/\s+/g, ' ')
-          .trim();
-  };
-
-  const processUploads = async () => {
+  const handleProcessUploads = async () => {
     setIsProcessing(true);
-    
     let successCount = 0;
-    let failedPairs = 0;
+    
+    for (const pair of pairedFiles) {
+      try {
+        const paperDataUri = await toDataUri(pair.paper.file);
+        const memoDataUri = await toDataUri(pair.memo.file);
+        
+        const result = await processPastPaper({
+          subject: pair.paper.subject,
+          grade: 12,
+          year: parseInt(pair.paper.year),
+          paperDataUri,
+          memoDataUri,
+        });
 
-    const papers = stagedFiles.filter(f => f.type === 'paper');
-    const memos = stagedFiles.filter(f => f.type === 'memo');
-    const usedMemoIndices = new Set<number>();
+        if (result.success) {
+          const subjectName = pair.paper.paperNumber 
+            ? `${pair.paper.subject} Paper ${pair.paper.paperNumber}` 
+            : pair.paper.subject;
 
-    for (const paper of papers) {
-      const paperBaseName = getBaseName(paper.file.name);
-      let foundMemo: StagedFile | null = null;
-      let foundMemoIndex = -1;
-
-      for (let i = 0; i < memos.length; i++) {
-        if (usedMemoIndices.has(i)) continue;
-        const memo = memos[i];
-        const memoBaseName = getBaseName(memo.file.name);
-        if (paperBaseName === memoBaseName) {
-          foundMemo = memo;
-          foundMemoIndex = i;
-          break;
+          setProcessedPapers(prev => [...prev, { id: pair.id, subject: subjectName, year: pair.paper.year, paperName: pair.paper.file.name, memoName: pair.memo.file.name, status: "Processing", progress: 0 }]);
+          successCount++;
+        } else {
+           throw new Error(result.message);
         }
-      }
-
-      if (foundMemo) {
-        try {
-          usedMemoIndices.add(foundMemoIndex);
-          toast({ title: `Processing pair: ${paper.file.name}` });
-
-          const paperDataUri = await toDataUri(paper.file);
-          const memoDataUri = await toDataUri(foundMemo.file);
-          
-          const result = await processPastPaper({
-            subject: paper.subject,
-            grade: 12, // Defaulting to Grade 12 as requested
-            year: parseInt(paper.year),
-            paperDataUri,
-            memoDataUri,
-          });
-
-          if (result.success) {
-            const subjectName = paper.paperNumber 
-              ? `${paper.subject} Paper ${paper.paperNumber}` 
-              : paper.subject;
-
-            setProcessedPapers(prev => [...prev, { subject: subjectName, year: paper.year, paper: paper.file.name, memo: foundMemo!.file.name, status: "Processing", progress: 0 }]);
-            successCount++;
-          } else {
-             throw new Error(result.message);
-          }
-        } catch (error) {
-          failedPairs++;
-          console.error("Upload failed for pair:", paper.file.name, error);
-          toast({
-            variant: "destructive",
-            title: `Failed to process ${paper.file.name}`,
-            description: error instanceof Error ? error.message : "An unknown error occurred.",
-          });
-        }
+      } catch (error) {
+        console.error("Processing failed for pair:", pair.paper.file.name, error);
+        toast({
+          variant: "destructive",
+          title: `Failed to process ${pair.paper.file.name}`,
+          description: error instanceof Error ? error.message : "An unknown error occurred.",
+        });
       }
     }
     
-    const unpairedCount = stagedFiles.length - (successCount * 2) - (usedMemoIndices.size - successCount);
+    toast({
+        title: "Processing Started",
+        description: `${successCount} pairs sent for processing.`,
+    });
 
-    if (successCount > 0 || failedPairs > 0) {
-        toast({
-            title: "Bulk Processing Complete",
-            description: `${successCount} pairs successfully queued. ${failedPairs} pairs failed. ${unpairedCount > 0 ? `${unpairedCount} files could not be paired.` : ''}`,
-        });
-    } else {
-        toast({
-            variant: "destructive",
-            title: "No Pairs Found",
-            description: "Could not find any matching paper and memo pairs in the staged files. Please check file names.",
-        });
-    }
-
-    setStagedFiles([]);
+    setPairedFiles([]);
     setIsProcessing(false);
   };
   
-  const handleDeleteProcessedPaper = (index: number) => {
-    setProcessedPapers(prev => prev.filter((_, i) => i !== index));
+  const handleDeleteProcessedPaper = (id: string) => {
+    setProcessedPapers(prev => prev.filter(p => p.id !== id));
     toast({
       title: "Entry Deleted",
       description: "The past paper entry has been removed.",
     });
   };
 
+  const unpairedPapers = useMemo(() => stagedFiles.filter(f => f.type === 'paper'), [stagedFiles]);
+  const unpairedMemos = useMemo(() => stagedFiles.filter(f => f.type === 'memo'), [stagedFiles]);
+
+  const sortedAndFilteredPapers = useMemo(() => {
+    return [...processedPapers]
+      .filter(p => p.subject.toLowerCase().includes(searchTerm.toLowerCase()) || p.year.includes(searchTerm))
+      .sort((a, b) => {
+        const valA = a[sortKey].toLowerCase();
+        const valB = b[sortKey].toLowerCase();
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+  }, [processedPapers, searchTerm, sortKey, sortDirection]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+  };
+
+
   return (
-    <div className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle>Grade 12 Past Paper Manager</CardTitle>
-          <CardDescription className="max-w-lg text-balance leading-relaxed">
-            Bulk upload official past exam papers and their memos. The system will auto-pair them, detect subject, year, and paper number. The AI will then process them to generate topic-specific questions.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2">
+    <div className="flex-1 space-y-6">
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline text-3xl">Past Paper Manager</CardTitle>
+                <CardDescription>
+                A three-step workflow to upload, pair, and process past exam papers. The AI will analyze the processed papers to expand the question bank.
+                </CardDescription>
+            </CardHeader>
+        </Card>
+        
+        {/* Step 1: Upload */}
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">1</span>Upload Documents</CardTitle>
+                <CardDescription>Bulk upload all your paper and memo PDF files. The system will attempt to auto-detect details from the filename.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Label htmlFor="paper-files" className="sr-only">Past Papers & Memos</Label>
+                <Input id="paper-files" type="file" accept=".pdf" multiple onChange={handleFileChange} />
+            </CardContent>
+        </Card>
+        
+        {/* Step 2: Staging & Pairing */}
+        {stagedFiles.length > 0 && (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">2</span>Staging & Pairing</CardTitle>
+                    <CardDescription>Manually pair papers with their corresponding memos for 100% accuracy. Unpaired files will remain here until paired.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid md:grid-cols-2 gap-6">
+                    {/* Unpaired Papers */}
+                    <div className="space-y-3">
+                        <h3 className="font-semibold">Unpaired Papers ({unpairedPapers.length})</h3>
+                        <ScrollArea className="h-72 rounded-md border p-2">
+                           {unpairedPapers.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No papers to pair.</p> : unpairedPapers.map(p => (
+                                <div key={p.id} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted">
+                                    <FileIcon className="h-4 w-4 shrink-0" />
+                                    <div className="flex-1 text-sm">
+                                        <p className="font-medium truncate">{p.file.name}</p>
+                                        <p className="text-xs text-muted-foreground">{p.subject} / {p.year} / P{p.paperNumber} / {p.language}</p>
+                                    </div>
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <Button size="sm" variant="outline" className="shrink-0"><Link2 className="h-4 w-4 mr-2"/>Pair with Memo</Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Pair "{p.file.name}"</DialogTitle>
+                                                <DialogDescription>Select the matching memo from the list of unpaired memos.</DialogDescription>
+                                            </DialogHeader>
+                                            <ScrollArea className="h-60">
+                                                <div className="space-y-2">
+                                                    {unpairedMemos.map(m => (
+                                                        <DialogClose key={m.id} asChild>
+                                                            <button onClick={() => pairFiles(p.id, m.id)} className="w-full text-left flex items-center gap-2 p-2 rounded-md border hover:bg-accent">
+                                                                <FileIcon className="h-4 w-4 shrink-0"/>
+                                                                <div>
+                                                                    <p className="font-medium">{m.file.name}</p>
+                                                                    <p className="text-xs text-muted-foreground">{m.subject} / {m.year}</p>
+                                                                </div>
+                                                            </button>
+                                                        </DialogClose>
+                                                    ))}
+                                                </div>
+                                            </ScrollArea>
+                                        </DialogContent>
+                                    </Dialog>
+                                    <Button size="icon" variant="ghost" onClick={() => removeStagedFile(p.id)}><Trash2 className="h-4 w-4"/></Button>
+                                </div>
+                           ))}
+                        </ScrollArea>
+                    </div>
+                    {/* Unpaired Memos */}
+                    <div className="space-y-3">
+                        <h3 className="font-semibold">Unpaired Memos ({unpairedMemos.length})</h3>
+                        <ScrollArea className="h-72 rounded-md border p-2">
+                           {unpairedMemos.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No memos available for pairing.</p> : unpairedMemos.map(m => (
+                                <div key={m.id} className="flex items-center gap-2 p-2 rounded-md">
+                                    <FileIcon className="h-4 w-4 shrink-0" />
+                                    <div className="flex-1 text-sm">
+                                        <p className="font-medium truncate">{m.file.name}</p>
+                                        <p className="text-xs text-muted-foreground">{m.subject} / {m.year}</p>
+                                    </div>
+                                    <Button size="icon" variant="ghost" onClick={() => removeStagedFile(m.id)}><Trash2 className="h-4 w-4"/></Button>
+                                </div>
+                           ))}
+                        </ScrollArea>
+                    </div>
+                </CardContent>
+            </Card>
+        )}
+        
+        {/* Step 3: Process */}
+        {pairedFiles.length > 0 && (
+            <Card>
+                 <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">3</span>Ready to Process ({pairedFiles.length})</CardTitle>
+                    <CardDescription>These pairs are ready to be sent to the AI for analysis. Click "Process" to begin.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-2">
+                        {pairedFiles.map(pair => (
+                             <div key={pair.id} className="flex items-center gap-3 p-2 rounded-lg border">
+                                <Link2 className="h-5 w-5 text-green-500 shrink-0"/>
+                                <div className="flex-1 grid grid-cols-2 gap-2 text-sm">
+                                    <p className="font-medium truncate"><span className="text-muted-foreground">Paper:</span> {pair.paper.file.name}</p>
+                                    <p className="font-medium truncate"><span className="text-muted-foreground">Memo:</span> {pair.memo.file.name}</p>
+                                </div>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removePairedFile(pair.id)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={handleProcessUploads} disabled={isProcessing} className="w-full sm:w-auto">
+                        {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" /> }
+                        Process Paired File(s)
+                    </Button>
+                </CardFooter>
+            </Card>
+        )}
+
+        {/* Processed Papers Table */}
+        <Card>
           <CardHeader>
-            <CardTitle>Uploaded Past Papers</CardTitle>
-            <CardDescription>Status of previously uploaded papers.</CardDescription>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <CardTitle>Uploaded Past Papers ({processedPapers.length})</CardTitle>
+                <CardDescription>Status and management of processed papers.</CardDescription>
+              </div>
+               <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        type="search" 
+                        placeholder="Search by subject or year..." 
+                        className="pl-8 w-full"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Year</TableHead>
+                  <TableHead>
+                    <Button variant="ghost" onClick={() => handleSort('subject')}>
+                      Subject <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                     <Button variant="ghost" onClick={() => handleSort('year')}>
+                      Year <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
                   <TableHead>Paper File</TableHead>
                   <TableHead>Memo File</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {processedPapers.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{item.subject}</TableCell>
+                {sortedAndFilteredPapers.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.subject}</TableCell>
                     <TableCell>{item.year}</TableCell>
-                    <TableCell className="font-medium">{item.paper}</TableCell>
-                    <TableCell className="font-medium">{item.memo}</TableCell>
+                    <TableCell className="font-mono text-xs">{item.paperName}</TableCell>
+                    <TableCell className="font-mono text-xs">{item.memoName}</TableCell>
                     <TableCell>
                       {item.status === 'Processing' ? (
                         <div className="flex items-center gap-2 w-32">
@@ -322,10 +457,10 @@ export default function PastPaperUploaderPage() {
                            <span className="text-muted-foreground text-xs font-medium">{Math.round(item.progress)}%</span>
                         </div>
                       ) : (
-                         <span className="text-green-600 font-medium">Processed</span>
+                         <span className={cn("font-medium", item.status === 'Processed' ? "text-green-600" : "text-red-600")}>{item.status}</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                        <AlertDialog>
                         <AlertDialogTrigger asChild>
                            <Button variant="destructive" size="icon">
@@ -337,12 +472,12 @@ export default function PastPaperUploaderPage() {
                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription>
                               This action cannot be undone. This will permanently delete the
-                              past paper entry.
+                              past paper entry and its associated data from the question bank.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeleteProcessedPaper(index)}>
+                            <AlertDialogAction onClick={() => handleDeleteProcessedPaper(item.id)}>
                               Delete
                             </AlertDialogAction>
                           </AlertDialogFooter>
@@ -353,76 +488,16 @@ export default function PastPaperUploaderPage() {
                 ))}
               </TableBody>
             </Table>
+             {sortedAndFilteredPapers.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                    <p>No processed papers to display.</p>
+                </div>
+            )}
           </CardContent>
         </Card>
-        
-        <div className="space-y-8">
-            <Card>
-                <CardHeader>
-                <CardTitle>Bulk Upload New Papers</CardTitle>
-                <CardDescription>Select all papers and memos. Name them consistently (e.g., `subj_p1_2023.pdf` & `subj_p1_2023_memo.pdf`).</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid gap-3">
-                        <Label htmlFor="paper-files">Past Papers & Memos (PDF)</Label>
-                        <Input id="paper-files" type="file" accept=".pdf" multiple onChange={handleFileChange} />
-                    </div>
-                </CardContent>
-            </Card>
-
-            {stagedFiles.length > 0 && (
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle>Staged Files ({stagedFiles.length})</CardTitle>
-                        <CardDescription>Review files before processing.</CardDescription>
-                    </div>
-                    <Button variant="outline" size="icon" onClick={() => setStagedFiles([])}>
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Remove all</span>
-                    </Button>
-                </CardHeader>
-                <CardContent className="space-y-4 max-h-[500px] overflow-y-auto">
-                    {stagedFiles.map((stagedFile, index) => (
-                    <div key={index} className={cn("flex items-center gap-3 p-2 rounded-lg border", stagedFile.isDuplicate && "bg-yellow-100/50 border-yellow-400 dark:bg-yellow-900/30")}>
-                        <FileIcon className="h-5 w-5 text-muted-foreground" />
-                        <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium leading-none truncate">{stagedFile.file.name}</p>
-                            <div className="flex gap-2">
-                                <Input 
-                                    type="text"
-                                    placeholder="Subject"
-                                    className="h-8 text-xs w-[120px]"
-                                    value={stagedFile.subject}
-                                    onChange={(e) => updateStagedFile(index, { subject: e.target.value })}
-                                />
-                                <Input 
-                                    type="text"
-                                    placeholder="Year"
-                                    className="h-8 text-xs w-[70px]"
-                                    value={stagedFile.year}
-                                    onChange={(e) => updateStagedFile(index, { year: e.target.value })}
-                                />
-                                {stagedFile.paperNumber && <div className="h-8 px-2 flex items-center rounded-md bg-muted text-xs font-medium capitalize">P{stagedFile.paperNumber}</div>}
-                                <div className="h-8 px-2 flex items-center rounded-md bg-muted text-xs font-medium capitalize">{stagedFile.type}</div>
-                            </div>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeStagedFile(index)}>
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    ))}
-                </CardContent>
-                <CardContent>
-                    <Button onClick={processUploads} disabled={isProcessing} className="w-full">
-                        {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" /> }
-                        Process All Files
-                    </Button>
-                </CardContent>
-            </Card>
-            )}
-        </div>
-      </div>
     </div>
-  )
+  );
 }
+
+
+    
