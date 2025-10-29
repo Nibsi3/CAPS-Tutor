@@ -429,73 +429,72 @@ export default function PastPaperUploaderPage() {
       fileUrl: '',
     };
     
-    try {
-      const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
-      
-      // Update progress and remove the processed file from the queue
-      setProcessedInBatch(prev => prev + 1);
-      setPairedFiles(current => current.slice(1));
-      
-      // This part runs in the background.
-      (async () => {
-        try {
-          const paperDataUri = await toDataUri(pair.paper.file);
-          const memoDataUri = await toDataUri(pair.memo.file);
+    addDoc(pastPapersCollectionRef, paperDocData)
+      .then(docRef => {
+          // Update progress and remove the processed file from the queue
+          setProcessedInBatch(prev => prev + 1);
+          setPairedFiles(current => current.slice(1));
           
-          const result = await processPastPaper({
-            docId: docRef.id,
-            userId: user.uid,
-            subject: pair.subject,
-            grade: 12,
-            year: parseInt(pair.paper.year),
-            paperDataUri,
-            memoDataUri,
-          });
+          // This part runs in the background.
+          (async () => {
+            try {
+              const paperDataUri = await toDataUri(pair.paper.file);
+              const memoDataUri = await toDataUri(pair.memo.file);
+              
+              const result = await processPastPaper({
+                docId: docRef.id,
+                userId: user.uid,
+                subject: pair.subject,
+                grade: 12,
+                year: parseInt(pair.paper.year),
+                paperDataUri,
+                memoDataUri,
+              });
 
-          await updateDoc(docRef, {
-              status: result.success ? 'Processed' : 'Failed',
-              questionCount: result.questionCount
-          });
+              await updateDoc(docRef, {
+                  status: result.success ? 'Processed' : 'Failed',
+                  questionCount: result.questionCount
+              });
 
-          if (!result.success) {
-            toast({
-                variant: "destructive",
-                title: `Processing Failed: ${pair.paper.file.name}`,
-                description: result.message,
-            });
+              if (!result.success) {
+                toast({
+                    variant: "destructive",
+                    title: `Processing Failed: ${pair.paper.file.name}`,
+                    description: result.message,
+                });
+              }
+            } catch (error) {
+                console.error("AI flow or update failed for doc ID:", docRef.id, error);
+                await updateDoc(docRef, { status: 'Failed' });
+                toast({
+                      variant: "destructive",
+                      title: `Processing Error: ${pair.paper.file.name}`,
+                      description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
+                });
+            }
+          })();
+      })
+      .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: pastPapersCollectionRef.path,
+          operation: 'create',
+          requestResourceData: paperDocData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+          variant: 'destructive',
+          title: 'Upload Failed',
+          description: `Could not queue ${pair.paper.file.name}. Stopping process.`
+        });
+      })
+      .finally(() => {
+          setIsProcessing(false);
+          // If that was the last file, reset the batch tracking
+          if(pairedFiles.length === 1) {
+              setTotalBatchSize(0);
+              setProcessedInBatch(0);
           }
-        } catch (error) {
-            console.error("AI flow or update failed for doc ID:", docRef.id, error);
-            await updateDoc(docRef, { status: 'Failed' });
-            toast({
-                  variant: "destructive",
-                  title: `Processing Error: ${pair.paper.file.name}`,
-                  description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
-            });
-        }
-      })();
-
-    } catch (serverError) {
-      // This catch block handles the failure of `addDoc`
-      const permissionError = new FirestorePermissionError({
-        path: pastPapersCollectionRef.path,
-        operation: 'create',
-        requestResourceData: paperDocData,
       });
-      errorEmitter.emit('permission-error', permissionError);
-      toast({
-        variant: 'destructive',
-        title: 'Upload Failed',
-        description: `Could not queue ${pair.paper.file.name}. Stopping process.`
-      });
-    } finally {
-        setIsProcessing(false);
-        // If that was the last file, reset the batch tracking
-        if(pairedFiles.length === 1) {
-            setTotalBatchSize(0);
-            setProcessedInBatch(0);
-        }
-    }
   };
   
   const handleReprocessPaper = async (paper: ProcessedPaper) => {
@@ -671,8 +670,8 @@ export default function PastPaperUploaderPage() {
                 <ScrollArea className="mt-4 h-40 rounded-md border p-2">
                   {duplicateFiles.map((d, i) => (
                     <div key={i} className="mb-2 rounded-md border bg-muted p-2 text-sm">
-                      <p><b>New file:</b> {d.newFile.file.name}</p>
-                      <p><b>Matches:</b> {d.existingPaper.paperName}</p>
+                      <div><b>New file:</b> {d.newFile.file.name}</div>
+                      <div><b>Matches:</b> {d.existingPaper.paperName}</div>
                     </div>
                   ))}
                 </ScrollArea>
@@ -1045,5 +1044,7 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
+
+    
 
     
