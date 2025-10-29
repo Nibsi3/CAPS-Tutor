@@ -103,8 +103,6 @@ export default function PastPaperUploaderPage() {
     const files = e.target.files;
     if (!files) return;
 
-    const currentFilesMap = new Map(stagedFiles.map(f => [f.file.name, f]));
-
     const newFiles: StagedFile[] = Array.from(files).map(file => {
       const name = file.name.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ');
 
@@ -153,19 +151,19 @@ export default function PastPaperUploaderPage() {
       if (paperMatch) {
           paperNumber = paperMatch[1] || paperMatch[2];
       }
-
-      const isDuplicate = currentFilesMap.has(file.name);
       
-      return { file, subject, year, type, paperNumber, isDuplicate };
+      return { file, subject, year, type, paperNumber };
     });
 
-    // Merge new files with existing ones, replacing duplicates
-    const updatedFilesMap = new Map(stagedFiles.map(f => [f.file.name, { ...f, isDuplicate: false }]));
-    newFiles.forEach(nf => {
-      updatedFilesMap.set(nf.file.name, nf);
+    // **FIXED LOGIC**: Correctly merge new files with existing staged files.
+    setStagedFiles(prevStagedFiles => {
+        const updatedFilesMap = new Map(prevStagedFiles.map(f => [f.file.name, f]));
+        newFiles.forEach(nf => {
+            const isDuplicate = updatedFilesMap.has(nf.file.name);
+            updatedFilesMap.set(nf.file.name, { ...nf, isDuplicate });
+        });
+        return Array.from(updatedFilesMap.values());
     });
-
-    setStagedFiles(Array.from(updatedFilesMap.values()));
   };
   
   const removeStagedFile = (index: number) => {
