@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -99,23 +100,23 @@ export default function PastPaperPracticePage() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <Select onValueChange={setSelectedSubject} value={selectedSubject || ''}>
+                        <Select onValueChange={(value) => setSelectedSubject(value === 'all' ? null : value)} value={selectedSubject || 'all'}>
                             <SelectTrigger className="w-full sm:w-[200px]">
                                 <SelectValue placeholder="Filter by Subject" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value=''>All Subjects</SelectItem>
+                                <SelectItem value='all'>All Subjects</SelectItem>
                                 {allSubjects.map(subject => (
                                     <SelectItem key={subject.value} value={subject.value}>{subject.label}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Select onValueChange={setSelectedYear} value={selectedYear || ''}>
+                        <Select onValueChange={(value) => setSelectedYear(value === 'all' ? null : value)} value={selectedYear || 'all'}>
                             <SelectTrigger className="w-full sm:w-[150px]">
                                 <SelectValue placeholder="Filter by Year" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value=''>All Years</SelectItem>
+                                <SelectItem value='all'>All Years</SelectItem>
                                 {availableYears.map(year => (
                                     <SelectItem key={year} value={year}>{year}</SelectItem>
                                 ))}
