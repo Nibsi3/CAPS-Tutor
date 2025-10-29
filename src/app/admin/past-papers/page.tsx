@@ -33,6 +33,10 @@ import { processPastPaper } from "@/ai/flows/past-paper-processing";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, doc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 
 interface StagedFile {
@@ -58,7 +62,10 @@ interface ProcessedPaper {
     paperName: string;
     memoName: string;
     status: 'Processing' | 'Processed' | 'Failed';
-    progress: number;
+    questionCount?: number;
+    fileUrl?: string; // from PastPaper entity, not used yet
+    teacherId?: string; // from PastPaper entity
+    gradeLevel?: number; // from PastPaper entity
 }
 
 type SortKey = 'subject' | 'year';
@@ -84,37 +91,22 @@ const languageKeywords: Record<string, string[]> = {
 
 export default function PastPaperUploaderPage() {
   const { toast } = useToast();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [pairedFiles, setPairedFiles] = useState<PairedFile[]>([]);
-  const [processedPapers, setProcessedPapers] = useState<ProcessedPaper[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('subject');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
+  const pastPapersCollectionRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, `users/${user.uid}/pastPapers`);
+  }, [user, firestore]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setProcessedPapers(prevPapers => {
-        let changed = false;
-        const updatedPapers = prevPapers.map(p => {
-          if (p.status === 'Processing' && p.progress < 100) {
-            changed = true;
-            const newProgress = Math.min(p.progress + Math.random() * 20, 100);
-            return {
-              ...p,
-              progress: newProgress,
-              status: newProgress >= 100 ? 'Processed' : 'Processing',
-            };
-          }
-          return p;
-        });
-        return changed ? updatedPapers : prevPapers;
-      });
-    }, 800);
+  const { data: processedPapers, isLoading: arePapersLoading } = useCollection<ProcessedPaper>(pastPapersCollectionRef);
 
-    return () => clearInterval(interval);
-  }, []);
   
   const prevPairedCount = useRef(0);
   useEffect(() => {
@@ -282,6 +274,14 @@ export default function PastPaperUploaderPage() {
   };
 
   const handleProcessUploads = async () => {
+    if (!user || !pastPapersCollectionRef) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to process papers.",
+      });
+      return;
+    }
     setIsProcessing(true);
     let successCount = 0;
     
@@ -289,8 +289,30 @@ export default function PastPaperUploaderPage() {
       try {
         const paperDataUri = await toDataUri(pair.paper.file);
         const memoDataUri = await toDataUri(pair.memo.file);
+
+        const subjectName = pair.paper.paperNumber 
+          ? `${pair.paper.subject} Paper ${pair.paper.paperNumber}` 
+          : pair.paper.subject;
+
+        // 1. Create a record in Firestore
+        const paperDocData = {
+          teacherId: user.uid,
+          gradeLevel: 12, // Assuming Grade 12 for now
+          subject: subjectName,
+          year: pair.paper.year,
+          paperName: pair.paper.file.name,
+          memoName: pair.memo.file.name,
+          status: "Processing",
+          questionCount: 0,
+          fileUrl: '', // This would be the storage URL in a real app
+        };
+
+        const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
         
-        const result = await processPastPaper({
+        // 2. Trigger the AI flow with the new document ID
+        await processPastPaper({
+          docId: docRef.id, // Pass the doc ID to the flow
+          userId: user.uid, // Pass user ID for path construction
           subject: pair.paper.subject,
           grade: 12,
           year: parseInt(pair.paper.year),
@@ -298,16 +320,8 @@ export default function PastPaperUploaderPage() {
           memoDataUri,
         });
 
-        if (result.success) {
-          const subjectName = pair.paper.paperNumber 
-            ? `${pair.paper.subject} Paper ${pair.paper.paperNumber}` 
-            : pair.paper.subject;
-
-          setProcessedPapers(prev => [...prev, { id: pair.id, subject: subjectName, year: pair.paper.year, paperName: pair.paper.file.name, memoName: pair.memo.file.name, status: "Processing", progress: 0 }]);
-          successCount++;
-        } else {
-           throw new Error(result.message);
-        }
+        successCount++;
+        
       } catch (error) {
         console.error("Processing failed for pair:", pair.paper.file.name, error);
         toast({
@@ -320,25 +334,41 @@ export default function PastPaperUploaderPage() {
     
     toast({
         title: "Processing Started",
-        description: `${successCount} pairs sent for processing.`,
+        description: `${successCount} pairs have been sent for analysis. Their status will update in the table below.`,
     });
 
     setPairedFiles([]);
     setIsProcessing(false);
   };
   
-  const handleDeleteProcessedPaper = (id: string) => {
-    setProcessedPapers(prev => prev.filter(p => p.id !== id));
-    toast({
-      title: "Entry Deleted",
-      description: "The past paper entry has been removed.",
-    });
+  const handleDeleteProcessedPaper = async (id: string) => {
+    if (!user) return;
+    const docRef = doc(firestore, `users/${user.uid}/pastPapers`, id);
+    try {
+        await deleteDoc(docRef);
+        toast({
+            title: "Entry Deleted",
+            description: "The past paper entry has been removed.",
+        });
+    } catch (error) {
+        const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+            variant: "destructive",
+            title: "Deletion Failed",
+            description: "You do not have permission to delete this entry.",
+        });
+    }
   };
 
   const unpairedPapers = useMemo(() => stagedFiles.filter(f => f.type === 'paper'), [stagedFiles]);
   const unpairedMemos = useMemo(() => stagedFiles.filter(f => f.type === 'memo'), [stagedFiles]);
 
   const sortedAndFilteredPapers = useMemo(() => {
+    if (!processedPapers) return [];
     return [...processedPapers]
       .filter(p => p.subject.toLowerCase().includes(searchTerm.toLowerCase()) || p.year.includes(searchTerm))
       .sort((a, b) => {
@@ -454,43 +484,46 @@ export default function PastPaperUploaderPage() {
         )}
         
         {/* Step 3: Process */}
-        {pairedFiles.length > 0 && (
-            <Card>
-                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">3</span>Ready to Process ({pairedFiles.length})</CardTitle>
-                    <CardDescription>These pairs are ready to be sent to the AI for analysis. Click "Process" to begin.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-2">
-                        {pairedFiles.map(pair => (
-                             <div key={pair.id} className="flex items-center gap-3 p-2 rounded-lg border">
-                                <Link2 className="h-5 w-5 text-green-500 shrink-0"/>
-                                <div className="flex-1 grid grid-cols-2 gap-2 text-sm">
-                                    <p className="font-medium truncate"><span className="text-muted-foreground">Paper:</span> {pair.paper.file.name}</p>
-                                    <p className="font-medium truncate"><span className="text-muted-foreground">Memo:</span> {pair.memo.file.name}</p>
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><span className="flex items-center justify-center bg-primary text-primary-foreground rounded-full h-6 w-6 text-sm font-bold">3</span>Ready to Process ({pairedFiles.length})</CardTitle>
+                <CardDescription>These pairs are ready to be sent to the AI for analysis. Click "Process" to begin.</CardDescription>
+            </CardHeader>
+            {pairedFiles.length > 0 && (
+                <>
+                    <CardContent>
+                        <div className="space-y-2">
+                            {pairedFiles.map(pair => (
+                                <div key={pair.id} className="flex items-center gap-3 p-2 rounded-lg border">
+                                    <Link2 className="h-5 w-5 text-green-500 shrink-0"/>
+                                    <div className="flex-1 grid grid-cols-2 gap-2 text-sm">
+                                        <p className="font-medium truncate"><span className="text-muted-foreground">Paper:</span> {pair.paper.file.name}</p>
+                                        <p className="font-medium truncate"><span className="text-muted-foreground">Memo:</span> {pair.memo.file.name}</p>
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removePairedFile(pair.id)}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
                                 </div>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removePairedFile(pair.id)}>
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ))}
-                    </div>
-                </CardContent>
-                <CardFooter>
-                    <Button onClick={handleProcessUploads} disabled={isProcessing} className="w-full sm:w-auto">
-                        {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" /> }
-                        Process Paired File(s)
-                    </Button>
-                </CardFooter>
-            </Card>
-        )}
+                            ))}
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Button onClick={handleProcessUploads} disabled={isProcessing || pairedFiles.length === 0} className="w-full sm:w-auto">
+                            {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" /> }
+                            Process Paired File(s)
+                        </Button>
+                    </CardFooter>
+                </>
+            )}
+        </Card>
+        
 
         {/* Processed Papers Table */}
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <CardTitle>Uploaded Past Papers ({processedPapers.length})</CardTitle>
+                <CardTitle>Uploaded Past Papers ({processedPapers?.length || 0})</CardTitle>
                 <CardDescription>Status and management of processed papers.</CardDescription>
               </div>
                <div className="relative w-full sm:w-64">
@@ -520,28 +553,34 @@ export default function PastPaperUploaderPage() {
                     </Button>
                   </TableHead>
                   <TableHead>Paper File</TableHead>
-                  <TableHead>Memo File</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Questions Found</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {arePapersLoading && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center">
+                      <Loader className="mx-auto h-8 w-8 animate-spin text-primary" />
+                    </TableCell>
+                  </TableRow>
+                )}
                 {sortedAndFilteredPapers.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.subject}</TableCell>
                     <TableCell>{item.year}</TableCell>
                     <TableCell className="font-mono text-xs">{item.paperName}</TableCell>
-                    <TableCell className="font-mono text-xs">{item.memoName}</TableCell>
                     <TableCell>
-                      {item.status === 'Processing' ? (
-                        <div className="flex items-center gap-2 w-32">
-                           <Progress value={item.progress} className="flex-1" />
-                           <span className="text-muted-foreground text-xs font-medium">{Math.round(item.progress)}%</span>
-                        </div>
-                      ) : (
-                         <span className={cn("font-medium", item.status === 'Processed' ? "text-green-600" : "text-red-600")}>{item.status}</span>
-                      )}
+                       <span className={cn("font-medium px-2 py-1 rounded-full text-xs", 
+                          item.status === 'Processed' ? "bg-green-100 text-green-800" : 
+                          item.status === 'Failed' ? "bg-red-100 text-red-800" :
+                          "bg-yellow-100 text-yellow-800 animate-pulse"
+                        )}>
+                          {item.status}
+                        </span>
                     </TableCell>
+                     <TableCell className="font-semibold text-center">{item.questionCount ?? 'N/A'}</TableCell>
                     <TableCell className="text-right">
                        <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -570,7 +609,7 @@ export default function PastPaperUploaderPage() {
                 ))}
               </TableBody>
             </Table>
-             {sortedAndFilteredPapers.length === 0 && (
+             {!arePapersLoading && sortedAndFilteredPapers.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
                     <p>No processed papers to display.</p>
                 </div>
@@ -580,10 +619,3 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
-
-
-    
-
-    
-
-
