@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect } from 'react';
 import Link from "next/link"
 import {
   FileUp,
@@ -5,7 +8,10 @@ import {
   Users,
   Settings,
   FileText,
+  Loader,
 } from "lucide-react"
+import { useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
 
 import { Badge } from "@/components/ui/badge"
 import {
@@ -18,11 +24,32 @@ import {
 
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
 
+const ADMIN_EMAIL = 'cameronfalck03@gmail.com';
+
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading) {
+      if (!user || user.email !== ADMIN_EMAIL) {
+        router.push('/dashboard');
+      }
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading || !user || user.email !== ADMIN_EMAIL) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader className="h-16 w-16 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r bg-muted/40 md:block">
@@ -55,7 +82,7 @@ export default function AdminLayout({
               </Link>
               <Link
                 href="/admin/past-papers"
-                className="flex items-center gap-3 rounded-lg bg-accent px-3 py-2 text-primary transition-all hover:text-primary"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
               >
                 <FileText className="h-4 w-4" />
                 Past Paper Uploader
