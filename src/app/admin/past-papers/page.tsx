@@ -133,6 +133,9 @@ export default function PastPaperUploaderPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingSubject, setEditingSubject] = useState<string>('');
 
+  const [totalBatchSize, setTotalBatchSize] = useState(0);
+  const [processedInBatch, setProcessedInBatch] = useState(0);
+
 
   const prevPairedCount = useRef(0);
 
@@ -352,6 +355,8 @@ export default function PastPaperUploaderPage() {
     if(pairToRemove) {
       setStagedFiles(prev => [...prev, pairToRemove.paper, pairToRemove.memo]);
       setPairedFiles(prev => prev.filter(p => p.id !== id));
+      setTotalBatchSize(0); // Reset batch if a file is removed
+      setProcessedInBatch(0);
     }
   }
 
@@ -395,12 +400,15 @@ export default function PastPaperUploaderPage() {
     if (isProcessing) return;
 
     setIsProcessing(true);
-    let successCount = 0;
+    if(totalBatchSize === 0) { // Start a new batch
+        setTotalBatchSize(pairedFiles.length);
+        setProcessedInBatch(0);
+    }
     
-    // Process one by one from the pairedFiles state
-    while (pairedFiles.length > 0) {
-      const pair = pairedFiles[0];
-      
+    // Create a mutable copy of the array to work with
+    const filesToProcess = [...pairedFiles];
+
+    for (const pair of filesToProcess) {
       const subjectName = pair.paper.paperNumber 
         ? `${pair.subject} Paper ${pair.paper.paperNumber}` 
         : pair.subject;
@@ -419,14 +427,10 @@ export default function PastPaperUploaderPage() {
       
       try {
         const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
-        successCount++;
-        toast({
-          title: `Queued: ${pair.paper.file.name}`,
-          description: `Processing ${successCount} of the remaining files.`,
-        });
+        setProcessedInBatch(prev => prev + 1);
 
         // Remove the processed pair from the state
-        setPairedFiles(current => current.slice(1));
+        setPairedFiles(current => current.filter(p => p.id !== pair.id));
         
         // This part runs in the background. No need to await.
         (async () => {
@@ -486,6 +490,10 @@ export default function PastPaperUploaderPage() {
     }
     
     setIsProcessing(false);
+    if(pairedFiles.length === 0) { // Reset batch on completion
+        setTotalBatchSize(0);
+        setProcessedInBatch(0);
+    }
   };
   
   const handleReprocessPaper = async (paper: ProcessedPaper) => {
@@ -656,6 +664,16 @@ export default function PastPaperUploaderPage() {
     }
   }
 
+  const getButtonText = () => {
+    if (isProcessing) {
+        return `Processing ${processedInBatch + 1} of ${totalBatchSize}...`;
+    }
+    if (totalBatchSize > 0 && pairedFiles.length > 0) {
+        return `Continue Processing (${pairedFiles.length} left)`;
+    }
+    return `Process ${pairedFiles.length} Paired File(s)`;
+  };
+
 
   return (
     <div className="flex-1 space-y-6">
@@ -819,10 +837,19 @@ export default function PastPaperUploaderPage() {
                             ))}
                         </div>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="flex-col items-start gap-4">
+                        {totalBatchSize > 0 && (
+                            <div className="w-full">
+                                <Progress value={(processedInBatch / totalBatchSize) * 100} className="w-full" />
+                                <p className="text-sm text-muted-foreground mt-2">
+                                    Queued {processedInBatch} of {totalBatchSize} files.
+                                    {pairedFiles.length > 0 && ` ${pairedFiles.length} remaining.`}
+                                </p>
+                            </div>
+                        )}
                         <Button onClick={handleProcessUploads} disabled={isProcessing || pairedFiles.length === 0} className="w-full sm:w-auto">
                             {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" /> }
-                            {isProcessing ? 'Processing...' : `Process ${pairedFiles.length} Paired File(s)`}
+                            {getButtonText()}
                         </Button>
                     </CardFooter>
                 </>
@@ -1023,6 +1050,8 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
+
+    
 
     
 
