@@ -19,8 +19,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-// import { processPastPaper } from "@/ai/flows/past-paper-processing";
+} from "@/components/ui/alert-dialog";
+import { processPastPaper } from "@/ai/flows/past-paper-processing";
+import { cn } from "@/lib/utils";
+
 
 // Add more specific keywords for subject detection. Longer, more unique keywords first.
 const subjectKeywords: Record<string, string[]> = {
@@ -52,6 +54,7 @@ interface StagedFile {
   year: string;
   type: 'paper' | 'memo' | 'unknown';
   paperNumber: string;
+  isDuplicate?: boolean; // To highlight replaced files
 }
 
 export default function PastPaperUploaderPage() {
@@ -66,6 +69,8 @@ export default function PastPaperUploaderPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
+
+    const currentFilesMap = new Map(stagedFiles.map(f => [f.file.name, f]));
 
     const newFiles: StagedFile[] = Array.from(files).map(file => {
       const name = file.name.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ');
@@ -94,23 +99,19 @@ export default function PastPaperUploaderPage() {
       
       // Fallback subject detection
       if (!subject) {
-        const nameWithoutExt = name.replace('.pdf', '');
-        const paperNumberMatch = nameWithoutExt.match(/p\d\s|paper\s\d\s/);
-        const yearMatch = nameWithoutExt.match(/20\d{2}/);
+        const nameWithoutExt = name.split('.pdf')[0];
+        let potentialSubject = nameWithoutExt;
 
-        let endOfSubjectIndex = nameWithoutExt.length;
-        if(paperNumberMatch) {
-            endOfSubjectIndex = paperNumberMatch.index!;
-        } else if (yearMatch) {
-             endOfSubjectIndex = yearMatch.index!;
-        }
-        
-        let potentialSubject = nameWithoutExt.substring(0, endOfSubjectIndex).trim();
-        // Remove trailing language indicators like 'afr' or 'eng'
-        potentialSubject = potentialSubject.replace(/\s(afr|eng)$/i, '').trim();
+        // Try to remove month, year, paper number etc. from the end
+        potentialSubject = potentialSubject.replace(/(nov|jun|feb|march|afr|eng)\s*$/, '').trim();
+        potentialSubject = potentialSubject.replace(/20\d{2}\s*$/, '').trim();
+        potentialSubject = potentialSubject.replace(/p\d\s*$/, '').trim();
+        potentialSubject = potentialSubject.replace(/paper\s\d\s*$/, '').trim();
+        potentialSubject = potentialSubject.replace(/memo(randum)?\s*$/, '').trim();
+
         if(potentialSubject) {
             // Capitalize first letter of each word
-            subject = potentialSubject.replace(/\b\w/g, l => l.toUpperCase());
+            subject = potentialSubject.replace(/\b\w/g, l => l.toUpperCase()).trim();
         }
       }
 
@@ -120,10 +121,18 @@ export default function PastPaperUploaderPage() {
           paperNumber = paperMatch[1] || paperMatch[2];
       }
 
-
-      return { file, subject, year, type, paperNumber };
+      const isDuplicate = currentFilesMap.has(file.name);
+      
+      return { file, subject, year, type, paperNumber, isDuplicate };
     });
-    setStagedFiles(prev => [...prev, ...newFiles]);
+
+    // Merge new files with existing ones, replacing duplicates
+    const updatedFilesMap = new Map(stagedFiles.map(f => [f.file.name, { ...f, isDuplicate: false }]));
+    newFiles.forEach(nf => {
+      updatedFilesMap.set(nf.file.name, nf);
+    });
+
+    setStagedFiles(Array.from(updatedFilesMap.values()));
   };
   
   const removeStagedFile = (index: number) => {
@@ -164,6 +173,9 @@ export default function PastPaperUploaderPage() {
     });
 
     let successCount = 0;
+    let failedPairs = 0;
+    const processedKeys = new Set<string>();
+
     for (const [key, group] of fileGroups.entries()) {
       if (group.paper && group.memo) {
         try {
@@ -171,17 +183,13 @@ export default function PastPaperUploaderPage() {
           const paperDataUri = await toDataUri(group.paper.file);
           const memoDataUri = await toDataUri(group.memo.file);
           
-          // ** AI Flow Integration - Uncomment when ready **
-          // const result = await processPastPaper({
-          //   subject: group.paper.subject,
-          //   grade: 12,
-          //   year: parseInt(group.paper.year),
-          //   paperDataUri,
-          //   memoDataUri,
-          // });
-
-          // Mock result
-           const result = { success: true, message: `Successfully queued ${group.paper.file.name} for processing.` };
+          const result = await processPastPaper({
+            subject: group.paper.subject,
+            grade: 12, // Defaulting to Grade 12 as requested
+            year: parseInt(group.paper.year),
+            paperDataUri,
+            memoDataUri,
+          });
 
           if (result.success) {
             const subjectName = group.paper.paperNumber 
@@ -190,10 +198,12 @@ export default function PastPaperUploaderPage() {
 
             setProcessedPapers(prev => [...prev, { subject: subjectName, year: group.paper!.year, paper: group.paper!.file.name, memo: group.memo!.file.name, status: "Processing" }]);
             successCount++;
+            processedKeys.add(key);
           } else {
              throw new Error(result.message);
           }
         } catch (error) {
+          failedPairs++;
           console.error("Upload failed for pair:", key, error);
           toast({
             variant: "destructive",
@@ -201,21 +211,22 @@ export default function PastPaperUploaderPage() {
             description: error instanceof Error ? error.message : "An unknown error occurred.",
           });
         }
-      } else {
-        const missingPart = !group.paper ? "paper" : "memo";
-        const fileName = group.paper?.file?.name || group.memo?.file?.name || `files for ${key}`;
-        toast({
-            variant: "destructive",
-            title: `Incomplete Pair`,
-            description: `Could not find a matching ${missingPart} for ${fileName}.`,
-        });
       }
     }
     
-    if (successCount > 0) {
+    if (successCount > 0 || failedPairs > 0) {
+        const totalPairs = fileGroups.size;
+        const unpairedCount = totalPairs - successCount - failedPairs;
+
         toast({
-            title: "Bulk Processing Complete",
-            description: `${successCount} pairs successfully queued for processing.`,
+            title: "Bulk Processing Initiated",
+            description: `${successCount} pairs successfully queued. ${failedPairs} failed. ${unpairedCount} files could not be paired.`,
+        });
+    } else {
+        toast({
+            variant: "destructive",
+            title: "No Pairs Found",
+            description: "Could not find any matching paper and memo pairs in the staged files.",
         });
     }
 
@@ -237,7 +248,7 @@ export default function PastPaperUploaderPage() {
         <CardHeader className="pb-3">
           <CardTitle>Grade 12 Past Paper Manager</CardTitle>
           <CardDescription className="max-w-lg text-balance leading-relaxed">
-            Bulk upload official past exam papers and their memos. The system will auto-pair them. The AI will then process them to generate topic-specific questions.
+            Bulk upload official past exam papers and their memos. The system will auto-pair them, detect subject, year, and paper number. The AI will then process them to generate topic-specific questions.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -315,13 +326,19 @@ export default function PastPaperUploaderPage() {
 
             {stagedFiles.length > 0 && (
             <Card>
-                <CardHeader>
-                    <CardTitle>Staged Files</CardTitle>
-                    <CardDescription>Review and categorize the selected files before processing.</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Staged Files ({stagedFiles.length})</CardTitle>
+                        <CardDescription>Review files before processing.</CardDescription>
+                    </div>
+                    <Button variant="outline" size="icon" onClick={() => setStagedFiles([])}>
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Remove all</span>
+                    </Button>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 max-h-[500px] overflow-y-auto">
                     {stagedFiles.map((stagedFile, index) => (
-                    <div key={index} className="flex items-center gap-3 p-2 rounded-lg border">
+                    <div key={index} className={cn("flex items-center gap-3 p-2 rounded-lg border", stagedFile.isDuplicate && "bg-yellow-100/50 border-yellow-400 dark:bg-yellow-900/30")}>
                         <FileIcon className="h-5 w-5 text-muted-foreground" />
                         <div className="flex-1 space-y-1">
                             <p className="text-sm font-medium leading-none truncate">{stagedFile.file.name}</p>
@@ -349,6 +366,8 @@ export default function PastPaperUploaderPage() {
                         </Button>
                     </div>
                     ))}
+                </CardContent>
+                <CardContent>
                     <Button onClick={processUploads} disabled={isProcessing} className="w-full">
                         {isProcessing ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" /> }
                         Process All Files
