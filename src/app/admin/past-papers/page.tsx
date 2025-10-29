@@ -106,11 +106,9 @@ export default function PastPaperUploaderPage() {
     const newFiles: StagedFile[] = Array.from(files).map(file => {
       const name = file.name.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ');
 
-      let type: StagedFile['type'] = 'unknown';
+      let type: StagedFile['type'] = 'paper'; // Default to 'paper'
       if (name.includes('memo') || name.includes('memorandum')) {
         type = 'memo';
-      } else if (name.includes('p1') || name.includes('p2') || name.includes('paper') || name.includes('qp')) {
-        type = 'paper';
       }
 
       const yearMatch = name.match(/20\d{2}/) || name.match(/(?<=\s)\d{2}(?=\s|$)/);
