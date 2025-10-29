@@ -49,6 +49,28 @@
           "items": {
             "type": "string"
           }
+        },
+        "literature": {
+          "type": "object",
+          "description": "User's selected literature for their subjects.",
+          "properties": {
+            "english-hl": {
+              "type": "object",
+              "properties": {
+                "novel": { "type": "string" },
+                "drama": { "type": "string" },
+                "poems": { "type": "array", "items": { "type": "string" } }
+              }
+            },
+            "afrikaans-ht": {
+              "type": "object",
+              "properties": {
+                "novel": { "type": "string" },
+                "drama": { "type": "string" },
+                "poems": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
         }
       },
       "required": [
@@ -436,6 +458,4 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the CAPS Tutor application's core features, including grade/subject selection, interactive practice, lesson hubs, adaptive exam generation, and progress dashboards. It incorporates Google sign-up/sign-in and adheres to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. The structure prioritizes path-based ownership for user-specific data and denormalization of authorization data to avoid hierarchical dependencies.\n\n**Authorization Independence (Denormalization):**\nThe structure utilizes denormalization to achieve authorization independence. For example, the `StudentProgress` collection is located under the user's document (`/users/{userId}/studentProgress/{studentProgressId}`), ensuring that access to a student's progress is directly tied to the user ID in the path, eliminating the need for `get()` calls to parent documents. The `gradeLevel` and `subjects` are stored in the User document, and will dictate the data presented on the home page.\n\n**Structural Segregation (Homogeneous Security Posture):**\nThe structure segregates data based on access needs. User-specific data, like `StudentProgress` and uploaded content, are stored under the `/users/{userId}` path, while global data, like `Lessons` and `LearningObjectives`, are stored in top-level collections. This segregation simplifies security rules, as each collection has a clear and consistent security posture.\n\n**Access Modeling:**\nPath-Based Ownership: User-owned data (e.g., `StudentProgress`, `TeacherUploadedSyllabus`, `PastPapers`) is stored under the `/users/{userId}` path, providing clear ownership and simplified security rules.\nMembership Map: Not explicitly used in this simplified structure, but could be added to lessons for collaborative editing by teachers if needed.\nGlobal Roles (DBAC): Not implemented directly, but could be added using a dedicated `/roles_teacher/{uid}` collection to grant teacher roles.\n\n**QAPs (Rules are not Filters):**\n\nSecure `list` operations are supported through structural segregation and path-based ownership. For example, listing student progress is secured by the `/users/{userId}/studentProgress` path, ensuring that only the logged-in user can access their own progress data, which will then affect home page data.\n\n**Invariants:**\nOwnership: Path-based ownership enforces the invariant that a user owns their data (progress, uploaded content).\nTimestamps: While not explicitly included in the schema, adding `createdAt` and `updatedAt` timestamps to documents can help maintain data integrity and track changes."
-  }
-}
+    "reasoning": "The Firestore structure is designed to support the CAPS Tutor application's core features, including grade/subject selection, interactive practice, lesson hubs, adaptive exam generation, and progress dashboards. It incorporates Google sign-up/sign-in and adheres to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. The structure prioritizes path-based ownership for user-specific data and denormalization of authorization data to avoid hierarchical dependencies.\n\n**Authorization Independence (Denormalization):**\nThe structure utilizes denormalization to achieve authorization independence. For example, the `StudentProgress` collection is located under the user's document (`/users/{userId}/studentProgress/{studentProgressId}`), ensuring that access to a student's progress is directly tied to the user ID in the path, eliminating the need for `get()` calls to parent documents. The `gradeLevel` and `subjects` are stored in the User document, and will dictate the data presented on the home page.\n\n**Structural Segregation (Homogeneous Security Posture):**\nThe structure segregates data based on access needs. User-specific data, like `StudentProgress` and uploaded content, are stored under the `/users/{userId}` path, while global data, like `Lessons` and `LearningObjectives`, are stored in top-level collections. This segregation simplifies security rules, as each collection has a clear and consistent security posture.\n\n**Access Modeling:**\nPath-Based Ownership: User-owned data (e.g., `StudentProgress`, `TeacherUploadedSyllabus`, `PastPapers`) is stored under the `/users/{userId}` path, providing clear ownership and simplified security rules.\nMembership Map: Not explicitly used in this simplified structure, but could be added to lessons for collaborative editing by teachers if needed.\nGlobal Roles (DBAC): Not implemented directly, but could be added using a dedicated `/roles_teacher/{uid}` collection to grant teacher roles.\n\n**QAPs (Rules are not Filters):**\n\nSecure `list` operations are supported through structural segregation and path-based ownership. For example, listing student progress is secured by the `/users/{userId}/studentProgress` path, ensuring that only the logged-in user can access their own progress data, which will then affect home page data.\n\n**Invariants:**\nOwnership: Path-based ownership enforces the invariant that a user owns their data (progress, uploaded content).\nTimestamps: While not explicitly

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,7 @@ import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/fireb
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, Settings as SettingsIcon, AlertTriangle } from 'lucide-react';
-import { grades, subjects, provinces } from '@/lib/data';
+import { grades, subjects } from '@/lib/data';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import {
@@ -51,20 +51,22 @@ import {
 } from "@/components/ui/alert-dialog"
 import { deleteCurrentUser } from '@/firebase/auth/social-auth';
 import { useRouter } from 'next/navigation';
+import { LiteratureSelection, literatureSchema } from '@/components/forms/LiteratureSelection';
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
     message: 'First name must be at least 2 characters.',
-  }),
+  }).optional(),
   lastName: z.string().min(2, {
     message: 'Last name must be at least 2 characters.',
-  }),
+  }).optional(),
   gradeLevel: z.string({
     required_error: 'Please select a grade level.',
   }),
   subjects: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: 'You have to select at least one subject.',
   }),
+  literature: literatureSchema.optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -75,6 +77,7 @@ interface UserProfile {
   email: string;
   gradeLevel: number;
   subjects: string[];
+  literature?: z.infer<typeof literatureSchema>;
 }
 
 export default function SettingsPage() {
@@ -99,11 +102,18 @@ export default function SettingsPage() {
       lastName: '',
       gradeLevel: '',
       subjects: [],
+      literature: {
+        'english-hl': { novel: '', drama: '', poems: [] },
+        'english-fal': { novel: '', drama: '', poems: [] },
+        'afrikaans-ht': { novel: '', drama: '', poems: [] },
+        'afrikaans-eat': { novel: '', drama: '', poems: [] },
+      },
     },
     mode: 'onChange',
   });
 
-  const { formState, reset } = form;
+  const { control, formState, reset } = form;
+  const watchedSubjects = useWatch({ control, name: 'subjects' });
 
   useEffect(() => {
     if (userProfile && !formState.isDirty) {
@@ -111,6 +121,12 @@ export default function SettingsPage() {
         ...userProfile,
         gradeLevel: userProfile.gradeLevel ? userProfile.gradeLevel.toString() : '',
         subjects: userProfile.subjects || [],
+        literature: userProfile.literature || {
+            'english-hl': { novel: '', drama: '', poems: [] },
+            'english-fal': { novel: '', drama: '', poems: [] },
+            'afrikaans-ht': { novel: '', drama: '', poems: [] },
+            'afrikaans-eat': { novel: '', drama: '', poems: [] },
+        },
       });
     } else if (user && !userProfile && !isProfileLoading) {
       // Set defaults from user object if no profile exists
@@ -354,6 +370,12 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
           
+          <LiteratureSelection
+            control={control}
+            selectedSubjects={watchedSubjects || []}
+            selectedGrade={useWatch({ control, name: 'gradeLevel' })}
+          />
+          
           <Button type="submit" disabled={!formState.isDirty || formState.isSubmitting}>
              {formState.isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes
@@ -387,14 +409,13 @@ export default function SettingsPage() {
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeleteAccount} disabled={isDeleting}>
                   {isDeleting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                  Continue
+                  Delete My Account
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </CardFooter>
       </Card>
-
     </div>
   );
 }
