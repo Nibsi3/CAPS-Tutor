@@ -17,6 +17,28 @@ const grade12Subjects = allSubjects.filter(s =>
   !["Creative Arts", "Mathematical Literacy"].includes(s.label)
 );
 
+// Add keywords for subject detection
+const subjectKeywords: Record<string, string[]> = {
+    "Mathematics": ["math", "wiskunde"],
+    "Physical Sciences": ["phys", "physics", "science", "fisies", "wetenskap"],
+    "Life Sciences": ["life", "bio", "lewe"],
+    "Accounting": ["acc", "rekeningkunde"],
+    "Business Studies": ["business", "besigheid"],
+    "Economics": ["econ", "ekonomie"],
+    "Geography": ["geo", "aardrykskunde"],
+    "History": ["hist", "geskiedenis"],
+    "Information Technology": ["it", "info"],
+    "Computer Applications Technology (CAT)": ["cat", "rit"],
+    "Tourism": ["tourism", "toerisme"],
+    "Consumer Studies": ["consumer", "verbruiker"],
+    "Hospitality Studies": ["hospitality", "gasvryheid"],
+    "Engineering Graphics & Design": ["egd", "ing"],
+    "English Home Language": ["eng", "hl"],
+    "English First Additional Language": ["eng", "fal"],
+    "Afrikaans Huistaal": ["afr", "ht"],
+    "Afrikaans Eerste Addisionele Taal": ["afr", "eat"],
+};
+
 interface StagedFile {
   file: File;
   subject: string;
@@ -46,11 +68,19 @@ export default function PastPaperUploaderPage() {
         type = 'paper';
       }
 
-      // Simple regex to guess year from filename
       const yearMatch = file.name.match(/20\d{2}/);
       const year = yearMatch ? yearMatch[0] : '';
       
-      return { file, subject: '', year, type };
+      let subject = '';
+      for (const subj of grade12Subjects) {
+        const keywords = subjectKeywords[subj.label] || [];
+        if (keywords.some(kw => name.includes(kw))) {
+          subject = subj.label;
+          break;
+        }
+      }
+
+      return { file, subject, year, type };
     });
     setStagedFiles(prev => [...prev, ...newFiles]);
   };
@@ -248,5 +278,3 @@ export default function PastPaperUploaderPage() {
     </div>
   )
 }
-
-    
