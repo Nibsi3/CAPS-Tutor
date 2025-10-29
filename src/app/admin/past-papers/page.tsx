@@ -55,6 +55,7 @@ interface StagedFile {
   subject: string;
   year: string;
   type: 'paper' | 'memo' | 'unknown';
+  paperNumber: string;
 }
 
 export default function PastPaperUploaderPage() {
@@ -62,8 +63,8 @@ export default function PastPaperUploaderPage() {
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedPapers, setProcessedPapers] = useState([
-    { subject: "Mathematics", year: "2023", paper: "math_p1_nov23.pdf", memo: "math_p1_memo_nov23.pdf", status: "Processed" },
-    { subject: "Physical Sciences", year: "2023", paper: "phys_p2_nov23.pdf", memo: "phys_p2_memo_nov23.pdf", status: "Processed" },
+    { subject: "Mathematics Paper 1", year: "2023", paper: "math_p1_nov23.pdf", memo: "math_p1_memo_nov23.pdf", status: "Processed" },
+    { subject: "Physical Sciences Paper 2", year: "2023", paper: "phys_p2_nov23.pdf", memo: "phys_p2_memo_nov23.pdf", status: "Processed" },
   ]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,7 +81,7 @@ export default function PastPaperUploaderPage() {
         type = 'paper';
       }
 
-      const yearMatch = file.name.match(/20\d{2}/) || file.name.match(/(?<=\s)\d{2}(?=\s|$)/);
+      const yearMatch = name.match(/20\d{2}/) || name.match(/(?<=\s)\d{2}(?=\s|$)/);
       const year = yearMatch ? (yearMatch[0].length === 2 ? `20${yearMatch[0]}` : yearMatch[0]) : '';
       
       let subject = '';
@@ -94,8 +95,15 @@ export default function PastPaperUploaderPage() {
             }
         }
       }
+      
+      let paperNumber = '';
+      const paperMatch = name.match(/p(\d)|paper\s?(\d)/);
+      if (paperMatch) {
+          paperNumber = paperMatch[1] || paperMatch[2];
+      }
 
-      return { file, subject, year, type };
+
+      return { file, subject, year, type, paperNumber };
     });
     setStagedFiles(prev => [...prev, ...newFiles]);
   };
@@ -122,9 +130,18 @@ export default function PastPaperUploaderPage() {
     
     const fileGroups = new Map<string, { paper?: StagedFile, memo?: StagedFile }>();
 
+    // Normalize name by removing memo, paper number identifiers for grouping
+    const getBaseName = (stagedFile: StagedFile) => {
+        return stagedFile.file.name.toLowerCase()
+          .replace(/_memo(randum)?/, '')
+          .replace(/_p\d/, '')
+          .replace(/_paper\d?/, '')
+          .replace(/\.pdf$/, '');
+    };
+
     stagedFiles.forEach(stagedFile => {
       if (stagedFile.type === 'unknown' || !stagedFile.subject || !stagedFile.year) return;
-      const baseName = stagedFile.file.name.toLowerCase().replace('_memo', '').replace('.pdf', '');
+      const baseName = getBaseName(stagedFile);
       
       if (!fileGroups.has(baseName)) {
         fileGroups.set(baseName, {});
@@ -156,7 +173,11 @@ export default function PastPaperUploaderPage() {
            const result = { success: true, message: `Successfully queued ${group.paper.file.name} for processing.` };
 
           if (result.success) {
-            setProcessedPapers(prev => [...prev, { subject: group.paper!.subject, year: group.paper!.year, paper: group.paper!.file.name, memo: group.memo!.file.name, status: "Processing" }]);
+            const subjectName = group.paper.paperNumber 
+              ? `${group.paper.subject} Paper ${group.paper.paperNumber}` 
+              : group.paper.subject;
+
+            setProcessedPapers(prev => [...prev, { subject: subjectName, year: group.paper!.year, paper: group.paper!.file.name, memo: group.memo!.file.name, status: "Processing" }]);
             successCount++;
           } else {
              throw new Error(result.message);
@@ -165,7 +186,7 @@ export default function PastPaperUploaderPage() {
           console.error("Upload failed for pair:", baseName, error);
           toast({
             variant: "destructive",
-            title: `Failed to process ${group.paper.file.name}`,
+            title: `Failed to process ${group.paper?.file?.name || 'a paper'}`,
             description: error instanceof Error ? error.message : "An unknown error occurred.",
           });
         }
@@ -173,15 +194,17 @@ export default function PastPaperUploaderPage() {
         toast({
             variant: "destructive",
             title: `Incomplete Pair`,
-            description: `Could not find a matching paper or memo for "${baseName}.pdf"`,
+            description: `Could not find a matching paper or memo for files related to "${baseName}"`,
         });
       }
     }
     
-    toast({
-        title: "Bulk Processing Complete",
-        description: `${successCount} pairs successfully queued for processing.`,
-    });
+    if (successCount > 0) {
+        toast({
+            title: "Bulk Processing Complete",
+            description: `${successCount} pairs successfully queued for processing.`,
+        });
+    }
 
     setStagedFiles([]);
     setIsProcessing(false);
@@ -218,8 +241,8 @@ export default function PastPaperUploaderPage() {
                 <TableRow>
                   <TableHead>Subject</TableHead>
                   <TableHead>Year</TableHead>
-                  <TableHead>Paper</TableHead>
-                  <TableHead>Memo</TableHead>
+                  <TableHead>Paper File</TableHead>
+                  <TableHead>Memo File</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -304,6 +327,7 @@ export default function PastPaperUploaderPage() {
                                     value={stagedFile.year}
                                     onChange={(e) => updateStagedFile(index, { year: e.target.value })}
                                 />
+                                {stagedFile.paperNumber && <div className="h-8 px-2 flex items-center rounded-md bg-muted text-xs font-medium capitalize">P{stagedFile.paperNumber}</div>}
                                 <div className="h-8 px-2 flex items-center rounded-md bg-muted text-xs font-medium capitalize">{stagedFile.type}</div>
                             </div>
                         </div>
@@ -324,5 +348,3 @@ export default function PastPaperUploaderPage() {
     </div>
   )
 }
-
-    
