@@ -18,6 +18,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -28,7 +29,6 @@ import {
   DialogClose,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { processPastPaper } from "@/ai/flows/past-paper-processing";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -144,7 +144,7 @@ export default function PastPaperUploaderPage() {
   const parseFileName = (file: File): Omit<StagedFile, 'id' | 'file'> => {
       const name = file.name.toLowerCase().replace(/_/g, ' ').replace(/-/g, ' ');
       
-      const type = (name.includes('memo') || name.includes('memorandum') || name.includes('answer book')) ? 'memo' : 'paper';
+      const type = (name.includes('memo') || name.includes('memorandum') || name.includes('answer book') || name.includes('marking guidelines')) ? 'memo' : 'paper';
       
       const yearMatch = name.match(/20\d{2}/) || name.match(/(?<=\s)\d{2}(?=\s|$)/);
       const year = yearMatch ? (yearMatch[0].length === 2 ? `20${yearMatch[0]}` : yearMatch[0]) : '';
@@ -179,17 +179,16 @@ export default function PastPaperUploaderPage() {
   
   const getPairingKey = (stagedFile: StagedFile) => {
     const noise = [
-      'memo', 'memorandum', 'answer book', 'marking guidelines', 'nsc', 'ieb',
+      'memo', 'memorandum', 'answer book', 'marking guidelines', 'nsc', 'ieb', 'sc',
       'addendum', 'afr', 'eng',
       '.pdf', '.docx', '.doc'
     ];
-    // This regex will be more robust
     const regex = new RegExp(noise.join('|'), 'gi');
     return stagedFile.file.name
         .toLowerCase()
-        .replace(regex, '') // Remove all noise words
-        .replace(/[^a-z0-9]/gi, ' ') // Replace non-alphanumeric with space
-        .replace(/\s+/g, ' ') // Collapse multiple spaces
+        .replace(regex, '') 
+        .replace(/[^a-z0-9]/gi, ' ') 
+        .replace(/\s+/g, ' ') 
         .trim();
   };
 
@@ -327,20 +326,17 @@ export default function PastPaperUploaderPage() {
         fileUrl: '',
       };
       
-      let docRef: DocumentReference | null = null;
       try {
-        docRef = await addDoc(pastPapersCollectionRef, paperDocData);
+        const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
         successCount++;
         
-        const processingDocRef = docRef; // Capture the correct docRef for the async block
-
         (async () => {
             try {
                 const paperDataUri = await toDataUri(pair.paper.file);
                 const memoDataUri = await toDataUri(pair.memo.file);
                 
                 const result = await processPastPaper({
-                  docId: processingDocRef.id,
+                  docId: docRef.id,
                   userId: user.uid,
                   subject: pair.paper.subject,
                   grade: 12,
@@ -350,12 +346,12 @@ export default function PastPaperUploaderPage() {
                 });
 
                 if (result.success) {
-                  await updateDoc(processingDocRef, {
+                  await updateDoc(docRef, {
                       status: 'Processed',
                       questionCount: result.questionCount
                   });
                 } else {
-                  await updateDoc(processingDocRef, { status: 'Failed' });
+                  await updateDoc(docRef, { status: 'Failed' });
                   toast({
                       variant: "destructive",
                       title: `Processing Failed: ${pair.paper.file.name}`,
@@ -363,13 +359,9 @@ export default function PastPaperUploaderPage() {
                   });
                 }
             } catch (error) {
-                console.error("AI flow or update failed for doc ID:", processingDocRef.id, error);
-                try {
-                  await updateDoc(processingDocRef, { status: 'Failed' });
-                } catch (updateError) {
-                  console.error("Failed to even update the status to Failed for doc ID:", processingDocRef.id, updateError);
-                }
-                toast({
+                console.error("AI flow or update failed for doc ID:", docRef.id, error);
+                await updateDoc(docRef, { status: 'Failed' });
+                 toast({
                       variant: "destructive",
                       title: `Processing Error: ${pair.paper.file.name}`,
                       description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
@@ -759,6 +751,8 @@ export default function PastPaperUploaderPage() {
     </div>
   );
 }
+
+    
 
     
 
