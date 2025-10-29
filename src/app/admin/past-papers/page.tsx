@@ -107,7 +107,6 @@ export default function PastPaperUploaderPage() {
 
   const { data: processedPapers, isLoading: arePapersLoading } = useCollection<ProcessedPaper>(pastPapersCollectionRef);
 
-  
   const prevPairedCount = useRef(0);
   useEffect(() => {
     if (pairedFiles.length > prevPairedCount.current) {
@@ -285,59 +284,93 @@ export default function PastPaperUploaderPage() {
     setIsProcessing(true);
     let successCount = 0;
     
-    for (const pair of pairedFiles) {
+    const pairsToProcess = [...pairedFiles];
+    setPairedFiles([]);
+    
+    for (const pair of pairsToProcess) {
+      // 1. Create a record in Firestore immediately
+      const subjectName = pair.paper.paperNumber 
+        ? `${pair.paper.subject} Paper ${pair.paper.paperNumber}` 
+        : pair.paper.subject;
+
+      const paperDocData = {
+        teacherId: user.uid,
+        gradeLevel: 12, // Assuming Grade 12
+        subject: subjectName,
+        year: pair.paper.year,
+        paperName: pair.paper.file.name,
+        memoName: pair.memo.file.name,
+        status: "Processing" as const,
+        questionCount: 0,
+        fileUrl: '', // This would be the storage URL in a real app
+      };
+      
+      let docRef;
       try {
-        const paperDataUri = await toDataUri(pair.paper.file);
-        const memoDataUri = await toDataUri(pair.memo.file);
-
-        const subjectName = pair.paper.paperNumber 
-          ? `${pair.paper.subject} Paper ${pair.paper.paperNumber}` 
-          : pair.paper.subject;
-
-        // 1. Create a record in Firestore
-        const paperDocData = {
-          teacherId: user.uid,
-          gradeLevel: 12, // Assuming Grade 12 for now
-          subject: subjectName,
-          year: pair.paper.year,
-          paperName: pair.paper.file.name,
-          memoName: pair.memo.file.name,
-          status: "Processing",
-          questionCount: 0,
-          fileUrl: '', // This would be the storage URL in a real app
-        };
-
-        const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
-        
-        // 2. Trigger the AI flow with the new document ID
-        await processPastPaper({
-          docId: docRef.id, // Pass the doc ID to the flow
-          userId: user.uid, // Pass user ID for path construction
-          subject: pair.paper.subject,
-          grade: 12,
-          year: parseInt(pair.paper.year),
-          paperDataUri,
-          memoDataUri,
-        });
-
+        docRef = await addDoc(pastPapersCollectionRef, paperDocData);
         successCount++;
-        
       } catch (error) {
-        console.error("Processing failed for pair:", pair.paper.file.name, error);
+        console.error("Failed to create Firestore record for:", pair.paper.file.name, error);
         toast({
           variant: "destructive",
-          title: `Failed to process ${pair.paper.file.name}`,
-          description: error instanceof Error ? error.message : "An unknown error occurred.",
+          title: `Failed to queue ${pair.paper.file.name}`,
+          description: "Could not save initial record to the database.",
         });
+        continue; // Skip to the next pair
       }
+
+      // 2. Trigger the AI flow in the background (don't await the whole thing)
+      // We will handle the result in a non-blocking way.
+      (async () => {
+        try {
+          const paperDataUri = await toDataUri(pair.paper.file);
+          const memoDataUri = await toDataUri(pair.memo.file);
+          
+          const result = await processPastPaper({
+            docId: docRef.id,
+            userId: user.uid,
+            subject: pair.paper.subject,
+            grade: 12,
+            year: parseInt(pair.paper.year),
+            paperDataUri,
+            memoDataUri,
+          });
+
+          // 3. Update the Firestore doc with the result from the flow
+          const finalDocRef = doc(firestore, `users/${user.uid}/pastPapers`, docRef.id);
+          if (result.success) {
+            await updateDoc(finalDocRef, {
+              status: 'Processed',
+              questionCount: result.questionCount
+            });
+          } else {
+            await updateDoc(finalDocRef, { status: 'Failed' });
+             toast({
+                variant: "destructive",
+                title: `Processing Failed: ${pair.paper.file.name}`,
+                description: result.message,
+            });
+          }
+        } catch (error) {
+          console.error("AI flow or update failed for doc ID:", docRef.id, error);
+          const finalDocRef = doc(firestore, `users/${user.uid}/pastPapers`, docRef.id);
+          await updateDoc(finalDocRef, { status: 'Failed' });
+           toast({
+                variant: "destructive",
+                title: `Processing Error: ${pair.paper.file.name}`,
+                description: error instanceof Error ? error.message : "An unknown error occurred during AI analysis.",
+            });
+        }
+      })();
     }
     
-    toast({
-        title: "Processing Started",
-        description: `${successCount} pairs have been sent for analysis. Their status will update in the table below.`,
-    });
+    if (successCount > 0) {
+      toast({
+          title: "Processing Started",
+          description: `${successCount} pair(s) have been queued for analysis. Their status will update in the table below.`,
+      });
+    }
 
-    setPairedFiles([]);
     setIsProcessing(false);
   };
   

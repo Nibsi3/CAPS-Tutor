@@ -14,8 +14,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { getFirestore, doc, updateDoc } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
 
 const PastPaperInputSchema = z.object({
   docId: z.string().describe('The Firestore document ID of the past paper entry.'),
@@ -38,7 +36,7 @@ const PastPaperInputSchema = z.object({
 export type PastPaperInput = z.infer<typeof PastPaperInputSchema>;
 
 const PastPaperOutputSchema = z.object({
-  success: z.boolean().describe('Indicates whether the processing was successfully initiated.'),
+  success: z.boolean().describe('Indicates whether the processing was successful.'),
   message: z.string().describe('A message providing details about the outcome.'),
   questionCount: z.number().optional().describe('The number of questions identified and processed.'),
 });
@@ -56,45 +54,29 @@ const processPastPaperFlow = ai.defineFlow(
     outputSchema: PastPaperOutputSchema,
   },
   async (input) => {
-    // This is a long-running flow. Do not await it on the client.
-    // It updates Firestore directly when it's done.
-
-    // Simulate a long-running AI analysis process (e.g., 30-60 seconds)
-    const processingTime = 30000 + Math.random() * 30000;
-    await new Promise(resolve => setTimeout(resolve, processingTime));
-
-    // Simulate the AI extracting a random number of questions
-    const extractedQuestionCount = Math.floor(Math.random() * 20) + 5; // e.g., 5 to 24 questions
+    // This flow simulates a long-running AI analysis process.
+    // It returns the result instead of updating Firestore directly.
 
     try {
-        // We need to initialize Firebase Admin here to update the document
-        // Since we don't have Admin SDK, we'll use the client SDK. This means this
-        // flow should ideally be triggered from a context where a user is logged in.
-        // For this simulation, we'll just update the doc.
-        const { firestore } = initializeFirebase();
-        const paperDocRef = doc(firestore, `users/${input.userId}/pastPapers`, input.docId);
+      // Simulate a long-running AI analysis process (e.g., 10-25 seconds)
+      const processingTime = 10000 + Math.random() * 15000;
+      await new Promise(resolve => setTimeout(resolve, processingTime));
 
-        await updateDoc(paperDocRef, {
-            status: 'Processed',
-            questionCount: extractedQuestionCount
-        });
+      // Simulate the AI extracting a random number of questions
+      const extractedQuestionCount = Math.floor(Math.random() * 20) + 5; // e.g., 5 to 24 questions
 
-        return {
-            success: true,
-            message: `Successfully processed ${input.subject} paper. Found ${extractedQuestionCount} questions.`,
-            questionCount: extractedQuestionCount,
-        };
+      return {
+          success: true,
+          message: `Successfully processed ${input.subject} paper. Found ${extractedQuestionCount} questions.`,
+          questionCount: extractedQuestionCount,
+      };
 
     } catch (error) {
-        console.error("Error updating Firestore document:", error);
-         // Optionally update the doc to a 'Failed' status
-        const { firestore } = initializeFirebase();
-        const paperDocRef = doc(firestore, `users/${input.userId}/pastPapers`, input.docId);
-        await updateDoc(paperDocRef, { status: 'Failed' });
-
+        console.error("Error during AI paper processing:", error);
         return {
             success: false,
-            message: error instanceof Error ? error.message : "An unknown error occurred during Firestore update.",
+            message: error instanceof Error ? error.message : "An unknown error occurred during AI processing.",
+            questionCount: 0,
         };
     }
   }
