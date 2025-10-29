@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -169,7 +169,7 @@ export default function PastPaperSessionPage() {
                         <Button onClick={() => { setIsFinished(false); setCurrentQuestionIndex(0); setScore(0); }} className="w-full">
                             Try Again
                         </Button>
-                         <Button variant="outline" className="w-full" onClick={() => router.back()}>
+                         <Button variant="outline" className="w-full" onClick={() => router.push('/dashboard/past-paper-practice')}>
                             Choose Another Paper
                         </Button>
                     </CardFooter>
@@ -255,7 +255,7 @@ export default function PastPaperSessionPage() {
                     
                     <Button
                         onClick={handleNextQuestion}
-                        disabled={!currentQuestionCorrect}
+                        disabled={!currentQuestionCorrect && currentQuestionIndex < questions.length - 1}
                     >
                         {currentQuestionIndex === questions.length - 1 ? 'Finish' : 'Next'} <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -264,5 +264,3 @@ export default function PastPaperSessionPage() {
         </div>
     )
 }
-
-    

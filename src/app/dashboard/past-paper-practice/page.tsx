@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -68,7 +67,7 @@ export default function PastPaperPracticePage() {
                         Past Paper Practice
                     </CardTitle>
                     <CardDescription>
-                        Select an official past paper to start a timed practice session and test your knowledge under exam conditions.
+                        Select an official past paper to start an interactive practice session with AI feedback.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -132,7 +131,7 @@ export default function PastPaperPracticePage() {
                                         <div className="space-y-2 text-sm text-muted-foreground">
                                             <div className="flex items-center gap-2">
                                                 <BrainCircuit className="w-4 h-4" />
-                                                <span>{paper.questionCount} questions</span>
+                                                <span>{paper.questionCount || 0} questions available</span>
                                             </div>
                                              <div className="flex items-center gap-2">
                                                 <FileText className="w-4 h-4" />
