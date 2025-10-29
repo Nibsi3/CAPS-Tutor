@@ -91,6 +91,10 @@ export const grades = [
 export const subjects = [
     { value: "Mathematics", label: "Mathematics" },
     { value: "Mathematical Literacy", label: "Mathematical Literacy" },
+    { value: "English Home Language", label: "English Home Language" },
+    { value: "English First Additional Language", label: "English First Additional Language" },
+    { value: "Afrikaans Huistaal", label: "Afrikaans Huistaal" },
+    { value: "Afrikaans Eerste Addisionele Taal", label: "Afrikaans Eerste Addisionele Taal" },
     { value: "Physical Sciences", label: "Physical Sciences" },
     { value: "Life Sciences", label: "Life Sciences" },
     { value: "Accounting", label: "Accounting" },
@@ -201,6 +205,42 @@ const rawLessons = [
         pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate(NSC)Examinations/NSCPastExaminationpapers.aspx",
         source: "DBE Mind the Gap & LTSM"
     },
+    {
+        gradeLevels: ["10", "11", "12"],
+        subject: "English Home Language",
+        topics: [
+            "Poetry analysis", "Novel study (e.g., Things Fall Apart, The Great Gatsby)", "Drama analysis (e.g., Macbeth, My Children! My Africa!)", "Short story analysis", "Film study", "Language structures and conventions", "Comprehension skills", "Summary writing", "Essay writing (narrative, descriptive, argumentative)", "Transactional writing (letters, emails, reports)", "Oral presentation skills", "Visual literacy (cartoons, advertisements)"
+        ],
+        pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate(NSC)Examinations/NSCPastExaminationpapers.aspx",
+        source: "CAPS English Home Language"
+    },
+    {
+        gradeLevels: ["10", "11", "12"],
+        subject: "English First Additional Language",
+        topics: [
+            "Poetry analysis (prescribed poems)", "Novel study (prescribed books)", "Drama analysis (prescribed plays)", "Short story analysis", "Comprehension strategies", "Summary skills", "Language in context (grammar, punctuation)", "Writing descriptive and narrative essays", "Writing transactional texts (dialogue, formal letters)", "Listening and speaking skills", "Visual literacy"
+        ],
+        pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate(NSC)Examinations/NSCPastExaminationpapers.aspx",
+        source: "CAPS English FAL"
+    },
+    {
+        gradeLevels: ["10", "11", "12"],
+        subject: "Afrikaans Huistaal",
+        topics: [
+            "Poësie-ontleding (voorgeskrewe gedigte)", "Romanstudie (bv. Fiela se Kind, Die Kruppel Engel)", "Dramastudie (bv. Die Koning Sterf)", "Kortverhaalanálise", "Taalstrukture en -konvensies", "Begripsvaardighede", "Opsomming skryf", "Opstel skryf (verhalend, beskrywend, argumentatief)", "Transaksionele skryfwerk (formele brief, e-pos)", "Mondelinge vaardighede", "Visuele geletterdheid (spotprente, advertensies)"
+        ],
+        pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate(NSC)Examinations/NSCPastExaminationpapers.aspx",
+        source: "CAPS Afrikaans Huistaal"
+    },
+    {
+        gradeLevels: ["10", "11", "12"],
+        subject: "Afrikaans Eerste Addisionele Taal",
+        topics: [
+            "Gedigte (voorgeskrewe)", "Romanstudie (voorgeskrewe boeke)", "Dramastudie", "Kortverhale", "Begripstoets en -strategieë", "Opsommingstrategieë", "Taal in konteks (grammatika, leestekens)", "Skryf van opstelle", "Skryf van transaksionele tekste (dialoog, resensie)", "Luister- en praatvaardighede", "Visuele geletterdheid"
+        ],
+        pastPapersLink: "https://www.education.gov.za/Curriculum/NationalSeniorCertificate(NSC)Examinations/NSCPastExaminationpapers.aspx",
+        source: "CAPS Afrikaans EAT"
+    }
 ];
 
 // This function expands the raw lessons into individual lessons for each grade.

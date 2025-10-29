@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { lessons, grades, placeholderLessons } from "@/lib/data";
-import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator, Loader, UserCheck, Settings } from "lucide-react";
+import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator, Loader, UserCheck, Settings, MessageSquare } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -36,6 +36,10 @@ const subjectIcons: Record<string, React.ElementType> = {
   "Accounting": FileText,
   "Business Studies": Landmark,
   "Geography": Globe,
+  "English Home Language": MessageSquare,
+  "English First Additional Language": MessageSquare,
+  "Afrikaans Huistaal": MessageSquare,
+  "Afrikaans Eerste Addisionele Taal": MessageSquare,
   // Add more icons for other subjects if needed
 };
 
@@ -63,6 +67,22 @@ const subjectColors: Record<string, { bg: string, text: string }> = {
     "Business Studies": {
       bg: "bg-pink-100 dark:bg-pink-900/30",
       text: "text-pink-600 dark:text-pink-400"
+    },
+    "English Home Language": {
+      bg: "bg-red-100 dark:bg-red-900/30",
+      text: "text-red-600 dark:text-red-400"
+    },
+    "English First Additional Language": {
+      bg: "bg-red-100 dark:bg-red-900/30",
+      text: "text-red-600 dark:text-red-400"
+    },
+    "Afrikaans Huistaal": {
+      bg: "bg-yellow-100 dark:bg-yellow-900/30",
+      text: "text-yellow-600 dark:text-yellow-400"
+    },
+    "Afrikaans Eerste Addisionele Taal": {
+      bg: "bg-yellow-100 dark:bg-yellow-900/30",
+      text: "text-yellow-600 dark:text-yellow-400"
     },
 };
 
