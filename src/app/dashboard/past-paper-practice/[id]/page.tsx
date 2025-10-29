@@ -7,7 +7,7 @@ import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader, FileText, Clock, HelpCircle, ArrowRight } from 'lucide-react';
+import { Loader, FileText, Clock, HelpCircle, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface GeneratedQuestion {
