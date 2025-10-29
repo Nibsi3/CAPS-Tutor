@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader, Search, FileText, ArrowRight, BrainCircuit } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collectionGroup, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { subjects as allSubjects, grades as allGrades } from '@/lib/data';
 
 interface PastPaper {
@@ -25,50 +25,30 @@ interface PastPaper {
 export default function PastPaperPracticePage() {
     const { user } = useUser();
     const firestore = useFirestore();
-    const [papers, setPapers] = useState<PastPaper[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     
     // Filters
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
     const [selectedYear, setSelectedYear] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (!firestore) return;
-
-        const fetchPapers = async () => {
-            setIsLoading(true);
-            try {
-                const papersQuery = query(
-                    collectionGroup(firestore, 'pastPapers'), 
-                    where('status', '==', 'Processed')
-                );
-                const querySnapshot = await getDocs(papersQuery);
-                const fetchedPapers: PastPaper[] = [];
-                querySnapshot.forEach(doc => {
-                    fetchedPapers.push({ id: doc.id, ...doc.data() } as PastPaper);
-                });
-                
-                // Remove duplicates by ID in case collectionGroup finds same paper from different user uploads
-                const uniquePapers = Array.from(new Map(fetchedPapers.map(p => [p.paperName, p])).values());
-
-                setPapers(uniquePapers);
-            } catch (error) {
-                console.error("Error fetching past papers:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchPapers();
+    const papersQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(
+            collection(firestore, 'pastPapers'), 
+            where('status', '==', 'Processed')
+        );
     }, [firestore]);
-    
+
+    const { data: papers, isLoading } = useCollection<PastPaper>(papersQuery);
+
     const availableYears = useMemo(() => {
+        if (!papers) return [];
         const years = new Set(papers.map(p => p.year));
         return Array.from(years).sort((a, b) => parseInt(b) - parseInt(a));
     }, [papers]);
 
     const filteredPapers = useMemo(() => {
+        if (!papers) return [];
         return papers.filter(paper => {
             const searchTermMatch = paper.subject.toLowerCase().includes(searchTerm.toLowerCase()) || paper.year.includes(searchTerm);
             const subjectMatch = !selectedSubject || paper.subject.toLowerCase().startsWith(selectedSubject.toLowerCase());

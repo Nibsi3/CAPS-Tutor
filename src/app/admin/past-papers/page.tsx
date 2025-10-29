@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -143,9 +144,9 @@ export default function PastPaperUploaderPage() {
 
 
   const pastPapersCollectionRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return collection(firestore, `users/${user.uid}/pastPapers`);
-  }, [user, firestore]);
+    if (!firestore) return null;
+    return collection(firestore, `pastPapers`);
+  }, [firestore]);
 
   const { data: processedPapers, isLoading: arePapersLoading } = useCollection<ProcessedPaper>(pastPapersCollectionRef);
 
@@ -353,7 +354,6 @@ export default function PastPaperUploaderPage() {
     }
     setIsProcessing(true);
     let successCount = 0;
-    let failureCount = 0;
     
     const pairsToProcess = [...pairedFiles];
     setPairedFiles([]);
@@ -375,9 +375,8 @@ export default function PastPaperUploaderPage() {
         fileUrl: '',
       };
       
-      const docRefPromise = addDoc(pastPapersCollectionRef, paperDocData);
-      
-      docRefPromise.then(docRef => {
+      addDoc(pastPapersCollectionRef, paperDocData)
+      .then(docRef => {
         successCount++;
         toast({
           title: `Queued: ${pair.paper.file.name}`,
@@ -424,7 +423,6 @@ export default function PastPaperUploaderPage() {
         })();
 
       }).catch(serverError => {
-        failureCount++;
         const permissionError = new FirestorePermissionError({
           path: pastPapersCollectionRef.path,
           operation: 'create',
@@ -434,10 +432,10 @@ export default function PastPaperUploaderPage() {
       });
     }
 
-    if (failureCount === 0) {
+    if (successCount > 0) {
        toast({
           title: "Processing Started",
-          description: `${pairsToProcess.length} pair(s) have been queued for analysis.`,
+          description: `${successCount} pair(s) have been queued for analysis.`,
       });
     }
     
@@ -448,7 +446,7 @@ export default function PastPaperUploaderPage() {
     if (!user || !firestore) return;
     setReprocessingId(paper.id);
 
-    const docRef = doc(firestore, `users/${user.uid}/pastPapers`, paper.id);
+    const docRef = doc(firestore, `pastPapers`, paper.id);
 
     try {
         await updateDoc(docRef, { status: 'Processing', questionCount: 0 });
@@ -496,8 +494,8 @@ export default function PastPaperUploaderPage() {
 
 
   const handleDeleteProcessedPaper = async (id: string) => {
-    if (!user || !firestore) return;
-    const docRef = doc(firestore, `users/${user.uid}/pastPapers`, id);
+    if (!firestore || !pastPapersCollectionRef) return;
+    const docRef = doc(firestore, `pastPapers`, id);
     
     deleteDoc(docRef)
       .then(() => {
@@ -517,11 +515,11 @@ export default function PastPaperUploaderPage() {
 
   const handleBulkDelete = (paperIds?: string[]) => {
     const idsToDelete = paperIds || selectedPapers;
-    if (!user || !firestore || idsToDelete.length === 0) return;
+    if (!firestore || idsToDelete.length === 0) return;
     
     const batch = writeBatch(firestore);
     idsToDelete.forEach(id => {
-        const docRef = doc(firestore, `users/${user.uid}/pastPapers`, id);
+        const docRef = doc(firestore, `pastPapers`, id);
         batch.delete(docRef);
     });
 
@@ -536,7 +534,7 @@ export default function PastPaperUploaderPage() {
         }
       })
       .catch(serverError => {
-        const firstDocRef = doc(firestore, `users/${user.uid}/pastPapers`, idsToDelete[0]);
+        const firstDocRef = doc(firestore, `pastPapers`, idsToDelete[0]);
         const permissionError = new FirestorePermissionError({
           path: firstDocRef.path,
           operation: 'delete',
