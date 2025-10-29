@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Loader, File as FileIcon, X, Trash2, Link2, Search, ArrowUpDown, RefreshCw } from "lucide-react";
+import { Upload, Loader, File as FileIcon, X, Trash2, Link2, Search, ArrowUpDown, RefreshCw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -68,6 +68,12 @@ interface ProcessedPaper {
     gradeLevel?: number;
 }
 
+interface DuplicateFile {
+  newFile: StagedFile;
+  existingPaper: ProcessedPaper;
+}
+
+
 type SortKey = 'subject' | 'year';
 
 const subjectKeywords: Record<string, string[]> = {
@@ -119,6 +125,9 @@ export default function PastPaperUploaderPage() {
   const [selectedPapers, setSelectedPapers] = useState<string[]>([]);
   const [reprocessingId, setReprocessingId] = useState<string | null>(null);
   
+  const [duplicateFiles, setDuplicateFiles] = useState<DuplicateFile[]>([]);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+
   const prevPairedCount = useRef(0);
 
   useEffect(() => {
@@ -176,23 +185,20 @@ export default function PastPaperUploaderPage() {
       return { subject, year, type, paperNumber, language };
   }
   
-  const getPairingKey = (stagedFile: StagedFile) => {
-    const name = stagedFile.file.name.toLowerCase();
-
-    // The list of words to remove to create a consistent key
+  const getPairingKey = useCallback((fileName: string) => {
     const noise = [
       'memo', 'memorandum', 'answer book', 'marking guidelines', 'addendum',
-      '.pdf', '.docx', '.doc',
+      'nsc', 'ieb', 'sc', '.pdf', '.docx', '.doc'
     ];
-    
     const regex = new RegExp(noise.join('|'), 'gi');
     
-    return name
-      .replace(regex, '') // Remove noise words
+    return fileName
+      .toLowerCase()
+      .replace(regex, '')
       .replace(/[^a-z0-9]/gi, ' ') // Replace non-alphanumeric with space
       .replace(/\s+/g, ' ') // Condense multiple spaces to one
       .trim();
-  };
+  }, []);
 
 
   const autoPairFiles = useCallback((allFiles: StagedFile[]) => {
@@ -200,36 +206,18 @@ export default function PastPaperUploaderPage() {
     const remainingFiles: StagedFile[] = [];
     const newPairs: PairedFile[] = [];
 
-    // First pass: Group by the generated pairing key
-    for (const file of allFiles) {
-      const key = getPairingKey(file);
+    const keys = new Set(allFiles.map(f => getPairingKey(f.file.name)));
 
-      if (!fileGroups.has(key)) {
-        fileGroups.set(key, {});
-      }
-      const group = fileGroups.get(key)!;
-      if (file.type === 'paper' && !group.paper) {
-        group.paper = file;
-      } else if (file.type === 'memo' && !group.memo) {
-        group.memo = file;
-      } else {
-        remainingFiles.push(file);
-      }
-    }
-    
-    // Second pass: Create pairs and collect leftovers
-    for (const group of fileGroups.values()) {
-      if (group.paper && group.memo) {
-        newPairs.push({
-          id: `${group.paper.id}-${group.memo.id}`,
-          paper: group.paper,
-          memo: group.memo,
-        });
-      } else {
-        // If a group isn't complete, put its member(s) back into the remaining list
-        if (group.paper) remainingFiles.push(group.paper);
-        if (group.memo) remainingFiles.push(group.memo);
-      }
+    for (const key of keys) {
+        const groupFiles = allFiles.filter(f => getPairingKey(f.file.name) === key);
+        const paper = groupFiles.find(f => f.type === 'paper');
+        const memo = groupFiles.find(f => f.type === 'memo');
+
+        if (paper && memo) {
+            newPairs.push({ id: `${paper.id}-${memo.id}`, paper, memo });
+        } else {
+            remainingFiles.push(...groupFiles);
+        }
     }
     
     return { newPairs, remainingFiles };
@@ -238,16 +226,34 @@ export default function PastPaperUploaderPage() {
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
-  
-    const newFiles: StagedFile[] = Array.from(files).map((file, i) => ({
+    if (!files || files.length === 0 || !processedPapers) return;
+
+    const newStagedFiles: StagedFile[] = Array.from(files).map((file, i) => ({
       id: `${file.name}-${Date.now()}-${i}`,
       file,
       ...parseFileName(file)
     }));
+
+    const uniqueNewFiles: StagedFile[] = [];
+    const detectedDuplicates: DuplicateFile[] = [];
+    const processedPaperKeys = new Map(processedPapers.map(p => [getPairingKey(p.paperName), p]));
+
+    for (const newFile of newStagedFiles) {
+      const newFileKey = getPairingKey(newFile.file.name);
+      if (processedPaperKeys.has(newFileKey)) {
+        detectedDuplicates.push({ newFile, existingPaper: processedPaperKeys.get(newFileKey)! });
+      } else {
+        uniqueNewFiles.push(newFile);
+      }
+    }
+    
+    if (detectedDuplicates.length > 0) {
+      setDuplicateFiles(detectedDuplicates);
+      setShowDuplicateDialog(true);
+    }
   
     setStagedFiles(currentStaged => {
-        const allUnpairedFiles = [...currentStaged, ...newFiles];
+        const allUnpairedFiles = [...currentStaged, ...uniqueNewFiles];
         const { newPairs, remainingFiles } = autoPairFiles(allUnpairedFiles);
 
         if (newPairs.length > 0) {
@@ -262,7 +268,38 @@ export default function PastPaperUploaderPage() {
         return Array.from(remainingFileMap.values());
     });
 
-  }, [autoPairFiles, parseFileName]);
+  }, [autoPairFiles, parseFileName, processedPapers, getPairingKey]);
+
+  const handleDuplicateDecision = (replace: boolean) => {
+    if (replace) {
+      const filesToStage: StagedFile[] = [];
+      const paperIdsToDelete: string[] = duplicateFiles.map(d => d.existingPaper.id);
+
+      // We'll delete the old ones and add the new ones to be processed
+      handleBulkDelete(paperIdsToDelete);
+      
+      const allUnpairedFiles = [...stagedFiles, ...duplicateFiles.map(d => d.newFile)];
+      const { newPairs, remainingFiles } = autoPairFiles(allUnpairedFiles);
+
+      if (newPairs.length > 0) {
+        setPairedFiles(currentPaired => [...currentPaired, ...newPairs]);
+      }
+      setStagedFiles(remainingFiles);
+      
+      toast({
+        title: "Duplicates Replaced",
+        description: `${duplicateFiles.length} existing entries will be replaced with the new files.`
+      });
+    } else {
+      toast({
+        title: "Duplicates Skipped",
+        description: `${duplicateFiles.length} new files were ignored as they matched existing entries.`
+      });
+    }
+
+    setDuplicateFiles([]);
+    setShowDuplicateDialog(false);
+  }
 
 
   const removeStagedFile = (id: string) => {
@@ -466,11 +503,12 @@ export default function PastPaperUploaderPage() {
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (!user || !firestore || selectedPapers.length === 0) return;
+  const handleBulkDelete = async (paperIds?: string[]) => {
+    const idsToDelete = paperIds || selectedPapers;
+    if (!user || !firestore || idsToDelete.length === 0) return;
     
     const batch = writeBatch(firestore);
-    selectedPapers.forEach(id => {
+    idsToDelete.forEach(id => {
         const docRef = doc(firestore, `users/${user.uid}/pastPapers`, id);
         batch.delete(docRef);
     });
@@ -479,9 +517,11 @@ export default function PastPaperUploaderPage() {
         await batch.commit();
         toast({
             title: "Bulk Delete Successful",
-            description: `${selectedPapers.length} entries have been removed.`,
+            description: `${idsToDelete.length} entries have been removed.`,
         });
-        setSelectedPapers([]);
+        if (!paperIds) {
+          setSelectedPapers([]);
+        }
     } catch (error) {
          toast({
             variant: "destructive",
@@ -527,6 +567,29 @@ export default function PastPaperUploaderPage() {
 
   return (
     <div className="flex-1 space-y-6">
+        <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/> Duplicate File(s) Detected</AlertDialogTitle>
+              <AlertDialogDescription>
+                You uploaded {duplicateFiles.length} file(s) that match entries already processed. What would you like to do?
+                <ScrollArea className="mt-4 h-40 rounded-md border p-2">
+                  {duplicateFiles.map((d, i) => (
+                    <div key={i} className="mb-2 rounded-md border bg-muted p-2 text-sm">
+                      <p><b>New file:</b> {d.newFile.file.name}</p>
+                      <p><b>Matches:</b> {d.existingPaper.paperName}</p>
+                    </div>
+                  ))}
+                </ScrollArea>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => handleDuplicateDecision(false)}>Skip Duplicates</AlertDialogCancel>
+              <AlertDialogAction onClick={() => handleDuplicateDecision(true)} className={buttonVariants({ variant: "destructive" })}>Replace Existing</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <Card>
             <CardHeader>
                 <CardTitle className="font-headline text-3xl">Past Paper Manager</CardTitle>
@@ -675,7 +738,7 @@ export default function PastPaperUploaderPage() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleBulkDelete}>
+                            <AlertDialogAction onClick={() => handleBulkDelete()}>
                               Delete
                             </AlertDialogAction>
                           </AlertDialogFooter>
