@@ -11,7 +11,7 @@ import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/in
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { getQuestionsForTopic, Question, allSubjectsForLookup } from '@/lib/questions';
+import { getQuestionsForSubject, Question, allSubjectsForLookup } from '@/lib/questions';
 import ReactMarkdown from 'react-markdown';
 import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
 
@@ -33,6 +33,15 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+/**
+ * Extracts the base subject from a full paper title.
+ * e.g., "Mathematics Paper 1" -> "Mathematics"
+ */
+function getBaseSubject(paperTitle: string): string | undefined {
+    return allSubjectsForLookup.find(subj => paperTitle.toLowerCase().startsWith(subj.toLowerCase()));
+}
+
 
 export default function PastPaperPracticePage() {
     const { toast } = useToast();
@@ -61,12 +70,10 @@ export default function PastPaperPracticePage() {
 
     useEffect(() => {
         if (paperData) {
-            // Find the base subject from the paper's subject string.
-            // E.g., "Mathematics Paper 2" should resolve to "Mathematics".
-            const baseSubject = allSubjectsForLookup.find(subj => paperData.subject.includes(subj));
+            const baseSubject = getBaseSubject(paperData.subject);
 
             if (baseSubject) {
-                const questions = getQuestionsForTopic(baseSubject, paperData.gradeLevel || 12);
+                const questions = getQuestionsForSubject(baseSubject, paperData.gradeLevel);
                 if (questions.length > 0) {
                     setSession({
                         examQuestions: questions.map(q => ({ ...q, studentAnswer: '', feedback: null, isChecking: false }))
@@ -107,7 +114,7 @@ export default function PastPaperPracticePage() {
         setSession({ examQuestions: newQuestions });
 
         try {
-             const baseSubject = allSubjectsForLookup.find(subj => paperData.subject.includes(subj)) || paperData.subject;
+            const baseSubject = getBaseSubject(paperData.subject) || paperData.subject;
             const feedbackResult = await getInteractiveFeedback({
                 question: question.question,
                 studentAnswer: question.studentAnswer,
@@ -134,7 +141,7 @@ export default function PastPaperPracticePage() {
 
         const currentQuestion = session?.examQuestions[currentQuestionIndex];
         const contextPrompt = `Regarding the topic "${currentQuestion?.topic}" and specifically the question: "${currentQuestion?.question}", the student asks: "${currentPrompt}"`;
-        const baseSubject = allSubjectsForLookup.find(subj => paperData.subject.includes(subj)) || paperData.subject;
+        const baseSubject = getBaseSubject(paperData.subject) || paperData.subject;
 
         const newMessages: Message[] = [...tutorMessages, { role: 'user', content: currentPrompt }];
         setTutorMessages(newMessages);

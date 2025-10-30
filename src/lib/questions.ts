@@ -160,7 +160,7 @@ const allQuestions: Record<string, Question[]> = {
     { id: 'chem-g12-3', topic: 'Chemical equilibrium', question: 'State Le Chatelier\'s principle.' },
     { id: 'chem-g12-4', topic: 'Acids and bases', question: 'Calculate the pH of a 0.05 mol·dm⁻³ solution of hydrochloric acid (HCl).' },
     { id: 'chem-g12-5', topic: 'Acids and bases', question: 'Define a conjugate acid-base pair according to the Brønsted-Lowry theory.' },
-    { id: 'chem-g12-6', topic: 'Electrochemical reactions', question: 'Draw a labelled diagram of a galvanic (voltaic) cell using a zinc half-cell and a copper half-cell. Show the direction of electron flow.' },
+    { id: 'chem-g12-6', topic: 'Electrochemical reactions', question: 'Draw a labelled diagram of a galvanic (voltaic) cell using a zinc half-cell and a copper half-cell. Show the direction of electron flow.\n\n![Galvanic Cell Diagram](https://picsum.photos/seed/galvaniccell/400/350)' },
     { id: 'chem-g12-7', topic: 'Electrochemical reactions', question: 'Write down the half-reaction that occurs at the anode in the Zn-Cu cell.' },
     { id: 'chem-g12-8', topic: 'The chemical industry', question: 'Name the primary industrial process used to produce fertilizers like ammonium nitrate.' },
     { id: 'chem-g12-9', topic: 'Rate and extent of reactions', question: 'Sketch a potential energy diagram for an exothermic reaction, labelling the reactants, products, activation energy, and enthalpy change (ΔH).\n\n![Energy Diagram](https://picsum.photos/seed/exothermic1/400/300)' },
@@ -176,7 +176,7 @@ const allQuestions: Record<string, Question[]> = {
     { id: 'life-g12-6', topic: 'Evolution', question: 'Describe Darwin\'s theory of evolution by natural selection, mentioning the key observations he made.' },
     { id: 'life-g12-7', topic: 'Evolution', question: 'Explain the difference between homologous and analogous structures, and how they provide evidence for evolution.' },
     { id: 'life-g12-8', topic: 'Responding to the environment (humans & plants)', question: 'Describe the path of a nerve impulse in a reflex arc, from stimulus to response.' },
-    { id: 'life-g12-9', topic: 'Human reproduction', question: 'Draw and label a diagram of the human male reproductive system.' },
+    { id: 'life-g12-9', topic: 'Human reproduction', question: 'Draw and label a diagram of the human male reproductive system.\n\n![Male Reproductive System](https://picsum.photos/seed/malerepro/400/350)' },
     { id: 'life-g12-10', topic: 'Homeostasis', question: 'Explain the role of ADH (antidiuretic hormone) in osmoregulation.' },
     { id: 'life-g12-11', topic: 'Endocrine system', question: 'Explain the negative feedback mechanism involving insulin and glucagon in regulating blood glucose levels.' },
     { id: 'life-g12-12', topic: 'DNA: The code of life', question: 'Tabulate THREE differences between DNA and RNA.' },
@@ -198,28 +198,12 @@ const allQuestions: Record<string, Question[]> = {
     { id: 'life-g10-4', topic: 'Plant and animal tissues', question: 'Differentiate between epithelial tissue and connective tissue.' },
     { id: 'life-g10-5', topic: 'Support and transport systems in plants and animals', question: 'Describe the functions of xylem and phloem in plants.' },
   ],
-  // Add other subjects here
 };
 
 
-export function getQuestionsForTopic(topic: string, grade: number): Question[] {
-  // This is a simplified lookup. In a real app, this could be more complex,
-  // potentially querying a database or using more sophisticated filtering.
-  const subjectKey = Object.keys(allQuestions).find(key => topic.toLowerCase().includes(key.toLowerCase()));
-  
-  // This is a temporary lookup based on keywords.
-  // A better system would have questions tagged with grade and subject directly.
-  const subject = allSubjectsForLookup.find(s => topic.toLowerCase().includes(s.toLowerCase())) || "Mathematics";
-  
-  return allQuestions[subject]?.filter(q => {
-    // A simple filter: if the question topic is part of the requested topic string.
-    return topic.toLowerCase().includes(q.topic.toLowerCase());
-  }) || [];
-}
-
 /**
  * Gets questions for a given subject, optionally filtered by grade.
- * This is the function that should be used by the practice page.
+ * This function should be used by the practice page.
  */
 export function getQuestionsForSubject(subject: string, grade?: number): Question[] {
     const questions = allQuestions[subject];

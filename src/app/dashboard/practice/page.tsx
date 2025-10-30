@@ -11,7 +11,7 @@ import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/in
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
-import { getQuestionsForTopic, Question } from '@/lib/questions';
+import { getQuestionsForSubject, Question } from '@/lib/questions';
 import ReactMarkdown from 'react-markdown';
 import { Progress } from '@/components/ui/progress';
 
@@ -62,14 +62,15 @@ export default function PracticePage() {
     // Set up the tutor's initial message
     setTutorMessages([{ role: 'assistant', content: `Hi there! I'm ready to help you with any questions you have about **${currentTopic}**. Ask me anything!` }]);
     
-    // Get preloaded questions
-    const questions = getQuestionsForTopic(currentTopic, parseInt(currentGrade));
+    // Get preloaded questions for the subject, then filter by topic
+    const subjectQuestions = getQuestionsForSubject(currentSubject, parseInt(currentGrade));
+    const topicQuestions = subjectQuestions.filter(q => q.topic.toLowerCase() === currentTopic.toLowerCase());
     
-    if (questions.length === 0) {
-      toast({ variant: "destructive", title: "No Questions Found", description: "We don't have practice questions for this topic yet." });
+    if (topicQuestions.length === 0) {
+      toast({ variant: "destructive", title: "No Questions Found", description: "We don't have practice questions for this specific topic yet." });
       setExam({ examQuestions: [] });
     } else {
-      setExam({ examQuestions: questions.map(q => ({ ...q, studentAnswer: '', feedback: null, isChecking: false })) });
+      setExam({ examQuestions: topicQuestions.map(q => ({ ...q, studentAnswer: '', feedback: null, isChecking: false })) });
     }
     
     setIsLoading(false);
@@ -397,7 +398,7 @@ export default function PracticePage() {
                         onKeyDown={(e) => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
-                            handleTutorSendMessage();
+                            handleSendMessage();
                             }
                         }}
                         disabled={isTutorLoading}
@@ -406,7 +407,7 @@ export default function PracticePage() {
                         type="submit"
                         size="sm"
                         className="absolute right-2 top-1/2 -translate-y-1/2"
-                        onClick={handleTutorSendMessage}
+                        onClick={handleSendMessage}
                         disabled={isTutorLoading || !tutorPrompt.trim()}
                         >
                         Send
