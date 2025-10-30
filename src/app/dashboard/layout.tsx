@@ -18,17 +18,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/components/language-provider";
+import { translations } from "@/lib/translations";
 
-const navItems = [
-  { href: "/dashboard", icon: Home, label: "Dashboard" },
-  { href: "/dashboard/lessons", icon: BookOpen, label: "Lessons" },
-  { href: "/dashboard/practice", icon: Target, label: "Practice" },
-  { href: "/dashboard/past-papers", icon: FileText, label: "Past Papers" },
-  { href: "/dashboard/tutor", icon: Bot, label: "AI Tutor", badge: "New" },
-  { href: "/dashboard/achievements", icon: Award, label: "Achievements" },
-  { href: "/dashboard/progress", icon: BarChart, label: "Progress" },
-  { href: "/dashboard/settings", icon: Settings, label: "Settings" },
-];
 
 export default function DashboardLayout({
   children,
@@ -36,6 +28,19 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname();
+  const lang = useLanguage();
+  const t = translations[lang];
+
+  const navItems = [
+    { href: "/dashboard", icon: Home, label: t.dashboard },
+    { href: "/dashboard/lessons", icon: BookOpen, label: t.lessons },
+    { href: "/dashboard/practice", icon: Target, label: t.practice },
+    { href: "/dashboard/past-papers", icon: FileText, label: t.pastPapers },
+    { href: "/dashboard/tutor", icon: Bot, label: t.aiTutor, badge: "New" },
+    { href: "/dashboard/achievements", icon: Award, label: t.achievements },
+    { href: "/dashboard/progress", icon: BarChart, label: t.progress },
+    { href: "/dashboard/settings", icon: Settings, label: t.settings },
+  ];
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">

@@ -15,8 +15,13 @@ import { Menu, Search, Home, BookOpen, Target, BarChart, Settings, Bot, Award } 
 import Link from "next/link"
 import { UserNav } from "./UserNav"
 import { ThemeToggle } from "./ThemeToggle"
+import { useLanguage } from "@/components/language-provider"
+import { translations } from "@/lib/translations"
 
 export function DashboardHeader() {
+  const lang = useLanguage();
+  const t = translations[lang];
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
       <Sheet>
@@ -44,49 +49,49 @@ export function DashboardHeader() {
               className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
             >
               <Home className="h-5 w-5" />
-              Dashboard
+              {t.dashboard}
             </Link>
             <Link
               href="/dashboard/lessons"
               className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
             >
               <BookOpen className="h-5 w-5" />
-              Lessons
+              {t.lessons}
             </Link>
             <Link
               href="/dashboard/practice"
               className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
             >
               <Target className="h-5 w-5" />
-              Practice
+              {t.practice}
             </Link>
             <Link
               href="/dashboard/tutor"
               className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
             >
               <Bot className="h-5 w-5" />
-              AI Tutor
+              {t.aiTutor}
             </Link>
             <Link
               href="/dashboard/achievements"
               className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
             >
               <Award className="h-5 w-5" />
-              Achievements
+              {t.achievements}
             </Link>
             <Link
               href="/dashboard/progress"
               className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
             >
               <BarChart className="h-5 w-5" />
-              Progress
+              {t.progress}
             </Link>
             <Link
               href="/dashboard/settings"
               className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
             >
               <Settings className="h-5 w-5" />
-              Settings
+              {t.settings}
             </Link>
           </nav>
         </SheetContent>
@@ -95,12 +100,12 @@ export function DashboardHeader() {
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href="/dashboard">Dashboard</Link>
+              <Link href="/dashboard">{t.dashboard}</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Overview</BreadcrumbPage>
+            <BreadcrumbPage>{t.overview}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -108,7 +113,7 @@ export function DashboardHeader() {
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Search lessons..."
+          placeholder={t.searchLessons}
           className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
         />
       </div>

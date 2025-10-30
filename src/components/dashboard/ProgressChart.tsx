@@ -7,6 +7,8 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { progressChartData } from "@/lib/data"
+import { useLanguage } from "@/components/language-provider"
+import { translations } from "@/lib/translations"
 
 // Replace hardcoded data with a version that can be empty for new users
 const emptyProgressData = [
@@ -22,17 +24,19 @@ const emptyProgressData = [
 
 export function ProgressChart({ hasActivity = false }: { hasActivity?: boolean }) {
   const data = hasActivity ? progressChartData : emptyProgressData;
+  const lang = useLanguage();
+  const t = translations[lang];
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Weekly Progress</CardTitle>
-        <CardDescription>Minutes spent learning this week vs. last week.</CardDescription>
+        <CardTitle>{t.weeklyProgress}</CardTitle>
+        <CardDescription>{t.weeklyProgressDescription}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={{
-          'This Week': { label: 'This Week', color: 'hsl(var(--chart-1))' },
-          'Last Week': { label: 'Last Week', color: 'hsl(var(--chart-2))' },
+          'This Week': { label: t.thisWeek, color: 'hsl(var(--chart-1))' },
+          'Last Week': { label: t.lastWeek, color: 'hsl(var(--chart-2))' },
         }} className="h-[250px] w-full">
             <ResponsiveContainer>
               <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>

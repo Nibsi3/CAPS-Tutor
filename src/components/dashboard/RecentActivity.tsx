@@ -2,13 +2,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { recentActivityData } from "@/lib/data"
 import { cn } from "@/lib/utils"
 import { BookOpen } from "lucide-react"
+import { useLanguage } from "@/components/language-provider"
+import { translations } from "@/lib/translations"
 
 export function RecentActivity({ hasActivity = false }: { hasActivity?: boolean }) {
+  const lang = useLanguage();
+  const t = translations[lang];
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Activity</CardTitle>
-        <CardDescription>A log of your recent learning journey.</CardDescription>
+        <CardTitle>{t.recentActivity}</CardTitle>
+        <CardDescription>{t.recentActivityDescription}</CardDescription>
       </CardHeader>
       <CardContent>
         {hasActivity ? (
@@ -39,8 +44,8 @@ export function RecentActivity({ hasActivity = false }: { hasActivity?: boolean 
         ) : (
           <div className="flex flex-col items-center justify-center text-center text-muted-foreground py-8">
               <BookOpen className="w-12 h-12 mb-4" />
-              <h3 className="font-semibold text-lg">No Activity Yet</h3>
-              <p className="text-sm">Complete a lesson or a quiz to see your progress here.</p>
+              <h3 className="font-semibold text-lg">{t.noActivity}</h3>
+              <p className="text-sm">{t.noActivityDescription}</p>
           </div>
         )}
       </CardContent>

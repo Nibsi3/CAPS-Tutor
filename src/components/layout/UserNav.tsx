@@ -15,11 +15,15 @@ import { useAuth, useUser } from "@/firebase"
 import { logOut } from "@/firebase/auth/social-auth"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useLanguage } from "@/components/language-provider"
+import { translations } from "@/lib/translations"
 
 export function UserNav() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const lang = useLanguage();
+  const t = translations[lang];
 
   const handleLogout = async () => {
     await logOut(auth);
@@ -33,7 +37,7 @@ export function UserNav() {
   if (!user) {
     return (
       <Button asChild>
-        <Link href="/login">Sign In</Link>
+        <Link href="/login">{t.signIn}</Link>
       </Button>
     )
   }
@@ -60,15 +64,15 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-             <Link href="/dashboard">Dashboard</Link>
+             <Link href="/dashboard">{t.dashboard}</Link>
           </DropdownMenuItem>
            <DropdownMenuItem asChild>
-             <Link href="/dashboard/settings">Settings</Link>
+             <Link href="/dashboard/settings">{t.settings}</Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
-          Log out
+          {t.logOut}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

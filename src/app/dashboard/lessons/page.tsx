@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useLanguage } from '@/components/language-provider';
+import { translations } from '@/lib/translations';
 
 // Create a unique list of subjects from the available lessons
 const allLessons = [...lessons, ...placeholderLessons];
@@ -47,6 +49,8 @@ const subjectIcons: Record<string, React.ElementType> = {
 export default function LessonsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const lang = useLanguage();
+  const t = translations[lang];
 
   // Fetch user profile
   const userProfileRef = useMemoFirebase(() => {
@@ -89,9 +93,9 @@ export default function LessonsPage() {
     <div className="flex-1 space-y-6">
       <Card className='overflow-hidden rounded-2xl'>
         <div className="bg-card p-6 border-b">
-            <CardTitle className="font-headline text-3xl flex items-center gap-3"><BookOpen className='w-8 h-8' />Lesson Hub</CardTitle>
+            <CardTitle className="font-headline text-3xl flex items-center gap-3"><BookOpen className='w-8 h-8' />{t.lessonHub}</CardTitle>
             <CardDescription className='pt-2'>
-                Browse and search for lessons for your grade and subjects.
+                {t.lessonHubDescription}
             </CardDescription>
         </div>
         <CardContent className='p-6'>
@@ -100,13 +104,13 @@ export default function LessonsPage() {
               <div className='flex items-center gap-3'>
                 <UserCheck className="h-6 w-6 text-primary" />
                 <div>
-                  <p className="font-semibold">Showing lessons for Grade {userProfile.gradeLevel}</p>
-                  <p className="text-sm text-muted-foreground">Your subjects: {userProfile.subjects.join(', ')}.</p>
+                  <p className="font-semibold">{t.showingLessonsFor.replace('{gradeLevel}', userProfile.gradeLevel.toString())}</p>
+                  <p className="text-sm text-muted-foreground">{t.yourSubjectsAre.replace('{subjects}', userProfile.subjects.join(', '))}</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" asChild>
                 <Link href="/dashboard/settings">
-                  <Settings className='mr-2 h-4 w-4'/> Change Settings
+                  <Settings className='mr-2 h-4 w-4'/> {t.changeSettings}
                 </Link>
               </Button>
             </div>
@@ -114,7 +118,7 @@ export default function LessonsPage() {
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <Select onValueChange={setSelectedGrade} value={selectedGrade || ''}>
                 <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Filter by Grade" />
+                  <SelectValue placeholder={t.filterByGrade} />
                 </SelectTrigger>
                 <SelectContent>
                   {grades.map(grade => (
@@ -124,7 +128,7 @@ export default function LessonsPage() {
               </Select>
               <Select onValueChange={setSelectedSubject} value={selectedSubject || ''}>
                 <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Filter by Subject" />
+                  <SelectValue placeholder={t.filterBySubject} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableSubjects.map(subject => (
@@ -133,7 +137,7 @@ export default function LessonsPage() {
                 </SelectContent>
               </Select>
               <Button onClick={() => { setSelectedGrade(null); setSelectedSubject(null); }} variant="outline">
-                Clear Filters
+                {t.clearFilters}
               </Button>
             </div>
           )}
@@ -157,7 +161,7 @@ export default function LessonsPage() {
                                 </div>
                             </CardHeader>
                             <CardContent className="flex-1 space-y-4">
-                                <p className="text-sm font-medium">Key Topics:</p>
+                                <p className="text-sm font-medium">{t.keyTopics}</p>
                                 <div className="space-y-2 text-sm text-muted-foreground">
                                     {lesson.topics.slice(0, 5).map((topic, index) => (
                                         <div key={index} className="flex items-center gap-2">
@@ -171,19 +175,19 @@ export default function LessonsPage() {
                                             <Tooltip>
                                               <TooltipTrigger asChild>
                                                 <DialogTrigger asChild>
-                                                    <button className="text-xs font-semibold text-primary/80 pt-1 cursor-pointer hover:underline text-left">...and {lesson.topics.length - 5} more</button>
+                                                    <button className="text-xs font-semibold text-primary/80 pt-1 cursor-pointer hover:underline text-left">{t.andMore.replace('{count}', (lesson.topics.length - 5).toString())}</button>
                                                 </DialogTrigger>
                                               </TooltipTrigger>
                                               <TooltipContent>
-                                                <p>Click to see all {lesson.topics.length - 5} topics</p>
+                                                <p>Click to see all {lesson.topics.length} topics</p>
                                               </TooltipContent>
                                             </Tooltip>
                                           </TooltipProvider>
                                             <DialogContent className="sm:max-w-md">
                                                 <DialogHeader>
-                                                    <DialogTitle>All Topics for {lesson.subject} - Grade {lesson.gradeLevel}</DialogTitle>
+                                                    <DialogTitle>{t.allTopicsFor.replace('{subject}', lesson.subject).replace('{grade}', lesson.gradeLevel)}</DialogTitle>
                                                     <DialogDescription>
-                                                        A complete list of topics covered in this subject.
+                                                        {t.allTopicsDescription}
                                                     </DialogDescription>
                                                 </DialogHeader>
                                                 <ul className='list-disc list-inside mt-4 space-y-2 max-h-80 overflow-y-auto pr-4'>
@@ -198,7 +202,7 @@ export default function LessonsPage() {
                             </CardContent>
                             <CardFooter>
                                 <Button asChild className="w-full">
-                                    <Link href={`/dashboard/lessons/${lesson.id}`}>Explore Subject</Link>
+                                    <Link href={`/dashboard/lessons/${lesson.id}`}>{t.exploreSubject}</Link>
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -207,17 +211,17 @@ export default function LessonsPage() {
                 </div>
           ) : (
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
-              <h3 className='text-lg font-semibold'>No Lessons Found</h3>
+              <h3 className='text-lg font-semibold'>{t.noLessonsFound}</h3>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto">
                 {useProfileFilters 
-                  ? "We couldn't find any lessons matching your saved grade and subjects. Try adjusting your preferences in the settings." 
-                  : "No lessons matched your filter criteria. Please try different options."
+                  ? t.noLessonsForProfile
+                  : t.noLessonsForFilter
                 }
               </p>
                {useProfileFilters && (
                   <Button variant="default" size="sm" asChild className="mt-4">
                     <Link href="/dashboard/settings">
-                      <Settings className='mr-2 h-4 w-4'/> Go to Settings
+                      <Settings className='mr-2 h-4 w-4'/> {t.goToSettings}
                     </Link>
                   </Button>
                )}

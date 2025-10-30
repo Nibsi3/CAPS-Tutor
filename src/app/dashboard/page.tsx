@@ -9,12 +9,15 @@ import { useDoc, useUser, useMemoFirebase } from "@/firebase";
 import { doc, getFirestore } from "firebase/firestore";
 import Link from "next/link";
 import { BookOpen, Settings } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { useLanguage } from '@/components/language-provider';
+import { translations } from '@/lib/translations';
 
 
 export default function DashboardPage() {
     const { user } = useUser();
     const firestore = getFirestore();
+    const lang = useLanguage();
+    const t = translations[lang];
 
     const userProfileRef = useMemoFirebase(() => {
         if (!user) return null;
@@ -28,7 +31,7 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between space-y-2">
-        <h1 className="font-headline text-3xl font-bold tracking-tight">Welcome back, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
+        <h1 className="font-headline text-3xl font-bold tracking-tight">{t.welcomeBack}, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
       </div>
 
       <StatCards hasActivity={hasCompletedSetup} />
@@ -36,8 +39,8 @@ export default function DashboardPage() {
       {hasCompletedSetup && userProfile.subjects && (
         <Card>
             <CardHeader>
-                <CardTitle>Your Subjects</CardTitle>
-                <CardDescription>Continue where you left off or start a new lesson.</CardDescription>
+                <CardTitle>{t.yourSubjects}</CardTitle>
+                <CardDescription>{t.yourSubjectsDescription}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {userProfile.subjects.map((subject: string) => (
@@ -48,12 +51,12 @@ export default function DashboardPage() {
                                     <BookOpen className="h-6 w-6 text-primary" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Grade {userProfile.gradeLevel}</p>
+                                    <p className="text-sm font-medium text-muted-foreground">{t.gradeLevel} {userProfile.gradeLevel}</p>
                                     <h3 className="font-headline text-2xl font-bold">{subject}</h3>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" asChild>
-                                <Link href={`/dashboard/lessons`}>View</Link>
+                                <Link href={`/dashboard/lessons`}>{t.view}</Link>
                             </Button>
                         </div>
                     </div>

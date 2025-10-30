@@ -1,10 +1,82 @@
 export const translations = {
   en: {
+    // General
+    cancel: "Cancel",
+    saveChanges: "Save Changes",
+    view: "View",
+
+    // Dashboard Layout
+    dashboard: "Dashboard",
+    lessons: "Lessons",
+    practice: "Practice",
+    pastPapers: "Past Papers",
+    aiTutor: "AI Tutor",
+    achievements: "Achievements",
+    progress: "Progress",
     settings: "Settings",
+
+    // Dashboard Header
+    overview: "Overview",
+    searchLessons: "Search lessons...",
+    
+    // UserNav
+    logOut: "Log out",
+    signIn: "Sign In",
+    
+    // Dashboard Page
+    welcomeBack: "Welcome back",
+    yourSubjects: "Your Subjects",
+    yourSubjectsDescription: "Continue where you left off or start a new lesson.",
+
+    // Stat Cards
+    lessonsCompleted: 'Lessons Completed',
+    avgScore: 'Avg. Score',
+    timeSpent: 'Time Spent',
+    weakestTopic: 'Weakest Topic',
+    startLessonPrompt: 'Start a lesson to see progress',
+    completeQuizPrompt: 'Complete a quiz to see your score',
+    timeSpentSubtext: 'Updated as you learn',
+    weakestTopicSubtext: 'Practice to identify weak areas',
+    lessonsCompletedThisWeek: '+{count} this week',
+    avgScoreChange: '{change}% this month',
+    timeSpentThisWeek: '+{hours}h this week',
+    practiceNow: 'Practice now',
+
+    // Progress Chart
+    weeklyProgress: 'Weekly Progress',
+    weeklyProgressDescription: 'Minutes spent learning this week vs. last week.',
+    thisWeek: 'This Week',
+    lastWeek: 'Last Week',
+
+    // Recent Activity
+    recentActivity: 'Recent Activity',
+    recentActivityDescription: 'A log of your recent learning journey.',
+    noActivity: 'No Activity Yet',
+    noActivityDescription: 'Complete a lesson or a quiz to see your progress here.',
+
+    // Lessons Page
+    lessonHub: "Lesson Hub",
+    lessonHubDescription: "Browse and search for lessons for your grade and subjects.",
+    showingLessonsFor: "Showing lessons for Grade {gradeLevel}",
+    yourSubjectsAre: "Your subjects: {subjects}",
+    changeSettings: "Change Settings",
+    filterByGrade: "Filter by Grade",
+    filterBySubject: "Filter by Subject",
+    clearFilters: "Clear Filters",
+    noLessonsFound: "No Lessons Found",
+    noLessonsForProfile: "We couldn't find any lessons matching your saved grade and subjects. Try adjusting your preferences in the settings.",
+    noLessonsForFilter: "No lessons matched your filter criteria. Please try different options.",
+    goToSettings: "Go to Settings",
+    keyTopics: "Key Topics:",
+    andMore: "...and {count} more",
+    exploreSubject: "Explore Subject",
+    allTopicsFor: "All Topics for {subject} - Grade {grade}",
+    allTopicsDescription: "A complete list of topics covered in this subject.",
+
+    // Settings Page
     settingsDescription: "Manage your account and learning preferences.",
     settingsSavedTitle: "Settings Saved",
     settingsSavedDescription: "Your profile has been updated successfully.",
-    saveChanges: "Save Changes",
     appLanguage: "App Language",
     appLanguageDescription: "Choose the language for the application interface.",
     language: "Language",
@@ -29,15 +101,86 @@ export const translations = {
     deleteAccount: "Delete Account",
     deleteAccountConfirmationTitle: "Are you absolutely sure?",
     deleteAccountConfirmationDescription: "This action cannot be undone. This will permanently delete your account, remove your data from our servers, and log you out.",
-    cancel: "Cancel",
     deleteMyAccount: "Delete My Account",
   },
   af: {
+    // General
+    cancel: "Kanselleer",
+    saveChanges: "Stoor Veranderinge",
+    view: "Besigtig",
+
+    // Dashboard Layout
+    dashboard: "Kontroleskerm",
+    lessons: "Lesse",
+    practice: "Oefen",
+    pastPapers: "Ouvraestelle",
+    aiTutor: "KI Tutor",
+    achievements: "Prestasies",
+    progress: "Vordering",
     settings: "Instellings",
+
+    // Dashboard Header
+    overview: "Oorsig",
+    searchLessons: "Soek lesse...",
+
+    // UserNav
+    logOut: "Meld af",
+    signIn: "Meld aan",
+
+    // Dashboard Page
+    welcomeBack: "Welkom terug",
+    yourSubjects: "Jou Vakke",
+    yourSubjectsDescription: "Gaan voort waar jy opgehou het of begin 'n nuwe les.",
+
+    // Stat Cards
+    lessonsCompleted: 'Lesse Voltooi',
+    avgScore: 'Gem. Telling',
+    timeSpent: 'Tyd Spandeer',
+    weakestTopic: 'Swakste Onderwerp',
+    startLessonPrompt: 'Begin \'n les om vordering te sien',
+    completeQuizPrompt: 'Voltooi \'n vasvra om jou telling te sien',
+    timeSpentSubtext: 'Opgedateer soos jy leer',
+    weakestTopicSubtext: 'Oefen om swak areas te identifiseer',
+    lessonsCompletedThisWeek: '+{count} hierdie week',
+    avgScoreChange: '{change}% hierdie maand',
+    timeSpentThisWeek: '+{hours}u hierdie week',
+    practiceNow: 'Oefen nou',
+
+    // Progress Chart
+    weeklyProgress: 'Weeklikse Vordering',
+    weeklyProgressDescription: 'Minute spandeer aan leer hierdie week teenoor verlede week.',
+    thisWeek: 'Hierdie Week',
+    lastWeek: 'Verlede Week',
+    
+    // Recent Activity
+    recentActivity: 'Onlangse Aktiwiteit',
+    recentActivityDescription: "'n Logboek van jou onlangse leerreis.",
+    noActivity: 'Nog Geen Aktiwiteit',
+    noActivityDescription: 'Voltooi \'n les of \'n vasvra om jou vordering hier te sien.',
+    
+    // Lessons Page
+    lessonHub: "Les-sentrum",
+    lessonHubDescription: "Blaai deur en soek lesse vir jou graad en vakke.",
+    showingLessonsFor: "Wys lesse vir Graad {gradeLevel}",
+    yourSubjectsAre: "Jou vakke: {subjects}",
+    changeSettings: "Verander Instellings",
+    filterByGrade: "Filtreer volgens Graad",
+    filterBySubject: "Filtreer volgens Vak",
+    clearFilters: "Maak Filters Skoon",
+    noLessonsFound: "Geen Lesse Gevind",
+    noLessonsForProfile: "Ons kon geen lesse vind wat by jou gestoorde graad en vakke pas nie. Probeer jou voorkeure in die instellings aanpas.",
+    noLessonsForFilter: "Geen lesse het aan jou filterkriteria voldoen nie. Probeer asseblief ander opsies.",
+    goToSettings: "Gaan na Instellings",
+    keyTopics: "Sleutelonderwerpe:",
+    andMore: "...en nog {count}",
+    exploreSubject: "Verken Vak",
+    allTopicsFor: "Alle Onderwerpe vir {subject} - Graad {grade}",
+    allTopicsDescription: "'n Volledige lys van onderwerpe wat in hierdie vak gedek word.",
+
+    // Settings Page
     settingsDescription: "Bestuur jou rekening en leervoorkeure.",
     settingsSavedTitle: "Instellings Gestoor",
     settingsSavedDescription: "Jou profiel is suksesvol opgedateer.",
-    saveChanges: "Stoor Veranderinge",
     appLanguage: "App Taal",
     appLanguageDescription: "Kies die taal vir die toepassing se koppelvlak.",
     language: "Taal",
@@ -62,7 +205,6 @@ export const translations = {
     deleteAccount: "Vee Rekening Uit",
     deleteAccountConfirmationTitle: "Is jy heeltemal seker?",
     deleteAccountConfirmationDescription: "Hierdie aksie kan nie ongedaan gemaak word nie. Dit sal jou rekening permanent uitvee, jou data van ons bedieners verwyder en jou afmeld.",
-    cancel: "Kanselleer",
     deleteMyAccount: "Vee My Rekening Uit",
   },
   nbl: {
