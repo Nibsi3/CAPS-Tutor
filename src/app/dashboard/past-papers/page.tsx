@@ -46,8 +46,12 @@ const uniqueSubjects = [...new Set(allSubjectsData.map(s => s.label.replace(/ Pa
  * e.g., "Mathematics Paper 1" -> "Mathematics"
  */
 function getBaseSubject(paperTitle: string): string {
-    const foundSubject = allSubjectsForLookup.find(subj => paperTitle.toLowerCase().startsWith(subj.toLowerCase()));
-    return foundSubject || paperTitle;
+    const lowerCaseTitle = paperTitle.toLowerCase();
+    // Sort subjects by length, longest first, to avoid partial matches (e.g., "English" matching before "English Home Language")
+    const sortedSubjects = [...allSubjectsForLookup].sort((a, b) => b.length - a.length);
+
+    const foundSubject = sortedSubjects.find(subj => lowerCaseTitle.startsWith(subj.toLowerCase()));
+    return foundSubject || paperTitle; // Fallback to the original title if no match is found
 }
 
 
