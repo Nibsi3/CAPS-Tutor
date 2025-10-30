@@ -88,13 +88,20 @@ export const grades = [
     { value: "12", label: "Grade 12" },
 ];
 
-export const subjects = [
+export const languageSubjects = {
+    english: [
+        { value: "English Home Language", label: "English Home Language" },
+        { value: "English First Additional Language", label: "English First Additional Language" },
+    ],
+    afrikaans: [
+        { value: "Afrikaans Huistaal", label: "Afrikaans Huistaal" },
+        { value: "Afrikaans Eerste Addisionele Taal", label: "Afrikaans Eerste Addisionele Taal" },
+    ]
+};
+
+export const contentSubjects = [
     { value: "Mathematics", label: "Mathematics" },
     { value: "Mathematical Literacy", label: "Mathematical Literacy" },
-    { value: "English Home Language", label: "English Home Language" },
-    { value: "English First Additional Language", label: "English First Additional Language" },
-    { value: "Afrikaans Huistaal", label: "Afrikaans Huistaal" },
-    { value: "Afrikaans Eerste Addisionele Taal", label: "Afrikaans Eerste Addisionele Taal" },
     { value: "Physical Sciences", label: "Physical Sciences" },
     { value: "Life Sciences", label: "Life Sciences" },
     { value: "Accounting", label: "Accounting" },
@@ -110,6 +117,9 @@ export const subjects = [
     { value: "Engineering Graphics & Design", label: "Engineering Graphics & Design" },
     { value: "Creative Arts", label: "Creative Arts" },
 ];
+
+export const subjects = [...contentSubjects, ...languageSubjects.english, ...languageSubjects.afrikaans];
+
 
 export const subjectColors: Record<string, { bg: string, text: string }> = {
     "Mathematics": { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400" },

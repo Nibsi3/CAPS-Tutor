@@ -35,7 +35,7 @@ import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/fireb
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, Settings as SettingsIcon, AlertTriangle } from 'lucide-react';
-import { grades, subjects } from '@/lib/data';
+import { grades, contentSubjects, languageSubjects } from '@/lib/data';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import {
@@ -63,11 +63,19 @@ const profileFormSchema = z.object({
   gradeLevel: z.string({
     required_error: 'Please select a grade level.',
   }),
-  subjects: z.array(z.string()).refine((value) => value.some((item) => item), {
-    message: 'You have to select at least one subject.',
-  }),
+  english: z.string().optional(),
+  afrikaans: z.string().optional(),
+  contentSubjects: z.array(z.string()).optional(),
   literature: literatureSchema.optional(),
+}).refine(data => {
+    return (data.english && data.english !== "none") || 
+           (data.afrikaans && data.afrikaans !== "none") || 
+           (data.contentSubjects && data.contentSubjects.length > 0);
+}, {
+    message: "You must select at least one subject.",
+    path: ["contentSubjects"], // Point error to the last field in the group
 });
+
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
@@ -101,7 +109,9 @@ export default function SettingsPage() {
       firstName: '',
       lastName: '',
       gradeLevel: '',
-      subjects: [],
+      contentSubjects: [],
+      english: 'none',
+      afrikaans: 'none',
       literature: {
         'english-hl': { novel: '', drama: '', poems: [] },
         'english-fal': { novel: '', drama: '', poems: [] },
@@ -113,17 +123,29 @@ export default function SettingsPage() {
   });
   
   const { control, formState, reset } = form;
-  const watchedSubjects = useWatch({ control, name: 'subjects' });
+  
+  const watchedEnglish = useWatch({ control, name: 'english' });
+  const watchedAfrikaans = useWatch({ control, name: 'afrikaans' });
+  const watchedContentSubjects = useWatch({ control, name: 'contentSubjects' });
   const watchedGrade = useWatch({ control, name: 'gradeLevel' });
+
+  const watchedSubjects = [watchedEnglish, watchedAfrikaans, ...(watchedContentSubjects || [])].filter(s => s && s !== 'none') as string[];
 
   useEffect(() => {
     if (userProfile && !formState.isDirty) {
+      const allUserSubjects = userProfile.subjects || [];
+      const englishSelection = allUserSubjects.find(s => s.startsWith('English')) || 'none';
+      const afrikaansSelection = allUserSubjects.find(s => s.startsWith('Afrikaans')) || 'none';
+      const contentSelection = allUserSubjects.filter(s => !s.startsWith('English') && !s.startsWith('Afrikaans'));
+
       reset({
         ...userProfile,
         firstName: userProfile.firstName || '',
         lastName: userProfile.lastName || '',
         gradeLevel: userProfile.gradeLevel ? userProfile.gradeLevel.toString() : '',
-        subjects: userProfile.subjects || [],
+        english: englishSelection,
+        afrikaans: afrikaansSelection,
+        contentSubjects: contentSelection,
         literature: userProfile.literature || {
             'english-hl': { novel: '', drama: '', poems: [] },
             'english-fal': { novel: '', drama: '', poems: [] },
@@ -136,8 +158,10 @@ export default function SettingsPage() {
       reset({
         firstName: user.displayName?.split(' ')[0] || '',
         lastName: user.displayName?.split(' ')[1] || '',
-        subjects: [],
+        contentSubjects: [],
         gradeLevel: '',
+        english: 'none',
+        afrikaans: 'none',
       });
     }
   }, [user, userProfile, isProfileLoading, reset, formState.isDirty]);
@@ -152,11 +176,16 @@ export default function SettingsPage() {
         return;
     }
 
+    const finalSubjects = [data.english, data.afrikaans, ...(data.contentSubjects || [])].filter(s => s && s !== 'none') as string[];
+
     const dataToSave = {
         ...userProfile, // preserve existing data
-        ...data,
-        email: user?.email, // ensure email is preserved
-        gradeLevel: parseInt(data.gradeLevel, 10), // Convert grade back to number
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: user?.email,
+        gradeLevel: parseInt(data.gradeLevel, 10),
+        subjects: finalSubjects,
+        literature: data.literature,
     };
 
     setDoc(userProfileRef, dataToSave, { merge: true })
@@ -318,23 +347,69 @@ export default function SettingsPage() {
                   </FormItem>
                 )}
               />
+              
+              <div className="space-y-4">
+                <FormLabel className="text-base">Language Subjects</FormLabel>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="english"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>English</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="none">Not studying</SelectItem>
+                                {languageSubjects.english.map(sub => <SelectItem key={sub.value} value={sub.value}>{sub.label}</SelectItem>)}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="afrikaans"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Afrikaans</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="none">Not studying</SelectItem>
+                                {languageSubjects.afrikaans.map(sub => <SelectItem key={sub.value} value={sub.value}>{sub.label}</SelectItem>)}
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
+              </div>
+
+
               <FormField
                 control={form.control}
-                name="subjects"
+                name="contentSubjects"
                 render={() => (
                   <FormItem>
                     <div className="mb-4">
-                      <FormLabel className="text-base">Your Subjects</FormLabel>
+                      <FormLabel className="text-base">Content Subjects</FormLabel>
                       <FormDescription>
-                        Select the subjects you are currently studying.
+                        Select the other subjects you are currently studying.
                       </FormDescription>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-                      {subjects.map((item) => (
+                      {contentSubjects.map((item) => (
                         <FormField
                           key={item.value}
                           control={form.control}
-                          name="subjects"
+                          name="contentSubjects"
                           render={({ field }) => {
                             return (
                               <FormItem
@@ -345,16 +420,10 @@ export default function SettingsPage() {
                                   <Checkbox
                                     checked={field.value?.includes(item.value)}
                                     onCheckedChange={(checked) => {
+                                      const currentValue = field.value || [];
                                       return checked
-                                        ? field.onChange([
-                                            ...(field.value || []),
-                                            item.value,
-                                          ])
-                                        : field.onChange(
-                                            field.value?.filter(
-                                              (value) => value !== item.value
-                                            )
-                                          );
+                                        ? field.onChange([...currentValue, item.value])
+                                        : field.onChange(currentValue.filter(value => value !== item.value));
                                     }}
                                   />
                                 </FormControl>
@@ -371,14 +440,13 @@ export default function SettingsPage() {
                   </FormItem>
                 )}
               />
+               <LiteratureSelection
+                    control={control}
+                    selectedSubjects={watchedSubjects}
+                    selectedGrade={watchedGrade}
+                />
             </CardContent>
           </Card>
-          
-          <LiteratureSelection
-            control={control}
-            selectedSubjects={watchedSubjects || []}
-            selectedGrade={watchedGrade}
-          />
           
           <Button type="submit" disabled={!formState.isDirty || formState.isSubmitting}>
              {formState.isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
