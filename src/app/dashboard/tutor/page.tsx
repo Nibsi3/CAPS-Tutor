@@ -12,6 +12,7 @@ import { doc, getFirestore } from 'firebase/firestore';
 import { askAiTutor, AiTutorOutput } from '@/ai/flows/ai-tutor-flow';
 import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
+import { useLanguage } from '@/components/language-provider';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -50,13 +51,14 @@ export default function AiTutorPage() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const lang = useLanguage();
 
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
     return doc(firestore, `users/${user.uid}`);
   }, [user, firestore]);
-  const { data: userProfile } = useDoc<{ gradeLevel: number; subjects: string[] }>(userProfileRef);
+  const { data: userProfile } = useDoc<{ gradeLevel: number; subjects: string[]; language?: string; }>(userProfileRef);
 
   useEffect(() => {
     // Scroll to the bottom of the chat on new messages
@@ -95,6 +97,7 @@ export default function AiTutorPage() {
             prompt: currentPrompt,
             gradeLevel: userProfile.gradeLevel,
             subjects: userProfile.subjects,
+            language: userProfile.language,
         });
 
         setMessages([...newMessages, { role: 'assistant', content: result.response }]);
@@ -205,3 +208,5 @@ export default function AiTutorPage() {
     </div>
   )
 }
+
+    

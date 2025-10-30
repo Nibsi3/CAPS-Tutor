@@ -73,6 +73,21 @@ export const recentActivityData = [
   },
 ];
 
+export const appLanguages = [
+    { value: 'en', label: 'English' },
+    { value: 'af', label: 'Afrikaans' },
+    { value: 'nbl', label: 'isiNdebele' },
+    { value: 'xh', label: 'isiXhosa' },
+    { value: 'zu', label: 'isiZulu' },
+    { value: 'nso', label: 'Sepedi' },
+    { value: 'st', label: 'Sesotho' },
+    { value: 'tn', label: 'Setswana' },
+    { value: 'ss', label: 'siSwati' },
+    { value: 'ven', label: 'Tshivenḓa' },
+    { value: 'ts', label: 'Xitsonga' },
+];
+
+
 export const grades = [
     { value: "1", label: "Grade 1" },
     { value: "2", label: "Grade 2" },
@@ -462,3 +477,5 @@ export const literatureOptions = {
       // ... more FAL, HT, EAT for Grade 10
   }
 };
+
+    

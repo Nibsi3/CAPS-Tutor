@@ -1,0 +1,81 @@
+export const translations = {
+  en: {
+    settings: "Settings",
+    settingsDescription: "Manage your account and learning preferences.",
+    settingsSavedTitle: "Settings Saved",
+    settingsSavedDescription: "Your profile has been updated successfully.",
+    saveChanges: "Save Changes",
+  },
+  af: {
+    settings: "Instellings",
+    settingsDescription: "Bestuur jou rekening en leervoorkeure.",
+    settingsSavedTitle: "Instellings Gestoor",
+    settingsSavedDescription: "Jou profiel is suksesvol opgedateer.",
+    saveChanges: "Stoor Veranderinge",
+  },
+  nbl: {
+    settings: "Izinto ezikhethwako",
+    settingsDescription: "Phatha i-akhawunti yakho nezinto ozikhethayo zokufunda.",
+    settingsSavedTitle: "Izinto ezikhethwako Zibekwe",
+    settingsSavedDescription: "Iphrofayili yakho ibuyekezwe ngempumelelo.",
+    saveChanges: "Bekela Izinto Ezitjhadileko",
+  },
+  xh: {
+    settings: "Izicwangciso",
+    settingsDescription: "Lawula i-akhawunti yakho kunye nezinto ozikhethayo zokufunda.",
+    settingsSavedTitle: "Izicwangciso Zigciniwe",
+    settingsSavedDescription: "Iprofayile yakho ihlaziywe ngempumelelo.",
+    saveChanges: "Gcina Utshintsho",
+  },
+  zu: {
+    settings: "Izilungiselelo",
+    settingsDescription: "Phatha i-akhawunti yakho nezintandokazi zakho zokufunda.",
+    settingsSavedTitle: "Izilungiselelo Ziyalondolozwa",
+    settingsSavedDescription: "Iphrofayili yakho ibuyekezwe ngempumelelo.",
+    saveChanges: "Londoloza Izinguquko",
+  },
+  nso: {
+    settings: "Dipeakanyo",
+    settingsDescription: "Laola akhaonto ya gago le dikgetho tša gago tša go ithuta.",
+    settingsSavedTitle: "Dipeakanyo di Bolokilwe",
+    settingsSavedDescription: "Phrofayele ya gago e mpshafaditšwe ka katlego.",
+    saveChanges: "Boloka Diphetogo",
+  },
+  st: {
+    settings: "Litlhophiso",
+    settingsDescription: "Laola ak'haonte ea hau le likhetho tsa hau tsa ho ithuta.",
+    settingsSavedTitle: "Litlhophiso li Bolokiloe",
+    settingsSavedDescription: "Boemo ba hau bo ntlafalitsoe ka katleho.",
+    saveChanges: "Boloka Liphetoho",
+  },
+  tn: {
+    settings: "Ditsamaiso",
+    settingsDescription: "Laola akhaonto ya gago le dilo tse o di tlhophang tsa go ithuta.",
+    settingsSavedTitle: "Ditsamaiso di Bolokilwe",
+    settingsSavedDescription: "Boemo jwa gago bo ntlafaditswe ka katlego.",
+    saveChanges: "Boloka Diphetogo",
+  },
+  ss: {
+    settings: "Tilungiselelo",
+    settingsDescription: "Lawula i-akhawunti yakho netintfokakhetselo takho tekufundza.",
+    settingsSavedTitle: "Tilungiselelo Tigciniwe",
+    settingsSavedDescription: "Iphrofayela yakho ivuselelwe ngemphumelelo.",
+    saveChanges: "Gcina Kushintja",
+  },
+  ven: {
+    settings: "Zwiṱitirwa",
+    settingsDescription: "Langutani akhaunthu yaṋu na zwiṱitirwa zwa u guda zwaṋu.",
+    settingsSavedTitle: "Zwiṱitirwa zwo Vhulungwa",
+    settingsSavedDescription: "Phurofaela yaṋu yo pfumainwa nga vhudi.",
+    saveChanges: "Vhulungani Zwithu",
+  },
+  ts: {
+    settings: "Maveketelelo",
+    settingsDescription: "Lawula akhawunti ya wena ni leswi u swi hlawulaka swo dyondza.",
+    settingsSavedTitle: "Maveketelelo Ma Hlayisiwile",
+    settingsSavedDescription: "Phurofayili ya wena yi pfuxetiwile hi mfanelo.",
+    saveChanges: "Hlayisa Ku Cinca",
+  },
+};
+
+    

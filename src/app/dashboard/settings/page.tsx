@@ -34,8 +34,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, Settings as SettingsIcon, AlertTriangle } from 'lucide-react';
-import { grades, contentSubjects, languageSubjects } from '@/lib/data';
+import { Loader, Settings as SettingsIcon, AlertTriangle, Languages } from 'lucide-react';
+import { grades, contentSubjects, languageSubjects, appLanguages } from '@/lib/data';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import {
@@ -52,6 +52,8 @@ import {
 import { deleteCurrentUser } from '@/firebase/auth/social-auth';
 import { useRouter } from 'next/navigation';
 import { LiteratureSelection, literatureSchema } from '@/components/forms/LiteratureSelection';
+import { useLanguage, useSetLanguage } from '@/components/language-provider';
+import { translations } from '@/lib/translations';
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
@@ -60,6 +62,7 @@ const profileFormSchema = z.object({
   lastName: z.string().min(2, {
     message: 'Last name must be at least 2 characters.',
   }).optional(),
+  language: z.string().optional(),
   gradeLevel: z.string({
     required_error: 'Please select a grade level.',
   }),
@@ -83,6 +86,7 @@ interface UserProfile {
   firstName: string;
   lastName: string;
   email: string;
+  language?: string;
   gradeLevel: number;
   subjects: string[];
   literature?: z.infer<typeof literatureSchema>;
@@ -95,6 +99,10 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const currentLang = useLanguage();
+  const setLanguage = useSetLanguage();
+  const t = translations[currentLang];
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -108,6 +116,7 @@ export default function SettingsPage() {
     defaultValues: {
       firstName: '',
       lastName: '',
+      language: 'en',
       gradeLevel: '',
       contentSubjects: [],
       english: 'none',
@@ -142,6 +151,7 @@ export default function SettingsPage() {
         ...userProfile,
         firstName: userProfile.firstName || '',
         lastName: userProfile.lastName || '',
+        language: userProfile.language || 'en',
         gradeLevel: userProfile.gradeLevel ? userProfile.gradeLevel.toString() : '',
         english: englishSelection,
         afrikaans: afrikaansSelection,
@@ -158,6 +168,7 @@ export default function SettingsPage() {
       reset({
         firstName: user.displayName?.split(' ')[0] || '',
         lastName: user.displayName?.split(' ')[1] || '',
+        language: 'en',
         contentSubjects: [],
         gradeLevel: '',
         english: 'none',
@@ -183,6 +194,7 @@ export default function SettingsPage() {
         firstName: data.firstName,
         lastName: data.lastName,
         email: user?.email,
+        language: data.language,
         gradeLevel: parseInt(data.gradeLevel, 10),
         subjects: finalSubjects,
         literature: data.literature,
@@ -190,9 +202,12 @@ export default function SettingsPage() {
 
     setDoc(userProfileRef, dataToSave, { merge: true })
       .then(() => {
+        if (data.language) {
+          setLanguage(data.language as keyof typeof translations);
+        }
         toast({
-          title: 'Settings Saved',
-          description: 'Your profile has been updated successfully.',
+          title: t.settingsSavedTitle,
+          description: t.settingsSavedDescription,
         });
         form.reset(data); // Resets the form's dirty state
       })
@@ -259,16 +274,50 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 font-headline text-3xl">
             <SettingsIcon className="h-8 w-8" />
-            Settings
+            {t.settings}
           </CardTitle>
           <CardDescription>
-            Manage your account and learning preferences.
+            {t.settingsDescription}
           </CardDescription>
         </CardHeader>
       </Card>
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className='flex items-center gap-2'><Languages className="h-5 w-5" />App Language</CardTitle>
+                <CardDescription>Choose the language for the application interface.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormField
+                  control={form.control}
+                  name="language"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Language</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a language" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {appLanguages.map((lang) => (
+                            <SelectItem key={lang.value} value={lang.value}>
+                              {lang.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+
           <Card>
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
@@ -450,7 +499,7 @@ export default function SettingsPage() {
           
           <Button type="submit" disabled={!formState.isDirty || formState.isSubmitting}>
              {formState.isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
+            {t.saveChanges}
           </Button>
         </form>
       </Form>
@@ -491,3 +540,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    

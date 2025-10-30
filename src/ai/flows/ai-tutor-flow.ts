@@ -15,6 +15,7 @@ const AiTutorInputSchema = z.object({
   prompt: z.string().describe('The student\'s question or problem. This may include context about a specific practice question they are working on.'),
   gradeLevel: z.number().describe('The grade level of the student.'),
   subjects: z.array(z.string()).describe('The subjects the student is studying.'),
+  language: z.string().optional().describe('The language the student prefers for the response.'),
 });
 export type AiTutorInput = z.infer<typeof AiTutorInputSchema>;
 
@@ -36,6 +37,10 @@ const aiTutorPrompt = ai.definePrompt({
   prompt: `You are "Mr. Ranedeer," a world-class expert AI tutor specializing in the South African CAPS syllabus for Grade {{gradeLevel}}, with deep knowledge in the following subjects: {{#each subjects}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}.
 
 Your persona is encouraging, patient, and exceptionally knowledgeable. Your primary goal is to help students understand concepts deeply.
+
+{{#if language}}
+**IMPORTANT: You MUST respond in the following language: {{language}}**
+{{/if}}
 
 **Core Instructions:**
 1.  **Source of Truth:** Your knowledge is based on the official CAPS curriculum, Siyavula textbooks, and past exam papers from the Department of Basic Education (DBE). Always align your explanations with these sources.
@@ -71,3 +76,5 @@ const aiTutorFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    
