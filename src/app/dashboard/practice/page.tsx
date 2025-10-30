@@ -128,10 +128,14 @@ export default function PracticePage() {
         gradeLevel: parseInt(grade),
         subject: subject,
       });
-      newQuestions[index].feedback = feedbackResult;
-      if (feedbackResult.isCorrect && !question.feedback?.isCorrect) { // only increment score on first correct answer
+
+      // Only award points on the FIRST correct attempt
+      if (feedbackResult.isCorrect && !question.feedback) {
         setScore(s => s + 1);
       }
+
+      newQuestions[index].feedback = feedbackResult;
+      
     } catch (error) {
       console.error("Feedback Error:", error);
       toast({ variant: "destructive", title: "Feedback Failed", description: "Could not get feedback for this answer." });
