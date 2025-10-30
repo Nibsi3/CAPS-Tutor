@@ -163,7 +163,6 @@ export default function PastPaperPracticePage() {
         }
     };
 
-    const currentQuestionCorrect = !!session?.examQuestions[currentQuestionIndex]?.feedback?.isCorrect;
     const questionsCount = session?.examQuestions.length || 0;
 
     if (isPaperLoading || !session) {
@@ -207,7 +206,7 @@ export default function PastPaperPracticePage() {
                                     <div key={q.id} className={currentQuestionIndex === index ? 'block' : 'hidden'}>
                                         <div className="rounded-xl border bg-card text-card-foreground shadow p-6 space-y-4">
                                             <p className="font-semibold text-lg">Question {index + 1}: <span className="text-sm font-normal text-muted-foreground">({q.topic})</span></p>
-                                            <div className="text-base prose max-w-none"><ReactMarkdown>{q.question}</ReactMarkdown></div>
+                                            <div className="text-base prose max-w-none"><ReactMarkdown className="whitespace-pre-wrap">{q.question}</ReactMarkdown></div>
                                             
                                             <Textarea 
                                                 placeholder="Your answer..."
