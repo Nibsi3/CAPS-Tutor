@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { FileText, Loader, Search, BookOpen, BarChart, FlaskConical, Globe, Landmark, Calculator, MessageSquare, Briefcase, Paintbrush, Wrench, VenetianMask, Lightbulb, Tractor } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { grades, subjects as allSubjectsData, subjectColors } from '@/lib/data';
+import { grades, subjectColors, subjects as allSubjectsData } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { allSubjectsForLookup } from '@/lib/questions';
@@ -50,17 +50,21 @@ const subjectIcons: Record<string, React.ElementType> = {
   "Civil Technology": Wrench,
 };
 
-const uniqueSubjects = [...new Set(allSubjectsData.map(s => s.label.replace(/ Paper \d/, '')))];
 
 /**
- * Extracts the base subject from a full paper title by finding which known subject the title starts with.
+ * Extracts the base subject from a full paper title.
+ * This function is now more robust.
  * e.g., "Mathematics Paper 1" -> "Mathematics"
+ * e.g., "English Home Language" -> "English Home Language"
  */
 function getBaseSubject(paperTitle: string): string {
+    // Sort subjects by length, longest first, to handle cases like "English Home Language" before "English"
     const sortedSubjects = [...allSubjectsForLookup].sort((a, b) => b.length - a.length);
 
     const foundSubject = sortedSubjects.find(subj => paperTitle.startsWith(subj));
     
+    // If a known subject is found at the start of the title, return it.
+    // Otherwise, return the original title. This might happen for subjects not in the lookup list.
     return foundSubject || paperTitle;
 }
 
@@ -80,12 +84,20 @@ export default function PastPapersPage() {
 
     const { data: processedPapers, isLoading: arePapersLoading } = useCollection<ProcessedPaper>(pastPapersQuery);
 
+    const uniqueSubjectsInDb = useMemo(() => {
+        if (!processedPapers) return [];
+        const subjects = new Set(processedPapers.map(p => getBaseSubject(p.subject)));
+        return Array.from(subjects);
+    }, [processedPapers]);
+
+
     const filteredPapers = useMemo(() => {
         if (!processedPapers) return [];
         return processedPapers.filter(paper => {
+            const baseSubject = getBaseSubject(paper.subject);
             const searchTermMatch = paper.subject.toLowerCase().includes(searchTerm.toLowerCase()) || paper.year.toString().includes(searchTerm);
             const gradeMatch = !selectedGrade || paper.gradeLevel?.toString() === selectedGrade;
-            const subjectMatch = !selectedSubject || paper.subject.toLowerCase().includes(selectedSubject.toLowerCase());
+            const subjectMatch = !selectedSubject || baseSubject.toLowerCase().includes(selectedSubject.toLowerCase());
             return searchTermMatch && gradeMatch && subjectMatch;
         });
     }, [processedPapers, searchTerm, selectedGrade, selectedSubject]);
@@ -131,7 +143,7 @@ export default function PastPapersPage() {
                                 <SelectValue placeholder="Filter by Subject" />
                             </SelectTrigger>
                             <SelectContent>
-                                {uniqueSubjects.map(subject => (
+                                {uniqueSubjectsInDb.map(subject => (
                                     <SelectItem key={subject} value={subject}>{subject}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -216,3 +228,5 @@ export default function PastPapersPage() {
         </div>
     );
 }
+
+    
