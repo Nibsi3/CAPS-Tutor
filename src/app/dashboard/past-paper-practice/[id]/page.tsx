@@ -13,6 +13,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { getQuestionsForSubject, Question, allSubjectsForLookup } from '@/lib/questions';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
 
 interface PastPaperMeta {
@@ -39,6 +40,7 @@ interface Message {
  * e.g., "Mathematics Paper 1" -> "Mathematics"
  */
 function getBaseSubject(paperTitle: string): string | undefined {
+    // Find the subject from the lookup list that is at the beginning of the paper title
     return allSubjectsForLookup.find(subj => paperTitle.toLowerCase().startsWith(subj.toLowerCase()));
 }
 
@@ -141,7 +143,7 @@ export default function PastPaperPracticePage() {
 
         const currentQuestion = session?.examQuestions[currentQuestionIndex];
         const contextPrompt = `Regarding the topic "${currentQuestion?.topic}" and specifically the question: "${currentQuestion?.question}", the student asks: "${currentPrompt}"`;
-        const baseSubject = getBaseSubject(paperData.subject) || paperData.subject;
+        const baseSubject = getBase-subject(paperData.subject) || paperData.subject;
 
         const newMessages: Message[] = [...tutorMessages, { role: 'user', content: currentPrompt }];
         setTutorMessages(newMessages);
@@ -206,7 +208,7 @@ export default function PastPaperPracticePage() {
                                     <div key={q.id} className={currentQuestionIndex === index ? 'block' : 'hidden'}>
                                         <div className="rounded-xl border bg-card text-card-foreground shadow p-6 space-y-4">
                                             <p className="font-semibold text-lg">Question {index + 1}: <span className="text-sm font-normal text-muted-foreground">({q.topic})</span></p>
-                                            <div className="text-base prose max-w-none"><ReactMarkdown className="whitespace-pre-wrap">{q.question}</ReactMarkdown></div>
+                                            <div className="text-base prose max-w-none"><ReactMarkdown rehypePlugins={[rehypeRaw]}>{q.question}</ReactMarkdown></div>
                                             
                                             <Textarea 
                                                 placeholder="Your answer..."
@@ -231,7 +233,7 @@ export default function PastPaperPracticePage() {
                                                         {q.feedback.isCorrect ? 'Correct! Excellent work.' : 'Not quite. Here is a step-by-step explanation:'}
                                                     </p>
                                                     <div className="prose prose-sm max-w-full text-muted-foreground prose-p:my-3 prose-li:my-1.5 prose-p:leading-relaxed">
-                                                        <ReactMarkdown>{q.feedback.explanation}</ReactMarkdown>
+                                                        <ReactMarkdown rehypePlugins={[rehypeRaw]}>{q.feedback.explanation}</ReactMarkdown>
                                                     </div>
                                                 </div>
                                             )}
@@ -296,7 +298,7 @@ export default function PastPaperPracticePage() {
                                 <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                                     {message.role === 'assistant' && <Bot className="w-6 h-6 flex-shrink-0 text-primary" />}
                                     <div className={`rounded-lg p-3 max-w-[90%] text-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                                        <div className="prose prose-sm max-w-full prose-p:my-3 prose-li:my-1.5 prose-p:leading-relaxed"><ReactMarkdown>{message.content}</ReactMarkdown></div>
+                                        <div className="prose prose-sm max-w-full prose-p:my-3 prose-li:my-1.5 prose-p:leading-relaxed"><ReactMarkdown rehypePlugins={[rehypeRaw]}>{message.content}</ReactMarkdown></div>
                                     </div>
                                     {message.role === 'user' && <User className="w-6 h-6 flex-shrink-0" />}
                                 </div>
