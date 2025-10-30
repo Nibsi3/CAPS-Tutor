@@ -1,38 +1,46 @@
+'use client';
+
 import Link from "next/link"
+import { usePathname } from "next/navigation";
 import {
   Bell,
   BookOpen,
   Home,
-  Package2,
   Settings,
   Target,
-  Users,
-  BarChart,
   Bot,
   Award,
-  FileText
+  FileText,
+  BarChart,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
+import { cn } from "@/lib/utils";
+
+const navItems = [
+  { href: "/dashboard", icon: Home, label: "Dashboard" },
+  { href: "/dashboard/lessons", icon: BookOpen, label: "Lessons" },
+  { href: "/dashboard/practice", icon: Target, label: "Practice" },
+  { href: "/dashboard/past-papers", icon: FileText, label: "Past Papers" },
+  { href: "/dashboard/tutor", icon: Bot, label: "AI Tutor", badge: "New" },
+  { href: "/dashboard/achievements", icon: Award, label: "Achievements" },
+  { href: "/dashboard/progress", icon: BarChart, label: "Progress" },
+  { href: "/dashboard/settings", icon: Settings, label: "Settings" },
+];
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname();
+
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r bg-muted/40 md:block">
-        <div className="flex h-full max-h-screen flex-col gap-2">
+        <div className="flex h-full max-h-screen flex-col gap-2 sticky top-0">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold">
                <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
@@ -49,65 +57,27 @@ export default function DashboardLayout({
           </div>
           <div className="flex-1">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <Home className="h-4 w-4" />
-                Dashboard
-              </Link>
-              <Link
-                href="/dashboard/lessons"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <BookOpen className="h-4 w-4" />
-                Lessons
-              </Link>
-              <Link
-                href="/dashboard/practice"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <Target className="h-4 w-4" />
-                Practice
-              </Link>
-               <Link
-                href="/dashboard/past-papers"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <FileText className="h-4 w-4" />
-                Past Papers
-              </Link>
-               <Link
-                href="/dashboard/tutor"
-                className="flex items-center gap-3 rounded-lg bg-accent px-3 py-2 text-primary transition-all hover:text-primary"
-              >
-                <Bot className="h-4 w-4" />
-                AI Tutor
-                <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
-                  New
-                </Badge>
-              </Link>
-              <Link
-                href="/dashboard/achievements"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <Award className="h-4 w-4" />
-                Achievements
-              </Link>
-              <Link
-                href="/dashboard/progress"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <BarChart className="h-4 w-4" />
-                Progress
-              </Link>
-                <Link
-                href="/dashboard/settings"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </Link>
+              {navItems.map((item) => {
+                const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                      isActive && "bg-accent text-primary"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                    {item.badge && (
+                       <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+                         {item.badge}
+                       </Badge>
+                    )}
+                  </Link>
+                )
+              })}
             </nav>
           </div>
           <div className="mt-auto p-4">
