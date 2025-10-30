@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from '@/components/ui/textarea';
-import { Loader, Bot, User, Sparkles } from "lucide-react";
+import { Loader, Bot, User, Sparkles, PencilRuler, BookText, BrainCircuit } from "lucide-react";
 import { useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getFirestore } from 'firebase/firestore';
@@ -17,6 +17,29 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+const examplePrompts = [
+    {
+        icon: PencilRuler,
+        title: "Write Better Essays",
+        prompt: "How can I structure my essays better to get more marks? Show me an example for a history essay."
+    },
+    {
+        icon: BookText,
+        title: "Score Better in Summaries",
+        prompt: "What are the key steps to writing a good summary? Give me an example."
+    },
+    {
+        icon: BrainCircuit,
+        title: "Explain a Concept",
+        prompt: "Explain photosynthesis in simple terms for a Grade 10 student."
+    },
+     {
+        icon: BrainCircuit,
+        title: "Quiz Me",
+        prompt: "Give me a short, 3-question multiple-choice quiz on Grade 12 Algebra."
+    }
+]
 
 export default function AiTutorPage() {
   const { user } = useUser();
@@ -116,9 +139,20 @@ export default function AiTutorPage() {
           <div className="flex-1 space-y-6">
             {messages.length === 0 && !isLoading && (
               <div className="text-center text-muted-foreground h-full flex flex-col items-center justify-center">
-                 <Sparkles className="w-12 h-12 mb-4" />
-                <p className="text-lg">Ready to help!</p>
-                <p>What concept can I explain for you today?</p>
+                 <Sparkles className="w-12 h-12 mb-4 text-primary" />
+                <h3 className="text-2xl font-bold font-headline mb-2">What can I help you with today?</h3>
+                <p className='mb-8'>Select an example below or type your own question.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+                    {examplePrompts.map((example, i) => (
+                        <button key={i} onClick={() => handleSendMessage(example.prompt)} className="text-left p-4 border rounded-lg hover:bg-muted transition-all text-card-foreground">
+                            <div className="flex items-center gap-3">
+                                <example.icon className="w-5 h-5 text-primary" />
+                                <span className="font-semibold">{example.title}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{example.prompt}</p>
+                        </button>
+                    ))}
+                </div>
               </div>
             )}
             {messages.map((message, index) => (
