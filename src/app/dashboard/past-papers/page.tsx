@@ -7,11 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Loader, Search } from "lucide-react";
+import { FileText, Loader, Search, BookOpen, BarChart, FlaskConical, Globe, Landmark, Calculator, MessageSquare } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { grades, subjects as allSubjects } from '@/lib/data';
+import { grades, subjects as allSubjectsData, subjectColors } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { allSubjectsForLookup } from '@/lib/questions';
 
 interface ProcessedPaper {
     id: string;
@@ -23,7 +25,31 @@ interface ProcessedPaper {
     gradeLevel?: number;
 }
 
-const uniqueSubjects = [...new Set(allSubjects.map(s => s.label.replace(/ Paper \d/, '')))];
+const subjectIcons: Record<string, React.ElementType> = {
+  "Mathematics": Calculator,
+  "Physical Sciences": FlaskConical,
+  "Life Sciences": BarChart,
+  "Accounting": FileText,
+  "Business Studies": Landmark,
+  "Geography": Globe,
+  "English Home Language": MessageSquare,
+  "English First Additional Language": MessageSquare,
+  "Afrikaans Huistaal": MessageSquare,
+  "Afrikaans Eerste Addisionele Taal": MessageSquare,
+  // Add more icons for other subjects if needed
+};
+
+const uniqueSubjects = [...new Set(allSubjectsData.map(s => s.label.replace(/ Paper \d/, '')))];
+
+/**
+ * Extracts the base subject from a full paper title.
+ * e.g., "Mathematics Paper 1" -> "Mathematics"
+ */
+function getBaseSubject(paperTitle: string): string {
+    const foundSubject = allSubjectsForLookup.find(subj => paperTitle.toLowerCase().startsWith(subj.toLowerCase()));
+    return foundSubject || paperTitle;
+}
+
 
 export default function PastPapersPage() {
     const firestore = useFirestore();
@@ -123,27 +149,40 @@ export default function PastPapersPage() {
 
                     {!arePapersLoading && filteredPapers.length > 0 && (
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {filteredPapers.map(paper => (
-                                <Card key={paper.id} className="flex flex-col hover:shadow-lg transition-shadow duration-300 rounded-2xl">
-                                    <CardHeader>
-                                        <CardTitle className="text-xl font-headline">{paper.subject}</CardTitle>
-                                        <CardDescription className="font-semibold">
-                                            {paper.year} - Grade {paper.gradeLevel}
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="flex-1">
-                                        <p className="text-sm text-muted-foreground line-clamp-2">
-                                            {paper.paperName.replace(/_/g, ' ')}
-                                        </p>
-                                        <p className="text-sm font-semibold mt-2">{paper.questionCount || 0} Questions</p>
-                                    </CardContent>
-                                    <CardFooter>
-                                        <Button asChild className="w-full" disabled={!paper.questionCount || paper.questionCount === 0}>
-                                            <Link href={`/dashboard/past-paper-practice/${paper.id}`}>Start Practice</Link>
-                                        </Button>
-                                    </CardFooter>
-                                </Card>
-                            ))}
+                            {filteredPapers.map(paper => {
+                                const baseSubject = getBaseSubject(paper.subject);
+                                const Icon = subjectIcons[baseSubject] || FileText;
+                                const colors = subjectColors[baseSubject] || { bg: "bg-muted", text: "text-muted-foreground" };
+                                
+                                return (
+                                    <Card key={paper.id} className="flex flex-col hover:shadow-lg transition-shadow duration-300 rounded-2xl">
+                                        <CardHeader>
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn("p-3 rounded-xl", colors.bg)}>
+                                                    <Icon className={cn("w-6 h-6", colors.text)} />
+                                                </div>
+                                                <div>
+                                                    <CardTitle className="text-xl font-headline">{paper.subject}</CardTitle>
+                                                    <CardDescription className={cn("font-semibold", colors.text)}>
+                                                        {paper.year} - Grade {paper.gradeLevel}
+                                                    </CardDescription>
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="flex-1">
+                                            <p className="text-sm text-muted-foreground line-clamp-2">
+                                                {paper.paperName.replace(/_/g, ' ')}
+                                            </p>
+                                            <p className="text-sm font-semibold mt-2">{paper.questionCount || 0} Questions</p>
+                                        </CardContent>
+                                        <CardFooter>
+                                            <Button asChild className="w-full" disabled={!paper.questionCount || paper.questionCount === 0}>
+                                                <Link href={`/dashboard/past-paper-practice/${paper.id}`}>Start Practice</Link>
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                )
+                            })}
                         </div>
                     )}
 
