@@ -11,7 +11,7 @@ import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/in
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { getQuestionsForTopic, Question } from '@/lib/questions';
+import { getQuestionsForTopic, Question, allSubjectsForLookup } from '@/lib/questions';
 import ReactMarkdown from 'react-markdown';
 import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
 
@@ -61,18 +61,22 @@ export default function PastPaperPracticePage() {
 
     useEffect(() => {
         if (paperData) {
-            // THE FIX: Use subject from paperData to get preloaded questions
-            // from the static library.
-            const topicForQuestions = paperData.subject.replace(/ Paper \d/, '');
-            const questions = getQuestionsForTopic(topicForQuestions, paperData.gradeLevel || 12);
+            // Find the base subject from the paper's subject string.
+            // E.g., "Mathematics Paper 2" should resolve to "Mathematics".
+            const baseSubject = allSubjectsForLookup.find(subj => paperData.subject.includes(subj));
 
-            if (questions.length > 0) {
-                setSession({
-                    examQuestions: questions.map(q => ({ ...q, studentAnswer: '', feedback: null, isChecking: false }))
-                });
-                setTutorMessages([{ role: 'assistant', content: `Hi there! I'm ready to help you with any questions you have about this **${paperData.subject} (${paperData.year})** paper. Ask me anything!` }]);
+            if (baseSubject) {
+                const questions = getQuestionsForTopic(baseSubject, paperData.gradeLevel || 12);
+                if (questions.length > 0) {
+                    setSession({
+                        examQuestions: questions.map(q => ({ ...q, studentAnswer: '', feedback: null, isChecking: false }))
+                    });
+                    setTutorMessages([{ role: 'assistant', content: `Hi there! I'm ready to help you with any questions you have about this **${paperData.subject} (${paperData.year})** paper. Ask me anything!` }]);
+                } else {
+                    setSession({ examQuestions: [] }); // Set to empty if no questions found
+                }
             } else {
-                 setSession({ examQuestions: [] });
+                 setSession({ examQuestions: [] }); // Set to empty if base subject not found
             }
         }
     }, [paperData]);
@@ -103,11 +107,12 @@ export default function PastPaperPracticePage() {
         setSession({ examQuestions: newQuestions });
 
         try {
+             const baseSubject = allSubjectsForLookup.find(subj => paperData.subject.includes(subj)) || paperData.subject;
             const feedbackResult = await getInteractiveFeedback({
                 question: question.question,
                 studentAnswer: question.studentAnswer,
                 gradeLevel: paperData.gradeLevel,
-                subject: paperData.subject.replace(/ Paper \d/, ''),
+                subject: baseSubject,
             });
             newQuestions[index].feedback = feedbackResult;
             if (feedbackResult.isCorrect && !question.feedback?.isCorrect) {
@@ -129,6 +134,7 @@ export default function PastPaperPracticePage() {
 
         const currentQuestion = session?.examQuestions[currentQuestionIndex];
         const contextPrompt = `Regarding the topic "${currentQuestion?.topic}" and specifically the question: "${currentQuestion?.question}", the student asks: "${currentPrompt}"`;
+        const baseSubject = allSubjectsForLookup.find(subj => paperData.subject.includes(subj)) || paperData.subject;
 
         const newMessages: Message[] = [...tutorMessages, { role: 'user', content: currentPrompt }];
         setTutorMessages(newMessages);
@@ -139,7 +145,7 @@ export default function PastPaperPracticePage() {
             const result = await askAiTutor({
                 prompt: contextPrompt,
                 gradeLevel: paperData.gradeLevel,
-                subjects: [paperData.subject.replace(/ Paper \d/, '')],
+                subjects: [baseSubject],
             });
             setTutorMessages([...newMessages, { role: 'assistant', content: result.response }]);
         } catch (error) {
@@ -255,7 +261,7 @@ export default function PastPaperPracticePage() {
                             </CardHeader>
                             <CardContent>
                                 <p className="text-muted-foreground">
-                                    Practice questions for this specific subject and grade have not been pre-loaded into the app's library yet.
+                                    Practice questions for this specific subject ({paperData?.subject}) and grade have not been pre-loaded into the app's library yet.
                                 </p>
                                 <p className="mt-2 text-muted-foreground">
                                     I am actively working on adding more subjects. Please check back later.
