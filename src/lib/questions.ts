@@ -1,4 +1,5 @@
 
+
 export interface Question {
   id: string;
   question: string;
@@ -47,7 +48,7 @@ const allQuestions: Record<string, Question[]> = {
     { id: 'math-g12-p1-2.3.3', topic: 'Sequences and series', question: 'Explain why the series `27 + 9 + 3 + ...` converges.' },
     
     // Question 3: Functions (3.1 - 3.5)
-    { id: 'math-g12-p1-3.1', topic: 'Functions', question: 'The diagram shows the graph of `f(x) = -x² - 6x + 7`. A is the turning point. Find the coordinates of A.\n\n![Parabola graph with turning point A at (-3, 16) and y-intercept at (0, 7)](https://placehold.co/400x300/e2e8f0/64748b?text=Parabola+f(x)\nTurning+Point+A(-3,16)\ny-intercept+(0,7))' },
+    { id: 'math-g12-p1-3.1', topic: 'Functions', question: 'The diagram shows the graph of `f(x) = -x² - 6x + 7`. A is the turning point. Find the coordinates of A.\n\n![Parabola graph with turning point A at (-3, 16) and y-intercept at (0, 7)](https://placehold.co/400x300/e2e8f0/64748b?text=Parabola+f(x)\\nTurning+Point+A(-3,16)\\ny-intercept+(0,7))' },
     { id: 'math-g12-p1-3.2', topic: 'Functions', question: 'Write down the range of the function `f(x) = -x² - 6x + 7`.' },
     { id: 'math-g12-p1-3.3', topic: 'Functions', question: 'The graph of `f(x)` is shifted 2 units to the right and 3 units down to obtain `g(x)`. Write down the equation of `g(x)`.' },
     { id: 'math-g12-p1-3.4', topic: 'Functions', question: 'Given `h(x) = 2x + 1`, determine the point of intersection of `f(x)` and `h(x)`.' },
@@ -55,7 +56,7 @@ const allQuestions: Record<string, Question[]> = {
 
     // Question 4: Inverse Functions
     { id: 'math-g12-p1-4.1', topic: 'Functions and inverses', question: 'Given `g(x) = 3^x`. Write down the equation of the inverse function, `g⁻¹(x)`, in the form `y = ...`' },
-    { id: 'math-g12-p1-4.2', topic: 'Functions and inverses', question: 'Sketch the graphs of `g(x)` and `g⁻¹(x)` on the same set of axes. Show all intercepts and one other point on each graph.\n\n![Exponential graph g(x) passing through (0,1) and (1,3). Logarithmic graph g⁻¹(x) passing through (1,0) and (3,1), reflecting over y=x.](https://placehold.co/350x350/e2e8f0/64748b?text=Exponential+g(x)\nand+Log+g⁻¹(x))' },
+    { id: 'math-g12-p1-4.2', topic: 'Functions and inverses', question: 'Sketch the graphs of `g(x)` and `g⁻¹(x)` on the same set of axes. Show all intercepts and one other point on each graph.\n\n![Exponential graph g(x) passing through (0,1) and (1,3). Logarithmic graph g⁻¹(x) passing through (1,0) and (3,1), reflecting over y=x.](https://placehold.co/350x350/e2e8f0/64748b?text=Exponential+g(x)\\nand+Log+g⁻¹(x))' },
     { id: 'math-g12-p1-4.3', topic: 'Functions and inverses', question: 'Write down the domain of `g⁻¹(x)`.' },
 
     // Question 5: Financial Maths
@@ -137,7 +138,7 @@ const allQuestions: Record<string, Question[]> = {
     { id: 'math-g12-p1-48', topic: 'Probability', question: 'A coin is tossed 3 times. What is the probability of getting exactly two heads?' },
   ],
   "Physical Sciences": [
-    // --- Grade 12 (Physics Questions) ---
+    // --- Grade 12 (Physics Questions) - 25 Questions ---
     { id: 'phys-g12-1', topic: 'Momentum and impulse', question: 'A cricket ball of mass 150 g moving at 30 m/s is hit by a bat and leaves the bat at 40 m/s in the opposite direction. The contact time is 0.02 s. Calculate the impulse on the ball.' },
     { id: 'phys-g12-2', topic: 'Vertical projectile motion', question: 'A ball is thrown vertically upwards from the top of a 50 m high building with an initial velocity of 15 m/s. Calculate the maximum height the ball reaches above the ground.' },
     { id: 'phys-g12-3', topic: 'Vertical projectile motion', question: 'For the ball in the previous question, calculate the time it takes to hit the ground.' },
@@ -146,7 +147,7 @@ const allQuestions: Record<string, Question[]> = {
     { id: 'phys-g12-6', topic: 'Electrodynamics', question: 'State Faraday\'s law of electromagnetic induction.' },
     { id: 'phys-g12-7', topic: 'Photoelectric effect', question: 'Light of frequency 6.5 x 10¹⁴ Hz is incident on a metal surface with a work function of 2.1 eV. Will photoelectrons be emitted? Justify your answer with a calculation.' },
     { id: 'phys-g12-8', topic: 'Electrostatics', question: 'Two point charges, Q1 = +3 nC and Q2 = -5 nC, are separated by a distance of 10 cm. Calculate the magnitude and direction of the electrostatic force that Q1 exerts on Q2.' },
-    { id: 'phys-g12-9', topic: 'Electric circuits', question: 'A battery with an internal resistance of 1 Ω and an emf of 12 V is connected to a circuit containing a 5 Ω resistor and a 10 Ω resistor in parallel. Calculate the current flowing from the battery.\n\n![Circuit diagram with a battery, internal resistance, and two resistors in parallel.](https://placehold.co/400x250/e2e8f0/64748b?text=Circuit+Diagram\nEMF=12V,+r=1Ω\nR1=5Ω,+R2=10Ω)' },
+    { id: 'phys-g12-9', topic: 'Electric circuits', question: 'A battery with an internal resistance of 1 Ω and an emf of 12 V is connected to a circuit containing a 5 Ω resistor and a 10 Ω resistor in parallel. Calculate the current flowing from the battery.\n\n![Circuit diagram with a battery, internal resistance, and two resistors in parallel.](https://placehold.co/400x250/e2e8f0/64748b?text=Circuit+Diagram\\nEMF=12V,+r=1Ω\\nR1=5Ω,+R2=10Ω)' },
     { id: 'phys-g12-10', topic: 'Electromagnetism', question: 'Draw a sketch of the magnetic field around a straight, current-carrying conductor. Indicate the direction of the current and the field.' },
     { id: 'phys-g12-11', topic: 'Momentum and impulse', question: 'State the principle of conservation of linear momentum.' },
     { id: 'phys-g12-12', topic: 'Vertical projectile motion', question: 'A stone is dropped from a hot air balloon that is ascending at a constant velocity of 5 m/s. If the stone takes 4 s to hit the ground, how high was the balloon when the stone was dropped?' },
@@ -154,20 +155,20 @@ const allQuestions: Record<string, Question[]> = {
     { id: 'phys-g12-14', topic: 'The Doppler effect', question: 'How would the observed frequency of a sound source change if the source moves away from the observer? Explain.' },
     { id: 'phys-g12-15', topic: 'Photoelectric effect', question: 'What is meant by the term "threshold frequency" in the context of the photoelectric effect?' },
 
-    // --- Grade 12 (Chemistry Questions) ---
+    // --- Grade 12 (Chemistry Questions) - 10 Questions ---
     { id: 'chem-g12-1', topic: 'Rate and extent of reactions', question: 'List TWO factors that can increase the rate of a chemical reaction.' },
     { id: 'chem-g12-2', topic: 'Chemical equilibrium', question: 'Consider the reversible reaction: N₂(g) + 3H₂(g) ⇌ 2NH₃(g) ΔH < 0. Explain how increasing the temperature will affect the yield of ammonia (NH₃).' },
     { id: 'chem-g12-3', topic: 'Chemical equilibrium', question: 'State Le Chatelier\'s principle.' },
     { id: 'chem-g12-4', topic: 'Acids and bases', question: 'Calculate the pH of a 0.05 mol·dm⁻³ solution of hydrochloric acid (HCl).' },
     { id: 'chem-g12-5', topic: 'Acids and bases', question: 'Define a conjugate acid-base pair according to the Brønsted-Lowry theory.' },
-    { id: 'chem-g12-6', topic: 'Electrochemical reactions', question: 'Draw a labelled diagram of a galvanic (voltaic) cell using a zinc half-cell and a copper half-cell. Show the direction of electron flow.\n\n![Diagram of a galvanic cell with Zn and Cu electrodes, a salt bridge, and voltmeter.](https://placehold.co/400x350/e2e8f0/64748b?text=Galvanic+Cell\n(Zn-Cu))' },
+    { id: 'chem-g12-6', topic: 'Electrochemical reactions', question: 'Draw a labelled diagram of a galvanic (voltaic) cell using a zinc half-cell and a copper half-cell. Show the direction of electron flow.\n\n![Diagram of a galvanic cell with Zn and Cu electrodes, a salt bridge, and voltmeter.](https://placehold.co/400x350/e2e8f0/64748b?text=Galvanic+Cell\\n(Zn-Cu))' },
     { id: 'chem-g12-7', topic: 'Electrochemical reactions', question: 'Write down the half-reaction that occurs at the anode in the Zn-Cu cell.' },
     { id: 'chem-g12-8', topic: 'The chemical industry', question: 'Name the primary industrial process used to produce fertilizers like ammonium nitrate.' },
-    { id: 'chem-g12-9', topic: 'Rate and extent of reactions', question: 'Sketch a potential energy diagram for an exothermic reaction, labelling the reactants, products, activation energy, and enthalpy change (ΔH).\n\n![Energy profile diagram for an exothermic reaction showing reactants higher than products.](https://placehold.co/400x300/e2e8f0/64748b?text=Exothermic+Reaction\nEnergy+Profile)' },
+    { id: 'chem-g12-9', topic: 'Rate and extent of reactions', question: 'Sketch a potential energy diagram for an exothermic reaction, labelling the reactants, products, activation energy, and enthalpy change (ΔH).\n\n![Energy profile diagram for an exothermic reaction showing reactants higher than products.](https://placehold.co/400x300/e2e8f0/64748b?text=Exothermic+Reaction\\nEnergy+Profile)' },
     { id: 'chem-g12-10', topic: 'Acids and bases', question: 'A 25 cm³ sample of a sodium hydroxide (NaOH) solution is titrated with a 0.1 mol·dm⁻³ solution of sulfuric acid (H₂SO₄). If 15 cm³ of the acid is required to reach the equivalence point, calculate the concentration of the NaOH solution.' },
   ],
   "Life Sciences": [
-    // --- Grade 12 Questions ---
+    // --- Grade 12 Questions - 25 Questions ---
     { id: 'life-g12-1', topic: 'DNA: The code of life', question: 'Describe the structure of a DNA molecule, mentioning its components (nucleotides, sugar-phosphate backbone, and base pairing).' },
     { id: 'life-g12-2', topic: 'DNA: The code of life', question: 'Explain the process of DNA replication.' },
     { id: 'life-g12-3', topic: 'Meiosis', question: 'What is the significance of "crossing over" during Prophase I of meiosis?' },
@@ -184,14 +185,14 @@ const allQuestions: Record<string, Question[]> = {
     { id: 'life-g12-14', topic: 'Genetics and inheritance', question: 'A man with blood type A and a woman with blood type B have a child with blood type O. What are the genotypes of the parents?' },
     { id: 'life-g12-15', topic: 'Evolution', question: 'Explain the concept of speciation, referring to geographic isolation.' },
 
-    // --- Grade 11 Questions ---
+    // --- Grade 11 Questions - 5 Questions ---
     { id: 'life-g11-1', topic: 'Biodiversity', question: 'Name the five kingdoms used to classify living organisms.' },
     { id: 'life-g11-2', topic: 'Photosynthesis', question: 'Write down the balanced chemical equation for photosynthesis.' },
     { id: 'life-g11-3', topic: 'Photosynthesis', question: 'Describe the light-dependent phase of photosynthesis.' },
     { id: 'life-g11-4', topic: 'Cellular respiration', question: 'What are the three main stages of cellular respiration?' },
     { id: 'life-g11-5', topic: 'Human impact on the environment', question: 'Explain the greenhouse effect and its link to global warming.' },
 
-    // --- Grade 10 Questions ---
+    // --- Grade 10 Questions - 5 Questions ---
     { id: 'life-g10-1', topic: 'The chemistry of life', question: 'List the four main types of organic molecules found in living organisms.' },
     { id: 'life-g10-2', topic: 'Cells: The basic unit of life', question: 'Draw a labelled diagram of a typical animal cell.\n\n![Diagram of an animal cell showing nucleus, cytoplasm, cell membrane, mitochondria, and ribosomes.](https://placehold.co/400x350/e2e8f0/64748b?text=Animal+Cell)' },
     { id: 'life-g10-3', topic: 'Mitosis', question: 'List the four phases of mitosis in the correct order.' },

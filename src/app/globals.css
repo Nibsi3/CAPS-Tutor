@@ -82,4 +82,7 @@
   body {
     @apply bg-background text-foreground;
   }
+  .prose img {
+    @apply mx-auto my-4 rounded-lg border;
+  }
 }
