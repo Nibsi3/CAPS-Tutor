@@ -165,6 +165,7 @@ export default function SettingsPage() {
           title: 'Settings Saved',
           description: 'Your profile has been updated successfully.',
         });
+        form.reset(data); // Resets the form's dirty state
       })
       .catch((serverError) => {
         const permissionError = new FirestorePermissionError({
@@ -215,7 +216,7 @@ export default function SettingsPage() {
   };
 
 
-  if (isUserLoading || (isProfileLoading && !userProfile)) {
+  if (isUserLoading || isProfileLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader className="h-12 w-12 animate-spin" />
