@@ -163,6 +163,9 @@ export default function SettingsPage() {
             'afrikaans-eat': { novel: '', drama: '', poems: [] },
         },
       });
+       if (userProfile.language) {
+        setLanguage(userProfile.language as keyof typeof translations);
+      }
     } else if (user && !userProfile && !isProfileLoading) {
       // Set defaults from user object if no profile exists
       reset({
@@ -175,7 +178,7 @@ export default function SettingsPage() {
         afrikaans: 'none',
       });
     }
-  }, [user, userProfile, isProfileLoading, reset, formState.isDirty]);
+  }, [user, userProfile, isProfileLoading, reset, formState.isDirty, setLanguage]);
 
   async function onSubmit(data: ProfileFormValues) {
     if (!userProfileRef) {
@@ -286,8 +289,8 @@ export default function SettingsPage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <Card>
               <CardHeader>
-                <CardTitle className='flex items-center gap-2'><Languages className="h-5 w-5" />App Language</CardTitle>
-                <CardDescription>Choose the language for the application interface.</CardDescription>
+                <CardTitle className='flex items-center gap-2'><Languages className="h-5 w-5" />{t.appLanguage}</CardTitle>
+                <CardDescription>{t.appLanguageDescription}</CardDescription>
               </CardHeader>
               <CardContent>
                 <FormField
@@ -295,11 +298,11 @@ export default function SettingsPage() {
                   name="language"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Language</FormLabel>
+                      <FormLabel>{t.language}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a language" />
+                            <SelectValue placeholder={t.selectLanguage} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -320,8 +323,8 @@ export default function SettingsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>Update your personal details.</CardDescription>
+              <CardTitle>{t.personalInformation}</CardTitle>
+              <CardDescription>{t.personalInformationDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -330,9 +333,9 @@ export default function SettingsPage() {
                     name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>First Name</FormLabel>
+                        <FormLabel>{t.firstName}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Your first name" {...field} />
+                          <Input placeholder={t.firstNamePlaceholder} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -343,9 +346,9 @@ export default function SettingsPage() {
                     name="lastName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Last Name</FormLabel>
+                        <FormLabel>{t.lastName}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Your last name" {...field} />
+                          <Input placeholder={t.lastNamePlaceholder} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -358,7 +361,7 @@ export default function SettingsPage() {
                   <Input value={user?.email || 'No email associated'} disabled />
                 </FormControl>
                  <FormDescription>
-                  Your email address cannot be changed.
+                  {t.emailDescription}
                 </FormDescription>
               </FormItem>
             </CardContent>
@@ -366,9 +369,9 @@ export default function SettingsPage() {
           
           <Card>
             <CardHeader>
-              <CardTitle>Learning Preferences</CardTitle>
+              <CardTitle>{t.learningPreferences}</CardTitle>
               <CardDescription>
-                Tailor your learning experience by selecting your grade and subjects.
+                {t.learningPreferencesDescription}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -377,11 +380,11 @@ export default function SettingsPage() {
                 name="gradeLevel"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Grade Level</FormLabel>
+                    <FormLabel>{t.gradeLevel}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select your grade" />
+                          <SelectValue placeholder={t.gradeLevelPlaceholder} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -398,7 +401,7 @@ export default function SettingsPage() {
               />
               
               <div className="space-y-4">
-                <FormLabel className="text-base">Language Subjects</FormLabel>
+                <FormLabel className="text-base">{t.languageSubjects}</FormLabel>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
@@ -411,7 +414,7 @@ export default function SettingsPage() {
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                <SelectItem value="none">Not studying</SelectItem>
+                                <SelectItem value="none">{t.notStudying}</SelectItem>
                                 {languageSubjects.english.map(sub => <SelectItem key={sub.value} value={sub.value}>{sub.label}</SelectItem>)}
                             </SelectContent>
                             </Select>
@@ -430,7 +433,7 @@ export default function SettingsPage() {
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                <SelectItem value="none">Not studying</SelectItem>
+                                <SelectItem value="none">{t.notStudying}</SelectItem>
                                 {languageSubjects.afrikaans.map(sub => <SelectItem key={sub.value} value={sub.value}>{sub.label}</SelectItem>)}
                             </SelectContent>
                             </Select>
@@ -448,9 +451,9 @@ export default function SettingsPage() {
                 render={() => (
                   <FormItem>
                     <div className="mb-4">
-                      <FormLabel className="text-base">Content Subjects</FormLabel>
+                      <FormLabel className="text-base">{t.contentSubjects}</FormLabel>
                       <FormDescription>
-                        Select the other subjects you are currently studying.
+                        {t.contentSubjectsDescription}
                       </FormDescription>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -507,30 +510,29 @@ export default function SettingsPage() {
        <Card className="border-destructive">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" /> Danger Zone
+            <AlertTriangle className="h-5 w-5" /> {t.dangerZone}
           </CardTitle>
           <CardDescription>
-            This action cannot be undone. This will permanently delete your account and all associated data.
+            {t.dangerZoneDescription}
           </CardDescription>
         </CardHeader>
         <CardFooter>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive">Delete Account</Button>
+              <Button variant="destructive">{t.deleteAccount}</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>{t.deleteAccountConfirmationTitle}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete your
-                  account, remove your data from our servers, and log you out.
+                  {t.deleteAccountConfirmationDescription}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeleteAccount} disabled={isDeleting}>
                   {isDeleting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                  Delete My Account
+                  {t.deleteMyAccount}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -540,5 +542,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
