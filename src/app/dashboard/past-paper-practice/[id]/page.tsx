@@ -253,7 +253,7 @@ export default function PastPaperPracticePage() {
                                 </div>
                                 <Button
                                     onClick={() => setCurrentQuestionIndex(prev => Math.min(questionsCount - 1, prev + 1))}
-                                    disabled={currentQuestionIndex === questionsCount - 1 || !currentQuestionCorrect}
+                                    disabled={currentQuestionIndex === questionsCount - 1}
                                 >
                                 Next <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
