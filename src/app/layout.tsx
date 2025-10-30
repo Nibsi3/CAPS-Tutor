@@ -3,6 +3,26 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { PT_Sans, Space_Grotesk, Source_Code_Pro } from 'next/font/google';
+
+const ptSans = PT_Sans({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-pt-sans',
+  display: 'swap',
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
+  display: 'swap',
+});
+
+const sourceCodePro = Source_Code_Pro({
+  subsets: ['latin'],
+  variable: '--font-source-code-pro',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'CAPS Tutor - Your AI Learning Companion',
@@ -16,12 +36,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Space+Grotesk:wght@300..700&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet" />
-      </head>
-      <body className="font-body antialiased">
+      <body
+        className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
