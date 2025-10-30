@@ -143,7 +143,7 @@ export default function PastPaperPracticePage() {
 
         const currentQuestion = session?.examQuestions[currentQuestionIndex];
         const contextPrompt = `Regarding the topic "${currentQuestion?.topic}" and specifically the question: "${currentQuestion?.question}", the student asks: "${currentPrompt}"`;
-        const baseSubject = getBase-subject(paperData.subject) || paperData.subject;
+        const baseSubject = getBaseSubject(paperData.subject) || paperData.subject;
 
         const newMessages: Message[] = [...tutorMessages, { role: 'user', content: currentPrompt }];
         setTutorMessages(newMessages);
@@ -208,7 +208,7 @@ export default function PastPaperPracticePage() {
                                     <div key={q.id} className={currentQuestionIndex === index ? 'block' : 'hidden'}>
                                         <div className="rounded-xl border bg-card text-card-foreground shadow p-6 space-y-4">
                                             <p className="font-semibold text-lg">Question {index + 1}: <span className="text-sm font-normal text-muted-foreground">({q.topic})</span></p>
-                                            <div className="text-base prose max-w-none"><ReactMarkdown rehypePlugins={[rehypeRaw]}>{q.question}</ReactMarkdown></div>
+                                            <div className="text-base prose max-w-none"><ReactMarkdown rehypePlugins={[rehypeRaw]}>{q.question.replace(/\\n/g, '<br>')}</ReactMarkdown></div>
                                             
                                             <Textarea 
                                                 placeholder="Your answer..."
