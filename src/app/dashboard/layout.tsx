@@ -66,7 +66,7 @@ export default function DashboardLayout({
                 const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
                 return (
                   <Link
-                    key={item.label}
+                    key={item.href}
                     href={item.href}
                     prefetch={true}
                     className={cn(
