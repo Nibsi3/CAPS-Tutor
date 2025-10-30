@@ -1,4 +1,4 @@
-import { Award, BookCopy, CheckCircle, Target, Clock, AlertTriangle } from 'lucide-react';
+import { Award, BookCopy, CheckCircle, Target, Clock, AlertTriangle, Briefcase, Paintbrush, Wrench, VenetianMask, Lightbulb, Tractor } from 'lucide-react';
 
 export const statCardsData = [
   {
@@ -112,46 +112,27 @@ export const subjects = [
 ];
 
 export const subjectColors: Record<string, { bg: string, text: string }> = {
-    "Mathematics": {
-      bg: "bg-blue-100 dark:bg-blue-900/30",
-      text: "text-blue-600 dark:text-blue-400"
-    },
-    "Physical Sciences": {
-      bg: "bg-purple-100 dark:bg-purple-900/30",
-      text: "text-purple-600 dark:text-purple-400"
-    },
-    "Life Sciences": {
-      bg: "bg-green-100 dark:bg-green-900/30",
-      text: "text-green-600 dark:text-green-400"
-    },
-    "Geography": {
-      bg: "bg-orange-100 dark:bg-orange-900/30",
-      text: "text-orange-600 dark:text-orange-400"
-    },
-    "Accounting": {
-      bg: "bg-indigo-100 dark:bg-indigo-900/30",
-      text: "text-indigo-600 dark:text-indigo-400"
-    },
-    "Business Studies": {
-      bg: "bg-pink-100 dark:bg-pink-900/30",
-      text: "text-pink-600 dark:text-pink-400"
-    },
-    "English Home Language": {
-      bg: "bg-red-100 dark:bg-red-900/30",
-      text: "text-red-600 dark:text-red-400"
-    },
-    "English First Additional Language": {
-      bg: "bg-red-100 dark:bg-red-900/30",
-      text: "text-red-600 dark:text-red-400"
-    },
-    "Afrikaans Huistaal": {
-      bg: "bg-yellow-100 dark:bg-yellow-900/30",
-      text: "text-yellow-600 dark:text-yellow-400"
-    },
-    "Afrikaans Eerste Addisionele Taal": {
-      bg: "bg-yellow-100 dark:bg-yellow-900/30",
-      text: "text-yellow-600 dark:text-yellow-400"
-    },
+    "Mathematics": { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-600 dark:text-blue-400" },
+    "Physical Sciences": { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-600 dark:text-purple-400" },
+    "Life Sciences": { bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-600 dark:text-green-400" },
+    "Geography": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-600 dark:text-orange-400" },
+    "Accounting": { bg: "bg-indigo-100 dark:bg-indigo-900/30", text: "text-indigo-600 dark:text-indigo-400" },
+    "Business Studies": { bg: "bg-pink-100 dark:bg-pink-900/30", text: "text-pink-600 dark:text-pink-400" },
+    "English Home Language": { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400" },
+    "English First Additional Language": { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-600 dark:text-red-400" },
+    "Afrikaans Huistaal": { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-600 dark:text-yellow-400" },
+    "Afrikaans Eerste Addisionele Taal": { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-600 dark:text-yellow-400" },
+    "History": { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-600 dark:text-amber-400" },
+    "Economics": { bg: "bg-cyan-100 dark:bg-cyan-900/30", text: "text-cyan-600 dark:text-cyan-400" },
+    "Tourism": { bg: "bg-teal-100 dark:bg-teal-900/30", text: "text-teal-600 dark:text-teal-400" },
+    "Computer Applications Technology": { bg: "bg-gray-100 dark:bg-gray-900/30", text: "text-gray-600 dark:text-gray-400" },
+    "Information Technology": { bg: "bg-gray-100 dark:bg-gray-900/30", text: "text-gray-600 dark:text-gray-400" },
+    "Agricultural Sciences": { bg: "bg-lime-100 dark:bg-lime-900/30", text: "text-lime-600 dark:text-lime-400" },
+    "Dramatic Arts": { bg: "bg-fuchsia-100 dark:bg-fuchsia-900/30", text: "text-fuchsia-600 dark:text-fuchsia-400" },
+    "Visual Arts": { bg: "bg-rose-100 dark:bg-rose-900/30", text: "text-rose-600 dark:text-rose-400" },
+    "Mechanical Technology": { bg: "bg-slate-100 dark:bg-slate-900/30", text: "text-slate-600 dark:text-slate-400" },
+    "Electrical Technology": { bg: "bg-sky-100 dark:bg-sky-900/30", text: "text-sky-600 dark:text-sky-400" },
+    "Civil Technology": { bg: "bg-stone-100 dark:bg-stone-900/30", text: "text-stone-600 dark:text-stone-400" },
 };
 
 export interface Lesson {

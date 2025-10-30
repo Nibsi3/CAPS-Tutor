@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Loader, Search, BookOpen, BarChart, FlaskConical, Globe, Landmark, Calculator, MessageSquare } from "lucide-react";
+import { FileText, Loader, Search, BookOpen, BarChart, FlaskConical, Globe, Landmark, Calculator, MessageSquare, Briefcase, Paintbrush, Wrench, VenetianMask, Lightbulb, Tractor } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { grades, subjects as allSubjectsData, subjectColors } from '@/lib/data';
@@ -29,29 +29,55 @@ const subjectIcons: Record<string, React.ElementType> = {
   "Mathematics": Calculator,
   "Physical Sciences": FlaskConical,
   "Life Sciences": BarChart,
-  "Accounting": FileText,
+  "Accounting": Briefcase,
   "Business Studies": Landmark,
   "Geography": Globe,
   "English Home Language": MessageSquare,
   "English First Additional Language": MessageSquare,
   "Afrikaans Huistaal": MessageSquare,
   "Afrikaans Eerste Addisionele Taal": MessageSquare,
-  // Add more icons for other subjects if needed
+  "History": Landmark,
+  "Economics": BarChart,
+  "Tourism": Globe,
+  "Consumer Studies": VenetianMask, // Placeholder
+  "Computer Applications Technology": Lightbulb,
+  "Information Technology": Lightbulb,
+  "Agricultural Sciences": Tractor,
+  "Dramatic Arts": VenetianMask,
+  "Visual Arts": Paintbrush,
+  "Mechanical Technology": Wrench,
+  "Electrical Technology": Lightbulb,
+  "Civil Technology": Wrench,
 };
 
 const uniqueSubjects = [...new Set(allSubjectsData.map(s => s.label.replace(/ Paper \d/, '')))];
 
 /**
  * Extracts the base subject from a full paper title.
- * e.g., "Mathematics Paper 1" -> "Mathematics"
+ * e.g., "Agricultural Sciences Paper 1" -> "Agricultural Sciences"
  */
 function getBaseSubject(paperTitle: string): string {
     const lowerCaseTitle = paperTitle.toLowerCase();
-    // Sort subjects by length, longest first, to avoid partial matches (e.g., "English" matching before "English Home Language")
+    
+    // Create a "clean" version of the title by removing paper numbers and extra words
+    const cleanTitle = lowerCaseTitle.replace(/paper \d/g, '').trim();
+
+    // Sort known subjects by length, longest first, to avoid partial matches
+    // (e.g., "English" matching before "English Home Language")
     const sortedSubjects = [...allSubjectsForLookup].sort((a, b) => b.length - a.length);
 
-    const foundSubject = sortedSubjects.find(subj => lowerCaseTitle.startsWith(subj.toLowerCase()));
-    return foundSubject || paperTitle; // Fallback to the original title if no match is found
+    // Find the first subject that is included in the cleaned title
+    const foundSubject = sortedSubjects.find(subj => cleanTitle.includes(subj.toLowerCase()));
+
+    // If a known subject is found, return it. Otherwise, try to find a match in the original title.
+    if (foundSubject) {
+        return foundSubject;
+    }
+
+    // Fallback for titles that might not have "Paper X" format but still match
+    const fallbackSubject = sortedSubjects.find(subj => lowerCaseTitle.includes(subj.toLowerCase()));
+    
+    return fallbackSubject || paperTitle; // If still no match, return the original title
 }
 
 
