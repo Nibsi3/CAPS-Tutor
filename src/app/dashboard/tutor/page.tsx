@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { doc, getFirestore } from 'firebase/firestore';
 import { askAiTutor, AiTutorOutput } from '@/ai/flows/ai-tutor-flow';
 import ReactMarkdown from 'react-markdown';
+import Link from 'next/link';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -32,7 +33,7 @@ export default function AiTutorPage() {
     if (!user) return null;
     return doc(firestore, `users/${user.uid}`);
   }, [user, firestore]);
-  const { data: userProfile } = useDoc(userProfileRef);
+  const { data: userProfile } = useDoc<{ gradeLevel: number; subjects: string[] }>(userProfileRef);
 
   useEffect(() => {
     // Scroll to the bottom of the chat on new messages
@@ -45,7 +46,18 @@ export default function AiTutorPage() {
         toast({
             variant: "destructive",
             title: "Cannot send message",
-            description: "You must be logged in, have a complete profile, and write a message.",
+            description: "You must be logged in and have a complete profile to use the tutor.",
+        });
+        return;
+    }
+    
+    // Explicitly check for required profile information
+    if (!userProfile.gradeLevel || !userProfile.subjects || userProfile.subjects.length === 0) {
+        toast({
+            variant: "destructive",
+            title: "Profile Incomplete",
+            description: "Please complete your grade level and subject selection in the settings to use the AI Tutor.",
+            action: <Button asChild variant="secondary"><Link href="/dashboard/settings">Go to Settings</Link></Button>
         });
         return;
     }
@@ -71,7 +83,8 @@ export default function AiTutorPage() {
             title: "AI Tutor Error",
             description: "The AI failed to provide a response. Please try again.",
         });
-         setMessages(newMessages); // remove the user message if AI fails
+         // Don't remove the user message on failure, so they can retry.
+         // setMessages(newMessages); 
     } finally {
         setIsLoading(false);
     }
