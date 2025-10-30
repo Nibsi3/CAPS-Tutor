@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -23,10 +24,11 @@ import {
 } from "@/components/ui/card"
 
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 const ADMIN_EMAIL = 'cameronfalck03@gmail.com';
 
-export default function AdminLayout({
+function AdminLayoutContent({
   children,
 }: {
   children: React.ReactNode
@@ -129,5 +131,18 @@ export default function AdminLayout({
         </main>
       </div>
     </div>
+  )
+}
+
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <FirebaseClientProvider>
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </FirebaseClientProvider>
   )
 }
