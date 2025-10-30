@@ -6,25 +6,21 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from '@/components/ui/textarea';
-import { Loader, Target, Bot, ArrowRight, ArrowLeft, BrainCircuit, AlertTriangle } from "lucide-react";
+import { Loader, Target, Bot, ArrowRight, ArrowLeft, BrainCircuit, AlertTriangle, User } from "lucide-react";
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, DocumentData } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { getQuestionsForTopic, Question } from '@/lib/questions';
 import ReactMarkdown from 'react-markdown';
 import { Progress } from '@/components/ui/progress';
 import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
 
-interface ProcessedPaper {
+interface PastPaperMeta {
     id: string;
     subject: string;
     year: string;
-    paperName: string;
-    status: 'Processing' | 'Processed' | 'Failed';
-    questionCount?: number;
     gradeLevel?: number;
-    generatedQuestions?: Question[]; // This comes from Firestore
 }
 
 interface QuestionWithFeedback extends Question {
@@ -61,16 +57,22 @@ export default function PastPaperPracticePage() {
         return doc(firestore, 'pastPapers', paperId as string);
     }, [firestore, paperId]);
 
-    const { data: paperData, isLoading: isPaperLoading } = useDoc<ProcessedPaper>(paperRef);
+    const { data: paperData, isLoading: isPaperLoading } = useDoc<PastPaperMeta>(paperRef);
 
     useEffect(() => {
         if (paperData) {
-            const questions = paperData.generatedQuestions || [];
+            // THE FIX: Use subject from paperData to get preloaded questions
+            // from the static library, instead of looking for paperData.generatedQuestions.
+            const topicForQuestions = paperData.subject.replace(/ Paper \d/, '');
+            const questions = getQuestionsForTopic(topicForQuestions, paperData.gradeLevel || 12);
+
             if (questions.length > 0) {
                 setSession({
                     examQuestions: questions.map(q => ({ ...q, studentAnswer: '', feedback: null, isChecking: false }))
                 });
                 setTutorMessages([{ role: 'assistant', content: `Hi there! I'm ready to help you with any questions you have about this **${paperData.subject} (${paperData.year})** paper. Ask me anything!` }]);
+            } else {
+                 setSession({ examQuestions: [] });
             }
         }
     }, [paperData]);
@@ -151,33 +153,12 @@ export default function PastPaperPracticePage() {
     const currentQuestionCorrect = !!session?.examQuestions[currentQuestionIndex]?.feedback?.isCorrect;
     const questionsCount = session?.examQuestions.length || 0;
 
-    if (isPaperLoading) {
+    if (isPaperLoading || !session) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <Loader className="h-12 w-12 animate-spin text-primary" />
                 <p className="ml-4 text-muted-foreground">Loading practice session...</p>
             </div>
-        );
-    }
-
-    if (!paperData || questionsCount === 0) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline text-2xl flex items-center gap-2">
-                        <AlertTriangle className="text-destructive"/> Paper Not Ready
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">
-                        This past paper has not been processed by the AI yet, or no questions were found inside it.
-                    </p>
-                    <p className="mt-2 text-muted-foreground">
-                        Please ask an administrator to process the paper from the admin panel.
-                    </p>
-                    <Button onClick={() => router.back()} className="mt-6">Go Back</Button>
-                </CardContent>
-            </Card>
         );
     }
 
@@ -192,10 +173,10 @@ export default function PastPaperPracticePage() {
                                 <div>
                                     <CardTitle className="font-headline text-3xl flex items-center gap-3">
                                         <Target className="w-8 h-8 text-primary" />
-                                        Practice: {paperData.subject}
+                                        Practice: {paperData?.subject}
                                     </CardTitle>
                                     <CardDescription>
-                                        {paperData.year} - Question {currentQuestionIndex + 1} of {questionsCount}
+                                        {paperData?.year} - Question {currentQuestionIndex + 1} of {questionsCount}
                                     </CardDescription>
                                 </div>
                                 <div className="text-right">
@@ -206,64 +187,83 @@ export default function PastPaperPracticePage() {
                         </CardHeader>
                     </Card>
 
-                    <Card className="flex-1 flex flex-col">
-                        <CardContent className="space-y-4 pt-6 flex-1">
-                            {session.examQuestions.map((q, index) => (
-                                <div key={q.id} className={currentQuestionIndex === index ? 'block' : 'hidden'}>
-                                    <div className="rounded-xl border bg-card text-card-foreground shadow p-6 space-y-4">
-                                        <p className="font-semibold text-lg">Question {index + 1}: <span className="text-sm font-normal text-muted-foreground">({q.topic})</span></p>
-                                        <div className="text-base prose max-w-none"><ReactMarkdown>{q.question}</ReactMarkdown></div>
-                                        
-                                        <Textarea 
-                                            placeholder="Your answer..."
-                                            value={q.studentAnswer || ''}
-                                            onChange={(e) => handleAnswerChange(index, e.target.value)}
-                                            disabled={!!q.feedback?.isCorrect}
-                                            rows={4}
-                                        />
-                                        
-                                        <Button onClick={() => handleCheckAnswer(index)} disabled={!q.studentAnswer || q.isChecking || !!q.feedback?.isCorrect}>
-                                            {q.isChecking && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                                            {q.isChecking ? 'Checking...' : 'Check Answer'}
-                                        </Button>
-                                        
-                                        {q.feedback && (
-                                            <div className="mt-4 space-y-4 rounded-lg border p-4 text-left bg-muted/50">
-                                                <h4 className="font-semibold flex items-center gap-2">
-                                                    <Bot className="w-5 h-5 text-primary" />
-                                                    AI Feedback:
-                                                </h4>
-                                                <p className={`font-semibold ${q.feedback.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {q.feedback.isCorrect ? 'Correct! Excellent work.' : 'Not quite. Here is a step-by-step explanation:'}
-                                                </p>
-                                                <div className="prose prose-sm max-w-full text-muted-foreground prose-p:my-3 prose-li:my-1.5 prose-p:leading-relaxed">
-                                                    <ReactMarkdown>{q.feedback.explanation}</ReactMarkdown>
+                   {questionsCount > 0 ? (
+                        <Card className="flex-1 flex flex-col">
+                            <CardContent className="space-y-4 pt-6 flex-1">
+                                {session.examQuestions.map((q, index) => (
+                                    <div key={q.id} className={currentQuestionIndex === index ? 'block' : 'hidden'}>
+                                        <div className="rounded-xl border bg-card text-card-foreground shadow p-6 space-y-4">
+                                            <p className="font-semibold text-lg">Question {index + 1}: <span className="text-sm font-normal text-muted-foreground">({q.topic})</span></p>
+                                            <div className="text-base prose max-w-none"><ReactMarkdown>{q.question}</ReactMarkdown></div>
+                                            
+                                            <Textarea 
+                                                placeholder="Your answer..."
+                                                value={q.studentAnswer || ''}
+                                                onChange={(e) => handleAnswerChange(index, e.target.value)}
+                                                disabled={!!q.feedback?.isCorrect}
+                                                rows={4}
+                                            />
+                                            
+                                            <Button onClick={() => handleCheckAnswer(index)} disabled={!q.studentAnswer || q.isChecking || !!q.feedback?.isCorrect}>
+                                                {q.isChecking && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                                                {q.isChecking ? 'Checking...' : 'Check Answer'}
+                                            </Button>
+                                            
+                                            {q.feedback && (
+                                                <div className="mt-4 space-y-4 rounded-lg border p-4 text-left bg-muted/50">
+                                                    <h4 className="font-semibold flex items-center gap-2">
+                                                        <Bot className="w-5 h-5 text-primary" />
+                                                        AI Feedback:
+                                                    </h4>
+                                                    <p className={`font-semibold ${q.feedback.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {q.feedback.isCorrect ? 'Correct! Excellent work.' : 'Not quite. Here is a step-by-step explanation:'}
+                                                    </p>
+                                                    <div className="prose prose-sm max-w-full text-muted-foreground prose-p:my-3 prose-li:my-1.5 prose-p:leading-relaxed">
+                                                        <ReactMarkdown>{q.feedback.explanation}</ReactMarkdown>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
+                                ))}
+                            </CardContent>
+                            <div className="p-4 border-t flex justify-between items-center">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
+                                    disabled={currentQuestionIndex === 0}
+                                >
+                                    <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+                                </Button>
+                                <div className="text-sm text-muted-foreground">
+                                    {currentQuestionIndex + 1} / {questionsCount}
                                 </div>
-                            ))}
-                        </CardContent>
-                        <div className="p-4 border-t flex justify-between items-center">
-                            <Button
-                                variant="outline"
-                                onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
-                                disabled={currentQuestionIndex === 0}
-                            >
-                                <ArrowLeft className="mr-2 h-4 w-4" /> Previous
-                            </Button>
-                            <div className="text-sm text-muted-foreground">
-                                {currentQuestionIndex + 1} / {questionsCount}
+                                <Button
+                                    onClick={() => setCurrentQuestionIndex(prev => Math.min(questionsCount - 1, prev + 1))}
+                                    disabled={currentQuestionIndex === questionsCount - 1 || !currentQuestionCorrect}
+                                >
+                                Next <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
                             </div>
-                            <Button
-                                onClick={() => setCurrentQuestionIndex(prev => Math.min(questionsCount - 1, prev + 1))}
-                                disabled={currentQuestionIndex === questionsCount - 1 || !currentQuestionCorrect}
-                            >
-                               Next <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        </div>
-                    </Card>
+                        </Card>
+                    ) : (
+                         <Card>
+                            <CardHeader>
+                                <CardTitle className="font-headline text-2xl flex items-center gap-2">
+                                    <AlertTriangle className="text-destructive"/> Content Not Ready
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-muted-foreground">
+                                    Practice questions for this specific subject and grade have not been pre-loaded into the app's library yet.
+                                </p>
+                                <p className="mt-2 text-muted-foreground">
+                                    I am actively working on adding more subjects. Please check back later.
+                                </p>
+                                <Button onClick={() => router.back()} className="mt-6">Go Back</Button>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 {/* AI Tutor Section */}
@@ -333,3 +333,5 @@ export default function PastPaperPracticePage() {
         </div>
     );
 }
+
+    
