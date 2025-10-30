@@ -6,14 +6,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from '@/components/ui/textarea';
-import { Loader, Target, Bot, ArrowRight, ArrowLeft, BrainCircuit, AlertTriangle, User } from "lucide-react";
+import { Loader, Target, Bot, ArrowRight, ArrowLeft, AlertTriangle, User } from "lucide-react";
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { getQuestionsForTopic, Question } from '@/lib/questions';
 import ReactMarkdown from 'react-markdown';
-import { Progress } from '@/components/ui/progress';
 import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
 
 interface PastPaperMeta {
@@ -21,6 +20,7 @@ interface PastPaperMeta {
     subject: string;
     year: string;
     gradeLevel?: number;
+    paperName: string;
 }
 
 interface QuestionWithFeedback extends Question {
@@ -62,7 +62,7 @@ export default function PastPaperPracticePage() {
     useEffect(() => {
         if (paperData) {
             // THE FIX: Use subject from paperData to get preloaded questions
-            // from the static library, instead of looking for paperData.generatedQuestions.
+            // from the static library.
             const topicForQuestions = paperData.subject.replace(/ Paper \d/, '');
             const questions = getQuestionsForTopic(topicForQuestions, paperData.gradeLevel || 12);
 
@@ -107,7 +107,7 @@ export default function PastPaperPracticePage() {
                 question: question.question,
                 studentAnswer: question.studentAnswer,
                 gradeLevel: paperData.gradeLevel,
-                subject: paperData.subject,
+                subject: paperData.subject.replace(/ Paper \d/, ''),
             });
             newQuestions[index].feedback = feedbackResult;
             if (feedbackResult.isCorrect && !question.feedback?.isCorrect) {
@@ -139,7 +139,7 @@ export default function PastPaperPracticePage() {
             const result = await askAiTutor({
                 prompt: contextPrompt,
                 gradeLevel: paperData.gradeLevel,
-                subjects: [paperData.subject],
+                subjects: [paperData.subject.replace(/ Paper \d/, '')],
             });
             setTutorMessages([...newMessages, { role: 'assistant', content: result.response }]);
         } catch (error) {
@@ -333,5 +333,3 @@ export default function PastPaperPracticePage() {
         </div>
     );
 }
-
-    
