@@ -53,31 +53,15 @@ const subjectIcons: Record<string, React.ElementType> = {
 const uniqueSubjects = [...new Set(allSubjectsData.map(s => s.label.replace(/ Paper \d/, '')))];
 
 /**
- * Extracts the base subject from a full paper title.
- * e.g., "Agricultural Sciences Paper 1" -> "Agricultural Sciences"
+ * Extracts the base subject from a full paper title by finding which known subject the title starts with.
+ * e.g., "Mathematics Paper 1" -> "Mathematics"
  */
 function getBaseSubject(paperTitle: string): string {
-    const lowerCaseTitle = paperTitle.toLowerCase();
-    
-    // Create a "clean" version of the title by removing paper numbers and extra words
-    const cleanTitle = lowerCaseTitle.replace(/paper \d/g, '').trim();
-
-    // Sort known subjects by length, longest first, to avoid partial matches
-    // (e.g., "English" matching before "English Home Language")
     const sortedSubjects = [...allSubjectsForLookup].sort((a, b) => b.length - a.length);
 
-    // Find the first subject that is included in the cleaned title
-    const foundSubject = sortedSubjects.find(subj => cleanTitle.includes(subj.toLowerCase()));
-
-    // If a known subject is found, return it. Otherwise, try to find a match in the original title.
-    if (foundSubject) {
-        return foundSubject;
-    }
-
-    // Fallback for titles that might not have "Paper X" format but still match
-    const fallbackSubject = sortedSubjects.find(subj => lowerCaseTitle.includes(subj.toLowerCase()));
+    const foundSubject = sortedSubjects.find(subj => paperTitle.startsWith(subj));
     
-    return fallbackSubject || paperTitle; // If still no match, return the original title
+    return foundSubject || paperTitle;
 }
 
 
