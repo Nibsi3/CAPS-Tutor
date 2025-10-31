@@ -12,7 +12,7 @@
  * - `PastPaperOutput`: Interface defining the output of the function.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, geminiFlash } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const PastPaperInputSchema = z.object({
@@ -62,6 +62,7 @@ const processPastPaperPrompt = ai.definePrompt({
     name: 'processPastPaperPrompt',
     input: { schema: PastPaperInputSchema },
     output: { schema: PastPaperOutputSchema },
+    model: geminiFlash,
     prompt: `You are an expert in the South African CAPS curriculum. Your task is to simulate the extraction of questions from a past exam paper based on its subject.
 
 **Input Details:**

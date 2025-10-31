@@ -10,7 +10,7 @@
  * - `UploadSyllabusOutput`: Interface defining the output of the uploadSyllabus function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, geminiFlash} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const UploadSyllabusInputSchema = z.object({
@@ -41,6 +41,7 @@ const uploadSyllabusFlow = ai.defineFlow(
     name: 'uploadSyllabusFlow',
     inputSchema: UploadSyllabusInputSchema,
     outputSchema: UploadSyllabusOutputSchema,
+    // Note: No model needed for this placeholder flow, but would be added for a real implementation
   },
   async input => {
     // TODO: Implement the logic to upload the syllabus to a storage service (e.g., Firebase Storage, S3).

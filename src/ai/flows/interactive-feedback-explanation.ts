@@ -8,7 +8,7 @@
  * - InteractiveFeedbackOutput - The return type for the getInteractiveFeedback function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, geminiFlash} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const InteractiveFeedbackInputSchema = z.object({
@@ -35,6 +35,7 @@ const interactiveFeedbackPrompt = ai.definePrompt({
   name: 'interactiveFeedbackPrompt',
   input: {schema: InteractiveFeedbackInputSchema},
   output: {schema: InteractiveFeedbackOutputSchema},
+  model: geminiFlash,
   prompt: `You are an AI tutor, "Mr. Ranedeer," specializing in the South African CAPS curriculum. A student needs feedback on their answer to a practice question. Your primary goal is to help the student learn, not to give them the answer directly.
 
 **Context:**

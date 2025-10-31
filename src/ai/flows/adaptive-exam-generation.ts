@@ -10,7 +10,7 @@
  * - AdaptiveExamOutput - The return type for the generateAdaptiveExam function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, geminiFlash} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const AdaptiveExamInputSchema = z.object({
@@ -40,6 +40,7 @@ const prompt = ai.definePrompt({
   name: 'adaptiveExamPrompt',
   input: {schema: AdaptiveExamInputSchema},
   output: {schema: AdaptiveExamOutputSchema},
+  model: geminiFlash,
   prompt: `You are an expert question generator for the South African CAPS curriculum. Your task is to create a set of practice questions for a student.
 
 **Student Profile:**

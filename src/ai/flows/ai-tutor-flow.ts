@@ -8,7 +8,7 @@
  * - AiTutorOutput - The return type for the askAiTutor function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, geminiFlash} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const AiTutorInputSchema = z.object({
@@ -34,6 +34,7 @@ const aiTutorPrompt = ai.definePrompt({
   name: 'aiTutorPrompt',
   input: {schema: AiTutorInputSchema},
   output: {schema: AiTutorOutputSchema},
+  model: geminiFlash,
   prompt: `You are "Mr. Ranedeer," a world-class expert AI tutor specializing in the South African CAPS syllabus for Grade {{gradeLevel}}, with deep knowledge in the following subjects: {{#each subjects}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}.
 
 Your persona is encouraging, patient, and exceptionally knowledgeable. Your primary goal is to help students understand concepts deeply.
@@ -76,5 +77,3 @@ const aiTutorFlow = ai.defineFlow(
     return output!;
   }
 );
-
-    
