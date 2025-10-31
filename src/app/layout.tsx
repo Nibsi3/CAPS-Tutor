@@ -5,6 +5,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { PT_Sans, Space_Grotesk, Source_Code_Pro } from 'next/font/google';
 import { LanguageProvider } from '@/components/language-provider';
+import { PublicHeader } from '@/components/layout/PublicHeader';
+import { Footer } from '@/components/layout/Footer';
 
 const ptSans = PT_Sans({
   subsets: ['latin'],
@@ -48,7 +50,12 @@ export default function RootLayout({
         >
           <FirebaseClientProvider>
             <LanguageProvider>
-              {children}
+              <div className="min-h-screen flex flex-col">
+                {/* Top navigation on all pages */}
+                <PublicHeader />
+                <div className="flex-1">{children}</div>
+                <Footer />
+              </div>
               <Toaster />
             </LanguageProvider>
           </FirebaseClientProvider>

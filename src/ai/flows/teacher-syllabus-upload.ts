@@ -10,8 +10,7 @@
  * - `UploadSyllabusOutput`: Interface defining the output of the uploadSyllabus function.
  */
 
-import {ai, geminiFlash} from '@/ai/genkit';
-import {z} from 'genkit';
+import { z } from 'zod';
 
 const UploadSyllabusInputSchema = z.object({
   syllabusDataUri: z
@@ -33,29 +32,13 @@ const UploadSyllabusOutputSchema = z.object({
 export type UploadSyllabusOutput = z.infer<typeof UploadSyllabusOutputSchema>;
 
 export async function uploadSyllabus(input: UploadSyllabusInput): Promise<UploadSyllabusOutput> {
-  return uploadSyllabusFlow(input);
+  // Placeholder implementation - replace with actual logic
+  console.log('Syllabus data URI:', input.syllabusDataUri);
+  console.log('Subject:', input.subject);
+  console.log('Grade:', input.grade);
+
+  return {
+    success: true,
+    message: `Syllabus for ${input.subject} Grade ${input.grade} uploaded and indexing initiated.`,
+  };
 }
-
-const uploadSyllabusFlow = ai.defineFlow(
-  {
-    name: 'uploadSyllabusFlow',
-    inputSchema: UploadSyllabusInputSchema,
-    outputSchema: UploadSyllabusOutputSchema,
-    // Note: No model needed for this placeholder flow, but would be added for a real implementation
-  },
-  async input => {
-    // TODO: Implement the logic to upload the syllabus to a storage service (e.g., Firebase Storage, S3).
-    // TODO: Implement the logic to index the syllabus content using RAG (e.g., LangChain, LlamaIndex) and store it in a vector database (e.g., Chroma, Pinecone, Qdrant).
-    // TODO: Generate a success message or an error message based on the outcome of the upload and indexing process.
-
-    // Placeholder implementation - replace with actual logic
-    console.log('Syllabus data URI:', input.syllabusDataUri);
-    console.log('Subject:', input.subject);
-    console.log('Grade:', input.grade);
-
-    return {
-      success: true,
-      message: `Syllabus for ${input.subject} Grade ${input.grade} uploaded and indexing initiated.`, // Enhanced message
-    };
-  }
-);

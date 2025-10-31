@@ -10,8 +10,8 @@
  * - AdaptiveExamOutput - The return type for the generateAdaptiveExam function.
  */
 
-import {ai, geminiFlash} from '@/ai/genkit';
-import {z} from 'genkit';
+import { groqChat, extractJsonFromText } from '@/ai/groq';
+import { z } from 'zod';
 
 const AdaptiveExamInputSchema = z.object({
   studentId: z.string().describe('The ID of the student.'),
@@ -33,48 +33,46 @@ const AdaptiveExamOutputSchema = z.object({
 export type AdaptiveExamOutput = z.infer<typeof AdaptiveExamOutputSchema>;
 
 export async function generateAdaptiveExam(input: AdaptiveExamInput): Promise<AdaptiveExamOutput> {
-  return adaptiveExamGenerationFlow(input);
-}
+  const grade = input.gradeLevel ?? 'unspecified';
+  const subject = input.subject ?? 'General';
+  const topicLine = input.topic
+    ? `The questions MUST focus exclusively on the topic: "${input.topic}".`
+    : `The user has not specified a topic. Identify common weak areas for a Grade ${grade} student in ${subject} and generate questions based on those.`;
 
-const prompt = ai.definePrompt({
-  name: 'adaptiveExamPrompt',
-  input: {schema: AdaptiveExamInputSchema},
-  output: {schema: AdaptiveExamOutputSchema},
-  model: geminiFlash,
-  prompt: `You are an expert question generator for the South African CAPS curriculum. Your task is to create a set of practice questions for a student.
+  const prompt = `You are an expert question generator for the South African CAPS curriculum. Your task is to create a set of practice questions for a student.
 
-**Student Profile:**
-- Grade: {{{gradeLevel}}}
-- Subject: {{{subject}}}
+Student Profile:
+- Grade: ${grade}
+- Subject: ${subject}
 
-**Instructions:**
-1.  **Analyze Request**: The user wants {{numQuestions}} practice questions.
-2.  **Topic Focus**:
-    {{#if topic}}
-    - The questions MUST focus exclusively on the topic: **"{{{topic}}}"**.
-    {{else}}
-    - The user has not specified a topic. You should identify common weak areas for a Grade {{gradeLevel}} student in {{subject}} and generate questions based on those.
-    {{/if}}
-3.  **Question Generation**:
-    - Generate exactly {{numQuestions}} questions.
-    - Each question must be relevant to the specified topic and appropriate for the student's grade level.
-    - The questions should be varied and test different aspects of the topic. They should not be simple recall questions.
-    - For the 'topic' field in the output, use the specific sub-topic each question relates to (e.g., if the main topic is 'Algebra', a sub-topic could be 'Factorizing Trinomials').
+Instructions:
+1. Analyze Request: The user wants ${input.numQuestions} practice questions.
+2. Topic Focus:
+   - ${topicLine}
+3. Question Generation:
+   - Generate exactly ${input.numQuestions} questions.
+   - Each question must be relevant to the specified topic and appropriate for the student's grade level.
+   - The questions should be varied and test different aspects of the topic. They should not be simple recall questions.
+   - For the 'topic' field in the output, use the specific sub-topic each question relates to (e.g., if the main topic is 'Algebra', a sub-topic could be 'Factorizing Trinomials').
 
-**Source Material**: Your questions should be based on the principles and content found in official CAPS documents, Siyavula textbooks, and past DBE exam papers.
+Source Material: Your questions should be based on the principles and content found in official CAPS documents, Siyavula textbooks, and past DBE exam papers.
 
-Generate the questions and output them as a JSON array.`,
-});
+Output strictly as JSON matching this TypeScript type:
+{
+  "examQuestions": Array<{ "question": string; "topic": string }>
+}`;
 
-const adaptiveExamGenerationFlow = ai.defineFlow(
-  {
-    name: 'adaptiveExamGenerationFlow',
-    inputSchema: AdaptiveExamInputSchema,
-    outputSchema: AdaptiveExamOutputSchema,
-  },
-  async input => {
-    // In a real application, you might fetch student weakness data here if a topic isn't provided.
-    const {output} = await prompt(input);
-    return output!;
+  const content = await groqChat(prompt, { temperature: 0.3 });
+  let jsonText = extractJsonFromText(content) ?? content;
+  try {
+    const parsed = JSON.parse(jsonText);
+    if (Array.isArray(parsed)) {
+      return { examQuestions: parsed } as AdaptiveExamOutput;
+    }
+    return parsed as AdaptiveExamOutput;
+  } catch {
+    // Best-effort graceful fallback
+    const lines = content.split('\n').filter(Boolean).slice(0, input.numQuestions);
+    return { examQuestions: lines.map(l => ({ question: l, topic: input.topic ?? 'General' })) };
   }
-);
+}

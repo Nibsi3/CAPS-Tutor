@@ -12,8 +12,8 @@
  * - `PastPaperOutput`: Interface defining the output of the function.
  */
 
-import { ai, geminiFlash } from '@/ai/genkit';
-import { z } from 'genkit';
+import { groqChat, extractJsonFromText } from '@/ai/groq';
+import { z } from 'zod';
 
 const PastPaperInputSchema = z.object({
   docId: z.string().describe('The Firestore document ID of the past paper entry.'),
@@ -53,69 +53,48 @@ const PastPaperOutputSchema = z.object({
 export type PastPaperOutput = z.infer<typeof PastPaperOutputSchema>;
 
 export async function processPastPaper(input: PastPaperInput): Promise<PastPaperOutput> {
-  return processPastPaperFlow(input);
+  // In a real scenario, this would parse PDFs. Here we generate simulated questions via LLM.
+  const prompt = `You are an expert in the South African CAPS curriculum. Your task is to simulate the extraction of questions from a past exam paper based on its subject.
+
+Input Details:
+- Subject: ${input.subject}
+- Grade: ${input.grade}
+- Year: ${input.year}
+
+Instructions:
+1. Based on the subject, generate a realistic list of 5 exam-style questions.
+2. The questions should be typical for a Grade ${input.grade} final exam paper.
+3. For each question:
+   - Create a plausible question number (e.g., 1.1, 1.2, 2.1.1).
+   - Write a concise, relevant question text.
+   - Assign a realistic number of marks (between 2 and 5).
+   - Provide a short, correct answer as if from the exam memorandum.
+4. Ensure the output is a JSON object matching this TypeScript type:
+{
+  "success": true,
+  "message": string,
+  "generatedQuestions": Array<{
+    "questionNumber": string,
+    "questionText": string,
+    "marks": number,
+    "answer": string
+  }>
 }
+If the subject is not a typical high school subject, return an empty array for generatedQuestions.`;
 
-
-// A simplified prompt to simulate question extraction based on subject.
-const processPastPaperPrompt = ai.definePrompt({
-    name: 'processPastPaperPrompt',
-    input: { schema: PastPaperInputSchema },
-    output: { schema: PastPaperOutputSchema },
-    model: geminiFlash,
-    prompt: `You are an expert in the South African CAPS curriculum. Your task is to simulate the extraction of questions from a past exam paper based on its subject.
-
-**Input Details:**
-- Subject: {{{subject}}}
-- Grade: {{{grade}}}
-- Year: {{{year}}}
-
-**Instructions:**
-1.  Based on the **subject**, generate a realistic list of 5 exam-style questions.
-2.  The questions should be typical for a Grade {{{grade}}} final exam paper.
-3.  For each question:
-    - Create a plausible question number (e.g., 1.1, 1.2, 2.1.1).
-    - Write a concise, relevant question text.
-    - Assign a realistic number of marks (between 2 and 5).
-    - Provide a short, correct answer as if from the exam memorandum.
-4.  Ensure the output is a JSON object matching the required schema. If the subject is not a typical high school subject, return an empty array for 'generatedQuestions'.
-
-**Example for 'Mathematics':**
-- Question 1.1: "Solve for x: x² - 5x + 6 = 0" (3 marks)
-- Question 1.2: "Simplify the expression: (2x²y)³" (2 marks)
-
-Generate the 5 simulated questions now.`,
-});
-
-
-const processPastPaperFlow = ai.defineFlow(
-  {
-    name: 'processPastPaperFlow',
-    inputSchema: PastPaperInputSchema,
-    outputSchema: PastPaperOutputSchema,
-  },
-  async (input) => {
-    // In a real scenario, this flow would use advanced models to parse the PDF URIs.
-    // For this simulation, we use a prompt to generate sample questions based on the subject.
-    try {
-        const { output } = await processPastPaperPrompt(input);
-
-        if (!output || !output.generatedQuestions) {
-             throw new Error("AI failed to generate questions.");
-        }
-        
-        return {
-            success: true,
-            message: `Successfully processed ${input.subject} paper. Found ${output.generatedQuestions.length} questions.`,
-            generatedQuestions: output.generatedQuestions,
-        };
-
-    } catch (error) {
-        console.error("Error during AI paper processing:", error);
-        return {
-            success: false,
-            message: error instanceof Error ? error.message : "An unknown error occurred during AI processing.",
-        };
+  try {
+    const content = await groqChat(prompt, { temperature: 0.25 });
+    const jsonText = extractJsonFromText(content) ?? content;
+    const parsed = JSON.parse(jsonText) as PastPaperOutput;
+    if (!parsed.generatedQuestions) {
+      return { success: false, message: 'AI failed to generate questions.' };
     }
+    return parsed;
+  } catch (error) {
+    console.error('Error during AI paper processing:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'An unknown error occurred during AI processing.',
+    };
   }
-);
+}

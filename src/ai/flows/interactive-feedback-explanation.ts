@@ -8,8 +8,8 @@
  * - InteractiveFeedbackOutput - The return type for the getInteractiveFeedback function.
  */
 
-import {ai, geminiFlash} from '@/ai/genkit';
-import {z} from 'genkit';
+import { groqChat, extractJsonFromText } from '@/ai/groq';
+import { z } from 'zod';
 
 const InteractiveFeedbackInputSchema = z.object({
   question: z.string().describe('The practice question that was asked.'),
@@ -28,46 +28,40 @@ export type InteractiveFeedbackOutput = z.infer<typeof InteractiveFeedbackOutput
 export async function getInteractiveFeedback(
   input: InteractiveFeedbackInput
 ): Promise<InteractiveFeedbackOutput> {
-  return interactiveFeedbackFlow(input);
-}
+  const prompt = `You are an AI tutor, "Mr. Ranedeer," specializing in the South African CAPS curriculum. A student needs feedback on their answer to a practice question. Your primary goal is to help the student learn, not to give them the answer directly.
 
-const interactiveFeedbackPrompt = ai.definePrompt({
-  name: 'interactiveFeedbackPrompt',
-  input: {schema: InteractiveFeedbackInputSchema},
-  output: {schema: InteractiveFeedbackOutputSchema},
-  model: geminiFlash,
-  prompt: `You are an AI tutor, "Mr. Ranedeer," specializing in the South African CAPS curriculum. A student needs feedback on their answer to a practice question. Your primary goal is to help the student learn, not to give them the answer directly.
+Context:
+- Subject: ${input.subject}
+- Grade Level: ${input.gradeLevel}
+- Question: "${input.question}"
+- Student's Answer: "${input.studentAnswer}"
 
-**Context:**
-- Subject: {{{subject}}}
-- Grade Level: {{{gradeLevel}}}
-- Question: "{{{question}}}"
-- Student's Answer: "{{{studentAnswer}}}"
+Your Task:
+1. Assess the Answer: Carefully evaluate the student's answer. Is it correct, partially correct, or incorrect?
+2. Determine 'isCorrect': Set the 'isCorrect' boolean field to true if the answer is fundamentally correct, otherwise set it to false.
+3. Craft the Explanation:
+   - If Correct: Write a positive and encouraging confirmation. Briefly mention why it's correct.
+   - If Incorrect: Do NOT solve the original question. Instead:
+     a) Acknowledge their effort.
+     b) Explain the underlying concept or common mistake.
+     c) Create a similar, but different, example problem.
+     d) Provide a clear, step-by-step walkthrough of the example.
+     e) End with encouragement to try the original question again.
 
-**Your Task:**
-1.  **Assess the Answer**: Carefully evaluate the student's answer. Is it correct, partially correct, or incorrect?
-2.  **Determine 'isCorrect'**: Set the 'isCorrect' boolean field to \`true\` if the answer is fundamentally correct, otherwise set it to \`false\`.
-3.  **Craft the Explanation**:
-    *   **If Correct**: Write a positive and encouraging confirmation. Briefly mention *why* it's correct. For example: "That's exactly right! You've correctly applied the formula for the area of a circle. Well done!"
-    *   **If Incorrect**: This is the most important part. **DO NOT SOLVE THE ORIGINAL QUESTION FOR THEM.** Instead, guide them to the correct answer.
-        1.  Start by acknowledging their effort (e.g., "Good attempt!" or "You're on the right track...").
-        2.  Gently explain the concept or type of mistake they might have made (e.g., "It looks like there might have been a small mix-up when combining the like terms.").
-        3.  **Create a similar, but different, example problem.** For instance, if the original question was to expand (x - 5)(x + 3), your example could be expanding (x + 2)(x - 4).
-        4.  Provide a clear, step-by-step walkthrough of how to solve **your new example problem**.
-        5.  End with an encouraging sentence that prompts them to try the **original question** again using the method you just demonstrated. For example: "Now, try applying that same FOIL method to the original problem. You can do it!"
+Output strictly as JSON matching this TypeScript type:
+{
+  "isCorrect": boolean,
+  "explanation": string
+}`;
 
-Your response must be in the specified JSON format, with well-formatted Markdown for readability (use paragraphs and lists).
-`,
-});
-
-const interactiveFeedbackFlow = ai.defineFlow(
-  {
-    name: 'interactiveFeedbackFlow',
-    inputSchema: InteractiveFeedbackInputSchema,
-    outputSchema: InteractiveFeedbackOutputSchema,
-  },
-  async input => {
-    const {output} = await interactiveFeedbackPrompt(input);
-    return output!;
+  const content = await groqChat(prompt, { temperature: 0.2 });
+  const jsonText = extractJsonFromText(content) ?? content;
+  try {
+    return JSON.parse(jsonText) as InteractiveFeedbackOutput;
+  } catch {
+    return {
+      isCorrect: false,
+      explanation: content,
+    };
   }
-);
+}
