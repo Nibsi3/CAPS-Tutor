@@ -62,6 +62,8 @@ interface GeneratedQuestion {
     questionText: string;
     marks: number;
     answer: string;
+    hasImage?: boolean;
+    imageDataUri?: string;
 }
 
 interface ProcessedPaper {
@@ -96,7 +98,7 @@ const subjectKeywords: Record<string, string[]> = {
     "Geography": ["geography", "geo", "aardrykskunde"],
     "History": ["history", "geskiedenis"],
     "Tourism": ["tourism", "toerisme"],
-    "Computer Applications Technology": ["cat", "computer applications technology"],
+    "Computer Applications Technology": ["cat", "computer applications technology", "computer application technology"],
     "Information Technology": ["it", "information technology"],
     "Consumer Studies": ["consumer studies", "verbruikerstudie"],
     "Engineering Graphics & Design": ["egd", "engineering graphics", "engineering graphics & design"],
@@ -113,8 +115,12 @@ const subjectKeywords: Record<string, string[]> = {
     "Agricultural Technology": ["agricultural technology", "agric tech"],
     "English FAL": ["english fal", "english first additional language"],
     "English HL": ["english hl", "english home language"],
-    "Afrikaans HT": ["afrikaans ht", "afrikaans huistaal"],
-    "Afrikaans EAT": ["afrikaans eat", "afrikaans eerste addisionele taal"],
+    "Afrikaans HT": ["afrikaans ht", "afrikaans huistaal", "afrikaans hl"],
+    "Afrikaans EAT": ["afrikaans eat", "afrikaans eerste addisionele taal", "afrikaans fal"],
+    "Afrikaans SAL": ["afrikaans sal", "afrikaans second additional language"],
+    "Music": ["music"],
+    "Design": ["design"],
+    "Hospitality Studies": ["hospitality studies"],
 };
 
 const languageKeywords: Record<string, string[]> = {
@@ -145,7 +151,7 @@ export default function PastPaperUploaderPage() {
   const [processedInBatch, setProcessedInBatch] = useState(0);
 
   const [reprocessingProgress, setReprocessingProgress] = useState(0);
-
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const prevPairedCount = useRef(0);
 
@@ -576,6 +582,83 @@ export default function PastPaperUploaderPage() {
     }
   };
 
+  const handleSyncPapers = async () => {
+    if (!user) return;
+    
+    setIsSyncing(true);
+    try {
+      const response = await fetch('/api/sync-past-papers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Sync Complete",
+          description: result.message || `Created ${result.created} papers, skipped ${result.skipped} duplicates.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Sync Failed",
+          description: result.error || "Failed to sync papers.",
+        });
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast({
+        variant: "destructive",
+        title: "Sync Error",
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleAddAllPastPapers = async () => {
+    if (!user) return;
+    
+    setIsSyncing(true);
+    try {
+      const response = await fetch('/api/add-all-past-papers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Papers Added",
+          description: result.message || `Processed ${result.processed} papers, skipped ${result.skipped} duplicates, failed ${result.failed}.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Failed",
+          description: result.error || "Failed to add papers.",
+        });
+      }
+    } catch (error) {
+      console.error('Add papers error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleDeleteProcessedPaper = async (id: string) => {
     if (!firestore) return;
@@ -657,10 +740,76 @@ export default function PastPaperUploaderPage() {
   const unpairedPapers = useMemo(() => stagedFiles.filter(f => f.type === 'paper'), [stagedFiles]);
   const unpairedMemos = useMemo(() => stagedFiles.filter(f => f.type === 'memo'), [stagedFiles]);
 
+  // Helper function to create a unique key for duplicate detection
+  const getPaperKey = (paper: ProcessedPaper): string => {
+    const paperNumber = paper.subject.match(/(?:paper|p)\s*(\d+)/i)?.[1] || '';
+    const baseSubject = paper.subject.replace(/\s*(?:paper|p)\s*\d+.*/i, '').trim().toLowerCase();
+    return `${baseSubject}_${paper.year}_${paperNumber}_${paper.gradeLevel || 12}`;
+  };
+
+  // Track duplicate and unknown papers for bulk deletion
+  const [duplicatePaperIds, setDuplicatePaperIds] = useState<Set<string>>(new Set());
+  const [unknownPaperIds, setUnknownPaperIds] = useState<Set<string>>(new Set());
+
   const sortedAndFilteredPapers = useMemo(() => {
     if (!processedPapers) return [];
-    return [...processedPapers]
-      .filter(p => p.subject.toLowerCase().includes(searchTerm.toLowerCase()) || (p.year && p.year.toString().includes(searchTerm)))
+    
+    // First: Identify and filter out "Unknown" papers
+    const unknownIds = new Set<string>();
+    const knownPapers = processedPapers.filter(p => {
+      const subjectLower = p.subject.toLowerCase().trim();
+      
+      // Check for exact "Unknown" match
+      if (subjectLower === 'unknown') {
+        unknownIds.add(p.id);
+        return false;
+      }
+      
+      // Check if subject is just "Unknown" with possible whitespace/paper number
+      const normalizedSubject = subjectLower.replace(/\s*(?:paper|p)\s*\d+.*$/i, '').trim();
+      const isUnknown = normalizedSubject === 'unknown' || 
+                       (normalizedSubject.length <= 10 && normalizedSubject.includes('unknown'));
+      if (isUnknown) {
+        unknownIds.add(p.id);
+        return false;
+      }
+      
+      return true;
+    });
+    setUnknownPaperIds(unknownIds);
+    
+    // Second: Identify and remove duplicates, keeping the one with more questions
+    const seen = new Map<string, ProcessedPaper>();
+    const uniquePapers: ProcessedPaper[] = [];
+    const duplicateIds = new Set<string>();
+    
+    knownPapers.forEach(paper => {
+      const key = getPaperKey(paper);
+      if (seen.has(key)) {
+        const existing = seen.get(key)!;
+        const existingIndex = uniquePapers.findIndex(p => p.id === existing.id);
+        
+        if ((paper.questionCount || 0) > (existing.questionCount || 0)) {
+          // Replace with the better one
+          duplicateIds.add(existing.id);
+          seen.set(key, paper);
+          if (existingIndex >= 0) {
+            uniquePapers[existingIndex] = paper;
+          }
+        } else {
+          duplicateIds.add(paper.id);
+        }
+      } else {
+        seen.set(key, paper);
+        uniquePapers.push(paper);
+      }
+    });
+    setDuplicatePaperIds(duplicateIds);
+    
+    // Third: Apply search filter
+    return uniquePapers
+      .filter(p => p.subject.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                   (p.year && p.year.toString().includes(searchTerm)))
       .sort((a, b) => {
         const valA = a[sortKey]?.toString().toLowerCase() ?? '';
         const valB = b[sortKey]?.toString().toLowerCase() ?? '';
@@ -669,6 +818,16 @@ export default function PastPaperUploaderPage() {
         return 0;
       });
   }, [processedPapers, searchTerm, sortKey, sortDirection]);
+
+  const handleDeleteDuplicates = () => {
+    handleBulkDelete(Array.from(duplicatePaperIds));
+    setDuplicatePaperIds(new Set());
+  };
+
+  const handleDeleteUnknown = () => {
+    handleBulkDelete(Array.from(unknownPaperIds));
+    setUnknownPaperIds(new Set());
+  };
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -715,10 +874,54 @@ export default function PastPaperUploaderPage() {
 
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline text-3xl">Past Paper Manager</CardTitle>
-                <CardDescription>
-                A three-step workflow to upload, pair, and process past exam papers. The AI will analyze the processed papers to expand the question bank.
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="font-headline text-3xl">Past Paper Manager</CardTitle>
+                        <CardDescription>
+                            A three-step workflow to upload, pair, and process past exam papers. The AI will analyze the processed papers to expand the question bank.
+                        </CardDescription>
+                    </div>
+                    {user && (
+                        <div className="flex gap-2">
+                            <Button 
+                                onClick={handleSyncPapers} 
+                                disabled={isSyncing}
+                                variant="outline"
+                                className="gap-2"
+                            >
+                                {isSyncing ? (
+                                    <>
+                                        <Loader className="h-4 w-4 animate-spin" />
+                                        Syncing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <RefreshCw className="h-4 w-4" />
+                                        Sync Questions
+                                    </>
+                                )}
+                            </Button>
+                            <Button 
+                                onClick={handleAddAllPastPapers} 
+                                disabled={isSyncing}
+                                variant="default"
+                                className="gap-2"
+                            >
+                                {isSyncing ? (
+                                    <>
+                                        <Loader className="h-4 w-4 animate-spin" />
+                                        Adding Papers...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="h-4 w-4" />
+                                        Add All Past Papers from Folder
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </CardHeader>
         </Card>
         
@@ -877,10 +1080,60 @@ export default function PastPaperUploaderPage() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <CardTitle>Uploaded Past Papers ({processedPapers?.length || 0})</CardTitle>
-                <CardDescription>Status and management of processed papers.</CardDescription>
+                <CardTitle>Uploaded Past Papers ({sortedAndFilteredPapers.length} / {processedPapers?.length || 0})</CardTitle>
+                <CardDescription>
+                  Showing unique papers {duplicatePaperIds.size > 0 || unknownPaperIds.size > 0 
+                    ? `(${duplicatePaperIds.size} duplicate${duplicatePaperIds.size !== 1 ? 's' : ''}, ${unknownPaperIds.size} unknown filtered out)`
+                    : ''}
+                </CardDescription>
               </div>
-              <div className="flex gap-2 items-center w-full sm:w-auto">
+              <div className="flex gap-2 items-center w-full sm:w-auto flex-wrap">
+                {duplicatePaperIds.size > 0 && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50">
+                        <AlertTriangle className="mr-2 h-4 w-4" /> Delete {duplicatePaperIds.size} Duplicate(s)
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Duplicates?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete {duplicatePaperIds.size} duplicate paper(s). The system will keep the version with more questions for each duplicate set.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteDuplicates} className={buttonVariants({ variant: "destructive" })}>
+                          Delete Duplicates
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                {unknownPaperIds.size > 0 && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="border-red-500 text-red-600 hover:bg-red-50">
+                        <X className="mr-2 h-4 w-4" /> Delete {unknownPaperIds.size} Unknown(s)
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Unknown Papers?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete {unknownPaperIds.size} paper(s) with "Unknown" as the subject. These papers could not be properly identified.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteUnknown} className={buttonVariants({ variant: "destructive" })}>
+                          Delete Unknown Papers
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
                 {selectedPapers.length > 0 && (
                      <AlertDialog>
                         <AlertDialogTrigger asChild>

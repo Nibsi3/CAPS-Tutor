@@ -1,142 +1,161 @@
-"use client";
+'use client';
 
-import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
-import { Button } from '@/components/ui/button';
-import { PublicHeader } from '@/components/layout/PublicHeader';
-import { grades, getQuestions, Subject } from '@/lib/demo-questions';
+import { AITryOut } from "@/components/home/AITryOut";
+import { HowItWorks } from "@/components/home/HowItWorks";
+import { CapsSyllabusSection, NewsSection, BlogSection, ContactSection, CompetitiveAdvantagesSection, FAQSection, StudyResourcesSection } from "@/components/home/HomeSections";
+import { AllSubjectsPreview } from "@/components/home/AllSubjectsPreview";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Target, Bot, BarChart } from "lucide-react";
+
+const features = [
+  {
+    name: 'Adaptive Practice',
+    description: 'Generate custom quizzes that focus on your weak topics, helping you improve where it matters most.',
+    icon: Target,
+  },
+  {
+    name: 'Instant AI Feedback',
+    description: 'Never get stuck again. Our AI provides instant, step-by-step explanations for every question.',
+    icon: Bot,
+  },
+  {
+    name: 'Progress Tracking',
+    description: 'Visualize your progress with detailed analytics on topic mastery, time spent, and historical performance.',
+    icon: BarChart,
+  },
+]
+
 
 export default function HomePage() {
-  const { user, isUserLoading } = useUser();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isUserLoading && user) {
-      router.replace('/dashboard');
-    }
-  }, [user, isUserLoading, router]);
-
-  const [subject, setSubject] = useState<Subject>('Mathematics');
-  const [grade, setGrade] = useState<number>(10);
-  const questionList = useMemo(() => getQuestions(subject, grade as any), [subject, grade]);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [question, setQuestion] = useState<string>(questionList[0]);
-  const [answer, setAnswer] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setCurrentIdx(0);
-    setQuestion(questionList[0]);
-    setAnswer('');
-  }, [questionList]);
-
-  const askDemo = async () => {
-    setLoading(true);
-    try {
-      const prompt = `You are a CAPS-aligned South African ${subject} tutor for Grade ${grade}. Explain step-by-step how to approach the question below without simply giving away full exam solutions. Use concise Markdown.\n\nQuestion: ${question}`;
-      const res = await fetch('/api/demo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
-      const json = await res.json();
-      setAnswer(json.content || json.error || 'No response');
-    } catch (e: any) {
-      setAnswer(e?.message || 'Failed to get response.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (user) return null;
-
   return (
-    <>
-      <main className="flex min-h-screen flex-col items-center bg-gradient-to-b from-background via-background to-muted/40">
-        <section className="w-full border-b bg-background">
-          <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-6 py-20 md:grid-cols-2">
-            <div>
-              <p className="mb-2 text-xs uppercase tracking-widest text-primary">CAPS Tutor</p>
-              <h1 className="font-headline mb-4 text-5xl font-bold md:text-6xl">The most supportive CAPS AI tutor</h1>
-              <p className="text-muted-foreground mb-6 max-w-prose">Low‑latency, CAPS‑aligned explanations, practice and feedback for Grades 8–12. Explore the live demo below or sign up to start learning.</p>
-              <div className="flex gap-3">
-                <Button asChild><Link href="/register">Sign up</Link></Button>
-                <Button asChild variant="outline"><Link href="/contact">Contact sales</Link></Button>
+    <main className="flex-1">
+        <div className="relative isolate overflow-hidden">
+          {/* Decorative element from previous design, can be kept for visual flair */}
+          <div
+            className="absolute left-[calc(50%-4rem)] top-10 -z-10 transform-gpu blur-3xl sm:left-[calc(50%-18rem)] lg:left-48 lg:top-[calc(50%-30rem)] xl:left-[calc(50%-24rem)]"
+            aria-hidden="true"
+          >
+            <div
+              className="aspect-[1108/632] w-[72.125rem] bg-gradient-to-r from-primary to-purple-500 opacity-20"
+              style={{
+                clipPath:
+                  'polygon(73.6% 51.7%, 91.7% 11.8%, 100% 46.4%, 97.4% 82.2%, 92.5% 84.9%, 75.7% 64.3%, 55.3% 47.5%, 46.5% 49.4%, 45% 62.9%, 50.3% 87.2%, 21.3% 64.1%, 0.1% 100%, 5.4% 51.1%, 21.4% 63.9%, 58.9% 0.2%, 73.6% 51.7%)',
+              }}
+            />
+          </div>
+          
+          <section className="w-full max-w-4xl mx-auto px-4 md:px-6 pt-24 pb-12 sm:pt-32">
+            <div className="flex flex-col items-center justify-center space-y-6 text-center">
+              <div className="space-y-4">
+                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl font-headline">
+                  The Ultimate AI Tutor for the CAPS Curriculum
+                </h1>
+                <p className="max-w-[700px] mx-auto text-muted-foreground md:text-lg">
+                  Master any subject with interactive lessons, adaptive practice, and instant feedback, all perfectly aligned with the South African curriculum.
+                </p>
               </div>
             </div>
-            <div className="rounded-xl border bg-card p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div className="flex gap-2">
-                  <Button variant={subject==='Mathematics'?'default':'outline'} size="sm" onClick={() => setSubject('Mathematics')}>Mathematics</Button>
-                  <Button variant={subject==='Physical Sciences'?'default':'outline'} size="sm" onClick={() => setSubject('Physical Sciences')}>Physical Science</Button>
-                  <Button variant={subject==='Life Sciences'?'default':'outline'} size="sm" onClick={() => setSubject('Life Sciences')}>Life Science</Button>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <label htmlFor="grade" className="text-muted-foreground">Grade</label>
-                  <select id="grade" className="rounded-md border bg-background px-2 py-1"
-                    value={grade}
-                    onChange={e => setGrade(parseInt(e.target.value))}
-                  >
-                    {grades.map(g => (<option key={g} value={g}>{g}</option>))}
-                  </select>
-                </div>
-              </div>
-              <div className="mb-3 flex items-center justify-between">
-                <div className="text-xs text-muted-foreground">Sample questions (CAPS)</div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => { const i = (currentIdx+3)%4; setCurrentIdx(i); setQuestion(questionList[i]); setAnswer(''); }}>Prev</Button>
-                  <Button size="sm" variant="ghost" onClick={() => { const i = (currentIdx+1)%4; setCurrentIdx(i); setQuestion(questionList[i]); setAnswer(''); }}>Next</Button>
-                </div>
-              </div>
-              <div className="rounded-md border bg-background p-3 text-left text-sm">
-                {question}
-              </div>
-              <div className="mt-3 flex justify-end">
-                <Button onClick={askDemo} disabled={loading}>{loading ? 'Thinking…' : 'Explain'}</Button>
-              </div>
-              {answer && (
-                <div className="prose mt-4 max-w-none whitespace-pre-wrap break-words text-sm prose-headings:mt-0 dark:prose-invert">
-                  {answer}
-                </div>
-              )}
+            
+            <div className="pt-12">
+               <AITryOut />
             </div>
-          </div>
-        </section>
 
-        <section className="mx-auto w-full max-w-7xl px-6 py-16">
-          <div className="grid gap-6 md:grid-cols-3">
-            <FeatureCard title="CAPS-aligned" desc="Aligned to DBE CAPS docs and Siyavula resources for Grades 8–12."/>
-            <FeatureCard title="Adaptive practice" desc="Personalised questions that adjust to each learner’s mastery."/>
-            <FeatureCard title="Multilingual" desc="Support responses in all 11 official South African languages."/>
+            <div className="flex items-center justify-center gap-4 pt-8">
+                <Button asChild size="lg">
+                    <Link href="/register">Get Started for Free</Link>
+                </Button>
+            </div>
+          </section>
+
+        </div>
+
+      {/* How It Works Section */}
+      <HowItWorks />
+
+      {/* CAPS Syllabus Section */}
+      <CapsSyllabusSection />
+
+      {/* All Subjects Preview Section */}
+      <AllSubjectsPreview />
+
+      {/* How It's Different / Competitive Advantages Section */}
+      <CompetitiveAdvantagesSection />
+
+      {/* Study Resources Section */}
+      <StudyResourcesSection />
+
+      {/* FAQ Section */}
+      <FAQSection />
+
+      {/* News Section */}
+      <NewsSection />
+
+      {/* Blog Section */}
+      <BlogSection />
+
+      {/* Contact Section */}
+      <ContactSection />
+
+      <div className="relative isolate overflow-hidden">
+          <section className="py-24 sm:py-32 bg-muted/30">
+            <div className="mx-auto max-w-7xl px-6 lg:px-8">
+              <div className="mx-auto max-w-2xl lg:text-center">
+                <p className="text-base font-semibold leading-7 text-primary">Learn Smarter</p>
+                <h2 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl font-headline">
+                  Everything you need to excel in your exams
+                </h2>
+                <p className="mt-6 text-lg leading-8 text-muted-foreground">
+                  Our platform is more than just questions and answers. It's a complete learning ecosystem designed to help you understand, practice, and master your subjects.
+                </p>
+              </div>
+              <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
+                <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-3 lg:gap-y-16">
+                  {features.map((feature) => (
+                    <div key={feature.name} className="relative pl-16">
+                      <dt className="text-base font-semibold leading-7 text-foreground">
+                        <div className="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
+                          <feature.icon className="h-6 w-6 text-white" aria-hidden="true" />
+                        </div>
+                        {feature.name}
+                      </dt>
+                      <dd className="mt-2 text-base leading-7 text-muted-foreground">{feature.description}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </div>
+          </section>
+
+
+          {/* Bottom-left decorative element */}
+          <div
+            className="absolute bottom-0 left-0 -z-10 transform-gpu overflow-hidden blur-3xl"
+            aria-hidden="true"
+          >
+            <div
+              className="aspect-[1155/678] w-[72.1875rem] -translate-x-1/2 bg-gradient-to-tr from-[#1e40af] to-[#9333ea] opacity-30"
+              style={{
+                clipPath:
+                  'polygon(20% 65%, 0% 50%, 10% 20%, 40% 0%, 70% 20%, 90% 50%, 100% 65%, 80% 85%, 50% 100%, 30% 85%)',
+              }}
+            />
           </div>
-        </section>
-        
-        <section className="w-full border-t bg-background">
-          <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-6 py-16 md:grid-cols-3">
-            <Stat title="Avg. response" value="~1.5s" note="with Groq chat"/>
-            <Stat title="Curriculum" value="CAPS" note="Grades 8–12"/>
-            <Stat title="Languages" value="11" note="official SA languages"/>
+          {/* Bottom-right decorative element */}
+          <div
+            className="absolute bottom-0 right-0 -z-10 transform-gpu overflow-hidden blur-3xl"
+            aria-hidden="true"
+          >
+             <div
+              className="aspect-[1155/678] w-[72.1875rem] translate-x-1/2 bg-gradient-to-tl from-[#1e40af] to-[#9333ea] opacity-30"
+              style={{
+                clipPath:
+                  'polygon(80% 65%, 100% 50%, 90% 20%, 60% 0%, 30% 20%, 10% 50%, 0% 65%, 20% 85%, 50% 100%, 70% 85%)',
+              }}
+            />
           </div>
-        </section>
-      </main>
-    </>
+
+      </div>
+    </main>
   );
 }
-
-function FeatureCard({ title, desc }: { title: string; desc: string }) {
-  return (
-    <div className="rounded-xl border bg-card p-6 shadow-sm">
-      <h3 className="font-headline mb-2 text-xl font-semibold">{title}</h3>
-      <p className="text-muted-foreground text-sm">{desc}</p>
-    </div>
-  );
-}
-
-function Stat({ title, value, note }: { title: string; value: string; note?: string }) {
-  return (
-    <div className="rounded-xl border bg-card p-6 text-center shadow-sm">
-      <div className="text-muted-foreground text-xs uppercase tracking-widest">{title}</div>
-      <div className="font-headline my-1 text-3xl font-bold">{value}</div>
-      {note && <div className="text-muted-foreground text-xs">{note}</div>}
-    </div>
-  );
-}
-

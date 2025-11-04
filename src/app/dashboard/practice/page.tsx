@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from '@/components/ui/textarea';
-import { Loader, Target, Bot, Sparkles, AlertTriangle, User, ArrowRight, ArrowLeft, BrainCircuit } from "lucide-react";
+import { Loader, Target, Bot, Sparkles, AlertTriangle, User, ArrowRight, ArrowLeft, BrainCircuit, CheckCircle } from "lucide-react";
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -14,7 +14,12 @@ import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
 import { getQuestionsForSubject, Question } from '@/lib/questions';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import { TypingText } from '@/components/ui/typing-text';
 import { Progress } from '@/components/ui/progress';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { filterQuestionsByLiterature, UserLiteratureSelection } from '@/lib/literature-filter';
+import { useAdminMode } from '@/hooks/use-admin-mode';
 
 interface QuestionWithFeedback extends Question {
   studentAnswer?: string;
@@ -33,11 +38,24 @@ const strugglingTopics = [
     { name: "Chemical equilibrium", subject: "Physical Sciences", grade: "12", mastery: 60 },
 ];
 
+const ADMIN_EMAIL = 'cameronfalck03@gmail.com';
+
+interface UserProfile {
+  gradeLevel: number;
+  subjects: string[];
+  language?: string;
+  literature?: UserLiteratureSelection;
+}
 
 export default function PracticePage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user } = useUser();
+  const firestore = useFirestore();
+  
+  const isAdmin = user?.email === ADMIN_EMAIL;
+  const { adminModeEnabled } = useAdminMode(isAdmin);
 
   const [isLoading, setIsLoading] = useState(false);
   const [exam, setExam] = useState<{ examQuestions: QuestionWithFeedback[] } | null>(null);
@@ -47,12 +65,20 @@ export default function PracticePage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
+  const [isFinishing, setIsFinishing] = useState(false);
   
   // AI Tutor State
   const [tutorMessages, setTutorMessages] = useState<Message[]>([]);
   const [tutorPrompt, setTutorPrompt] = useState('');
   const [isTutorLoading, setIsTutorLoading] = useState(false);
   const tutorChatEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch user profile to get literature selections
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, firestore]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
   const loadQuestions = useCallback((currentTopic: string, currentGrade: string, currentSubject: string) => {
     setIsLoading(true);
@@ -61,14 +87,41 @@ export default function PracticePage() {
     setScore(0);
     
     // Set up the tutor's initial message
-    setTutorMessages([{ role: 'assistant', content: `Hi there! I'm ready to help you with any questions you have about **${currentTopic}**. Ask me anything!` }]);
+    const tutorGradeLevel = userProfile?.gradeLevel || (currentGrade ? parseInt(currentGrade) : null);
+    const gradeText = tutorGradeLevel ? ` (Grade ${tutorGradeLevel})` : '';
+    setTutorMessages([{ role: 'assistant', content: `Hi there! I'm your Grade ${tutorGradeLevel || currentGrade} AI tutor. I'm ready to help you with any questions you have about **${currentTopic}**${gradeText}. Ask me anything!` }]);
     
     // Get preloaded questions for the subject, then filter by topic
-    const subjectQuestions = getQuestionsForSubject(currentSubject, parseInt(currentGrade));
-    const topicQuestions = subjectQuestions.filter(q => q.topic.toLowerCase() === currentTopic.toLowerCase());
+    let subjectQuestions = getQuestionsForSubject(currentSubject, parseInt(currentGrade));
+    
+    // Filter by topic - use flexible matching (exact match or contains)
+    const normalizedTopic = currentTopic.toLowerCase().trim();
+    let topicQuestions = subjectQuestions.filter(q => {
+      const normalizedQuestionTopic = q.topic.toLowerCase().trim();
+      // Exact match or topic contains the search term, or search term contains topic
+      return normalizedQuestionTopic === normalizedTopic ||
+             normalizedQuestionTopic.includes(normalizedTopic) ||
+             normalizedTopic.includes(normalizedQuestionTopic);
+    });
+    
+    // Debug logging (can be removed in production)
+    if (topicQuestions.length === 0 && subjectQuestions.length > 0) {
+      console.log('Topic matching debug:', {
+        searchedTopic: currentTopic,
+        availableTopics: [...new Set(subjectQuestions.map(q => q.topic))],
+        totalQuestions: subjectQuestions.length
+      });
+    }
+    
+    // Filter by literature selections if this is a literature subject
+    topicQuestions = filterQuestionsByLiterature(
+      topicQuestions,
+      currentSubject,
+      userProfile?.literature
+    );
     
     if (topicQuestions.length === 0) {
-      toast({ variant: "destructive", title: "No Questions Found", description: "We don't have practice questions for this specific topic yet." });
+      toast({ variant: "destructive", title: "No Questions Found", description: "We don't have practice questions for this specific topic yet, or you haven't selected the required literature for this subject." });
       setExam({ examQuestions: [] });
     } else {
       setExam({ examQuestions: topicQuestions.map(q => ({ ...q, studentAnswer: '', feedback: null, isChecking: false })) });
@@ -76,7 +129,7 @@ export default function PracticePage() {
     
     setIsLoading(false);
     setIsInitialLoading(false);
-  }, [toast]);
+  }, [toast, userProfile?.gradeLevel, userProfile?.literature]);
 
 
   useEffect(() => {
@@ -89,6 +142,7 @@ export default function PracticePage() {
       setTopic(decodedTopic);
       setGrade(gradeParam);
       setSubject(subjectParam);
+      // Load questions (filtering will handle undefined literature gracefully)
       loadQuestions(decodedTopic, gradeParam, subjectParam);
     } else {
       setIsInitialLoading(false);
@@ -145,10 +199,66 @@ export default function PracticePage() {
       setExam({ examQuestions: newQuestions });
     }
   };
+
+  const handleFinish = async () => {
+    if (!exam || !user || !firestore || !topic || !subject || !grade) return;
+
+    setIsFinishing(true);
+
+    try {
+      const questionsCount = exam.examQuestions.length;
+      const percentageScore = questionsCount > 0 ? Math.round((score / questionsCount) * 100) : 0;
+
+      // Save progress to Firestore
+      const progressData = {
+        learningObjectiveId: `topic-${encodeURIComponent(topic)}`,
+        masteryLevel: percentageScore,
+        completed: true,
+        lastAccessed: serverTimestamp(),
+        topic: topic,
+        subject: subject,
+        gradeLevel: parseInt(grade),
+        type: 'practice',
+      };
+
+      const progressRef = collection(firestore, `users/${user.uid}/studentProgress`);
+      await addDoc(progressRef, progressData);
+
+      toast({
+        title: 'Progress Saved!',
+        description: `Your score of ${score}/${questionsCount} (${percentageScore}%) has been saved.`,
+      });
+
+      // Navigate back to practice page
+      setTimeout(() => {
+        router.push('/dashboard/practice');
+      }, 2000);
+
+    } catch (error) {
+      console.error("Error saving progress:", error);
+      toast({
+        variant: "destructive",
+        title: "Error Saving Progress",
+        description: "Could not save your progress. Please try again.",
+      });
+      setIsFinishing(false);
+    }
+  };
   
   const handleTutorSendMessage = async () => {
     const currentPrompt = tutorPrompt;
-    if (!currentPrompt.trim() || !grade || !subject || !topic) return;
+    if (!currentPrompt.trim() || !subject || !topic) return;
+
+    // Prefer user profile grade level, fallback to URL param grade
+    const tutorGradeLevel = userProfile?.gradeLevel || (grade ? parseInt(grade) : 10);
+    if (!tutorGradeLevel) {
+      toast({
+        variant: "destructive",
+        title: "Grade Level Required",
+        description: "Please set your grade level in settings to use the tutor.",
+      });
+      return;
+    }
 
     const currentQuestion = exam?.examQuestions[currentQuestionIndex]?.question;
     const contextPrompt = `Regarding the topic "${topic}" and specifically the question: "${currentQuestion}", the student asks: "${currentPrompt}"`;
@@ -161,8 +271,9 @@ export default function PracticePage() {
     try {
       const result = await askAiTutor({
         prompt: contextPrompt,
-        gradeLevel: parseInt(grade),
+        gradeLevel: tutorGradeLevel,
         subjects: [subject],
+        language: userProfile?.language,
       });
   
       setTutorMessages([...newMessages, { role: 'assistant', content: result.response }]);
@@ -259,14 +370,14 @@ export default function PracticePage() {
                           <Target className="w-8 h-8 text-primary" />
                           Practice: {topic}
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="whitespace-nowrap">
                           {exam ? `Question ${currentQuestionIndex + 1} of ${questionsCount}` : 'Loading questions...'}
                       </CardDescription>
                     </div>
                      {exam && (
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">Score</p>
-                        <p className="font-headline text-2xl font-bold">{score} / {questionsCount}</p>
+                        <p className="font-headline text-2xl font-bold whitespace-nowrap">{score} / {questionsCount}</p>
                       </div>
                     )}
                 </div>
@@ -315,7 +426,14 @@ export default function PracticePage() {
                                             {q.feedback.isCorrect ? 'Correct! Excellent work.' : 'Not quite. Here is a step-by-step explanation:'}
                                             </p>
                                             <div className="prose prose-sm max-w-full text-muted-foreground prose-p:my-3 prose-li:my-1.5 prose-p:leading-relaxed">
-                                                <ReactMarkdown rehypePlugins={[rehypeRaw]}>{q.feedback.explanation}</ReactMarkdown>
+                                                <TypingText
+                                                    text={typeof q.feedback.explanation === 'string' 
+                                                        ? q.feedback.explanation 
+                                                        : String(q.feedback.explanation || '')}
+                                                    markdown={true}
+                                                    speed={10}
+                                                    rehypePlugins={[rehypeRaw]}
+                                                />
                                             </div>
                                         </div>
                                     )}
@@ -327,19 +445,40 @@ export default function PracticePage() {
                         <Button
                             variant="outline"
                             onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
-                            disabled={currentQuestionIndex === 0}
+                            disabled={currentQuestionIndex === 0 || isFinishing}
                         >
                             <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                         </Button>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground whitespace-nowrap">
                             {currentQuestionIndex + 1} / {questionsCount}
                         </div>
-                        <Button
-                            onClick={() => setCurrentQuestionIndex(prev => Math.min(questionsCount - 1, prev + 1))}
-                            disabled={currentQuestionIndex === questionsCount - 1 || !currentQuestionCorrect}
-                        >
-                           Next <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
+                        {currentQuestionIndex === questionsCount - 1 ? (
+                            <Button
+                                onClick={handleFinish}
+                                disabled={isFinishing}
+                            >
+                                {isFinishing ? (
+                                    <>
+                                        <Loader className="mr-2 h-4 w-4 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                        Finished
+                                    </>
+                                )}
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
+                                disabled={(!currentQuestionCorrect && !adminModeEnabled) || isFinishing}
+                                variant={adminModeEnabled && !currentQuestionCorrect ? "outline" : "default"}
+                                title={adminModeEnabled && !currentQuestionCorrect ? "Admin: Unlock next question" : ""}
+                            >
+                                Next <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        )}
                     </div>
                 </Card>
             )}
@@ -360,7 +499,7 @@ export default function PracticePage() {
 
         {/* AI Tutor Section */}
         <div className="lg:col-span-1 h-full">
-             <Card className="flex-1 flex flex-col h-full max-h-[85vh]">
+             <Card className="flex-1 flex flex-col h-full max-h-[85vh] sticky top-0">
                 <CardHeader className="border-b">
                 <CardTitle className="flex items-center gap-2 font-headline text-2xl">
                     <Bot className="h-7 w-7" />
@@ -376,7 +515,18 @@ export default function PracticePage() {
                     <div key={index} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : ''}`}>
                         {message.role === 'assistant' && <Bot className="w-6 h-6 flex-shrink-0 text-primary" />}
                         <div className={`rounded-lg p-3 max-w-[90%] text-sm ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                        <div className="prose prose-sm max-w-full prose-p:my-3 prose-li:my-1.5 prose-p:leading-relaxed"><ReactMarkdown rehypePlugins={[rehypeRaw]}>{message.content}</ReactMarkdown></div>
+                        <div className="prose prose-sm max-w-full prose-p:my-3 prose-li:my-1.5 prose-p:leading-relaxed">
+                            {message.role === 'assistant' ? (
+                                <TypingText
+                                    text={message.content}
+                                    markdown={true}
+                                    speed={10}
+                                    rehypePlugins={[rehypeRaw]}
+                                />
+                            ) : (
+                                <ReactMarkdown rehypePlugins={[rehypeRaw]}>{message.content}</ReactMarkdown>
+                            )}
+                        </div>
                         </div>
                         {message.role === 'user' && <User className="w-6 h-6 flex-shrink-0" />}
                     </div>

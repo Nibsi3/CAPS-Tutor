@@ -68,7 +68,13 @@ export function LiteratureSelection({ control, selectedSubjects, selectedGrade }
   const gradeKey = `grade${selectedGrade}` as keyof typeof literatureOptions;
   
   const subjectsWithLiterature = selectedSubjects.filter(
-    (subject) => subjectToLiteratureMap[subject] && literatureOptions[gradeKey]?.[subjectToLiteratureMap[subject]]
+    (subject) => {
+      const litKey = subjectToLiteratureMap[subject];
+      if (!litKey) return false;
+      const gradeData = literatureOptions[gradeKey];
+      if (!gradeData) return false;
+      return litKey in gradeData;
+    }
   );
 
   if (subjectsWithLiterature.length === 0 || !selectedGrade) {
@@ -76,125 +82,127 @@ export function LiteratureSelection({ control, selectedSubjects, selectedGrade }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Literature Selection</CardTitle>
-        <CardDescription>
+    <Card className="shadow-sm">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg font-semibold">Literature Selection</CardTitle>
+        <CardDescription className="text-sm">
           Choose the prescribed books and poems you are studying for your selected language subjects.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="space-y-6">
         {subjectsWithLiterature.map((subject) => {
           const literatureKey = subjectToLiteratureMap[subject];
-          const options = literatureOptions[gradeKey]?.[literatureKey];
+          if (!literatureKey) return null;
+          const gradeData = literatureOptions[gradeKey];
+          if (!gradeData) return null;
+          const options = gradeData[literatureKey as keyof typeof gradeData];
 
           if (!options) return null;
 
           return (
-            <div key={subject} className="space-y-6 rounded-lg border p-6">
-                <h3 className="text-lg font-semibold text-primary">{subject}</h3>
-                {options.novels && options.novels.length > 0 && (
-                    <FormField
-                        control={control}
-                        name={`literature.${literatureKey}.novel`}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Novel</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select your novel" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {options.novels.map(novel => (
-                                            <SelectItem key={novel} value={novel}>{novel}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                )}
+            <div key={subject} className="space-y-4 rounded-lg border-2 border-primary/10 bg-primary/5 p-5">
+              <h3 className="text-base font-semibold text-primary">{subject}</h3>
+              
+              {options.novels && options.novels.length > 0 && (
+                <FormField
+                  control={control}
+                  name={`literature.${literatureKey}.novel`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Novel</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Select your novel" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {options.novels.map((novel: string) => (
+                            <SelectItem key={novel} value={novel}>{novel}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-                {options.dramas && options.dramas.length > 0 && (
-                     <FormField
-                        control={control}
-                        name={`literature.${literatureKey}.drama`}
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Drama</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select your drama" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        {options.dramas.map(drama => (
-                                            <SelectItem key={drama} value={drama}>{drama}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                )}
+              {options.dramas && options.dramas.length > 0 && (
+                <FormField
+                  control={control}
+                  name={`literature.${literatureKey}.drama`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Drama</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-10">
+                            <SelectValue placeholder="Select your drama" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {options.dramas.map((drama: string) => (
+                            <SelectItem key={drama} value={drama}>{drama}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-                {options.poems && options.poems.length > 0 && (
-                    <FormField
-                        control={control}
-                        name={`literature.${literatureKey}.poems`}
-                        render={() => (
-                        <FormItem>
-                            <div className="mb-4">
-                                <FormLabel className="text-base">Poetry</FormLabel>
-                                <FormDescription>
-                                    Select the poems you are studying.
-                                </FormDescription>
-                            </div>
-                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                {options.poems.map((poem) => (
-                                    <FormField
-                                    key={poem}
-                                    control={control}
-                                    name={`literature.${literatureKey}.poems`}
-                                    render={({ field }) => {
-                                        return (
-                                        <FormItem
-                                            key={poem}
-                                            className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3"
-                                        >
-                                            <FormControl>
-                                            <Checkbox
-                                                checked={field.value?.includes(poem)}
-                                                onCheckedChange={(checked) => {
-                                                return checked
-                                                    ? field.onChange([...(field.value || []), poem])
-                                                    : field.onChange(
-                                                        field.value?.filter(
-                                                        (value) => value !== poem
-                                                        )
-                                                    );
-                                                }}
-                                            />
-                                            </FormControl>
-                                            <FormLabel className="font-normal text-sm">
-                                                {poem}
-                                            </FormLabel>
-                                        </FormItem>
-                                        );
-                                    }}
+              {options.poems && options.poems.length > 0 && (
+                <FormField
+                  control={control}
+                  name={`literature.${literatureKey}.poems`}
+                  render={() => (
+                    <FormItem>
+                      <div className="mb-4">
+                        <FormLabel className="text-sm font-semibold">Poetry</FormLabel>
+                        <FormDescription className="text-xs">
+                          Select the poems you are studying.
+                        </FormDescription>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {options.poems.map((poem: string) => (
+                          <FormField
+                            key={poem}
+                            control={control}
+                            name={`literature.${literatureKey}.poems`}
+                            render={({ field }) => {
+                              return (
+                                <FormItem
+                                  key={poem}
+                                  className="flex flex-row items-center space-x-3 space-y-0 rounded-lg border p-3 hover:border-primary/50 hover:bg-white/50 transition-all duration-200"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(poem)}
+                                      onCheckedChange={(checked) => {
+                                        return checked
+                                          ? field.onChange([...(field.value || []), poem])
+                                          : field.onChange(
+                                            field.value?.filter((value: string) => value !== poem)
+                                          );
+                                      }}
                                     />
-                                ))}
-                            </div>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                )}
+                                  </FormControl>
+                                  <FormLabel className="font-normal text-sm cursor-pointer leading-tight">
+                                    {poem}
+                                  </FormLabel>
+                                </FormItem>
+                              );
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
           )
         })}

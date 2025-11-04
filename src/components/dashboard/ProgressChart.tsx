@@ -28,23 +28,35 @@ export function ProgressChart({ hasActivity = false }: { hasActivity?: boolean }
   const t = translations[lang];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t.weeklyProgress}</CardTitle>
-        <CardDescription>{t.weeklyProgressDescription}</CardDescription>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="!p-3 !pb-2">
+        <CardTitle className="text-base">{t.weeklyProgress}</CardTitle>
+        <CardDescription className="text-xs hidden">{t.weeklyProgressDescription}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 min-h-0 !p-3 !pb-2 overflow-hidden">
         <ChartContainer config={{
-          'This Week': { label: t.thisWeek, color: 'hsl(var(--chart-1))' },
-          'Last Week': { label: t.lastWeek, color: 'hsl(var(--chart-2))' },
-        }} className="h-[250px] w-full">
+          'This Week': { 
+            label: t.thisWeek, 
+            theme: { 
+              light: 'hsl(210, 90%, 55%)', 
+              dark: 'hsl(210, 90%, 60%)' 
+            } 
+          },
+          'Last Week': { 
+            label: t.lastWeek, 
+            theme: { 
+              light: 'hsl(25, 95%, 55%)', 
+              dark: 'hsl(25, 95%, 60%)' 
+            } 
+          },
+        }} className="!aspect-auto h-full w-full">
             <ResponsiveContainer>
-              <BarChart data={data} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
-                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
-                <YAxis tickLine={false} axisLine={false} tickMargin={8} unit="m" />
+              <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={6} tick={{ fontSize: 12 }} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={6} unit="m" tick={{ fontSize: 12 }} />
                 <Tooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-                <Bar dataKey="Last Week" fill="var(--color-Last Week)" radius={4} />
-                <Bar dataKey="This Week" fill="var(--color-This Week)" radius={4} />
+                <Bar dataKey="Last Week" fill="var(--color-Last-Week)" radius={4} />
+                <Bar dataKey="This Week" fill="var(--color-This-Week)" radius={4} />
               </BarChart>
             </ResponsiveContainer>
         </ChartContainer>

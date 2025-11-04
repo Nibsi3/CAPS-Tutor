@@ -51,9 +51,9 @@ Instructions:
    - ${topicLine}
 3. Question Generation:
    - Generate exactly ${input.numQuestions} questions.
-   - Each question must be relevant to the specified topic and appropriate for the student's grade level.
-   - The questions should be varied and test different aspects of the topic. They should not be simple recall questions.
-   - For the 'topic' field in the output, use the specific sub-topic each question relates to (e.g., if the main topic is 'Algebra', a sub-topic could be 'Factorizing Trinomials').
+    - Each question must be relevant to the specified topic and appropriate for the student's grade level.
+    - The questions should be varied and test different aspects of the topic. They should not be simple recall questions.
+    - For the 'topic' field in the output, use the specific sub-topic each question relates to (e.g., if the main topic is 'Algebra', a sub-topic could be 'Factorizing Trinomials').
 
 Source Material: Your questions should be based on the principles and content found in official CAPS documents, Siyavula textbooks, and past DBE exam papers.
 

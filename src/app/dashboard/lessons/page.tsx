@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { lessons, grades, placeholderLessons, subjectColors } from "@/lib/data";
-import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator, Loader, UserCheck, Settings, MessageSquare } from "lucide-react";
+import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator, Loader, UserCheck, Settings, MessageSquare, Heart, Sparkles, Users, TrendingUp, Clock, Cpu, Laptop, Plane, ShoppingBag, UtensilsCrossed, Ruler } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -33,16 +33,32 @@ const availableSubjects = [...new Set(allLessons.map(l => l.subject))].map(s => 
 
 const subjectIcons: Record<string, React.ElementType> = {
   "Mathematics": Calculator,
+  "Mathematical Literacy": Calculator,
   "Physical Sciences": FlaskConical,
   "Life Sciences": BarChart,
   "Accounting": FileText,
   "Business Studies": Landmark,
+  "Economics": TrendingUp,
   "Geography": Globe,
+  "History": Clock,
   "English Home Language": MessageSquare,
   "English First Additional Language": MessageSquare,
   "Afrikaans Huistaal": MessageSquare,
   "Afrikaans Eerste Addisionele Taal": MessageSquare,
-  // Add more icons for other subjects if needed
+  "Life Skills": Heart,
+  "Natural Sciences and Technology": Sparkles,
+  "Social Sciences": Users,
+  "Information Technology": Cpu,
+  "Computer Applications Technology (CAT)": Laptop,
+  "Tourism": Plane,
+  "Consumer Studies": ShoppingBag,
+  "Hospitality Studies": UtensilsCrossed,
+  "Engineering Graphics & Design": Ruler,
+  "Natural Sciences": Sparkles,
+  "Technology": Cpu,
+  "Economic & Management Sciences": TrendingUp,
+  "Life Orientation": Heart,
+  "Creative Arts": Sparkles,
 };
 
 
@@ -63,8 +79,9 @@ export default function LessonsPage() {
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
 
-  // Determine if profile filters should be used
-  const useProfileFilters = userProfile && userProfile.gradeLevel && userProfile.subjects && userProfile.subjects.length > 0;
+  // Determine if profile filters should be used (only if no manual filters are active)
+  const hasManualFilters = selectedGrade !== null || selectedSubject !== null;
+  const useProfileFilters = !hasManualFilters && userProfile && userProfile.gradeLevel && userProfile.subjects && userProfile.subjects.length > 0;
 
   const filteredLessons = allLessons.filter(lesson => {
     if (useProfileFilters) {
@@ -147,7 +164,7 @@ export default function LessonsPage() {
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {filteredLessons.map(lesson => {
                     const Icon = subjectIcons[lesson.subject] || BookOpen;
-                    const colors = subjectColors[lesson.subject] || { bg: "bg-muted", text: "text-muted-foreground" };
+                    const colors = subjectColors[lesson.subject] || { bg: "bg-muted", text: "text-muted-foreground", border: "border-border" };
 
                     return (
                         <Card key={lesson.id} className="flex flex-col hover:shadow-lg transition-shadow duration-300 rounded-2xl">

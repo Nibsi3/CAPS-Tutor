@@ -1,247 +1,363 @@
-
 'use client';
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Award, Book, Brain, CheckCircle, Star, Target, Trophy, Medal } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { subjects as allSubjects } from "@/lib/data";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState, useEffect, useMemo } from 'react';
+import { useUser, useDoc, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
+import { doc, collection, query, where } from 'firebase/firestore';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
+import { 
+  ALL_ACHIEVEMENTS, 
+  Achievement, 
+  getRarityColor, 
+  getRarityBorderColor 
+} from '@/lib/achievements';
 
-
-const personalAchievements = [
-    {
-        icon: Star,
-        title: "First Steps",
-        description: "Completed your first lesson.",
-        unlocked: true,
-    },
-    {
-        icon: Target,
-        title: "Practice Makes Perfect",
-        description: "Finished your first practice quiz.",
-        unlocked: true,
-    },
-    {
-        icon: CheckCircle,
-        title: "Perfect Score",
-        description: "Got 100% on a quiz.",
-        unlocked: true,
-    },
-    {
-        icon: Book,
-        title: "Subject Explorer",
-        description: "Explored 3 different subjects.",
-        unlocked: false,
-    },
-     {
-        icon: Brain,
-        title: "Knowledge Sponge",
-        description: "Completed 10 lessons.",
-        unlocked: false,
-    },
-    {
-        icon: Award,
-        title: "Topic Master",
-        description: "Achieved 90% mastery in one topic.",
-        unlocked: false,
-    },
-     {
-        icon: Star,
-        title: "Week-long Streak",
-        description: "Studied every day for 7 days.",
-        unlocked: false,
-    },
-    {
-        icon: Target,
-        title: "Exam Veteran",
-        description: "Completed 5 adaptive exams.",
-        unlocked: false,
-    }
-];
-
-const generateLeaderboardData = (subjects: { value: string, label: string }[]) => {
-  const data: Record<string, Record<string, { rank: number; name: string; score: number; avatar: string }[]>> = {};
-  const timeframes = ['Weekly', 'Monthly', 'Yearly', 'All Time'];
-  const names = ["Lerato M.", "Thabo K.", "Sipho N.", "Aisha P.", "Fatima A.", "David L.", "Nomvula Z.", "Chris B.", "Zane W.", "Michael T."];
-
-  subjects.forEach(subject => {
-    data[subject.label] = {}; // Use label for display
-    timeframes.forEach((timeframe, timeIndex) => {
-      const leaderboard = [];
-      const usedNames = new Set<string>();
-      
-      // Add "You" to the leaderboard at a random position
-      const yourRank = Math.floor(Math.random() * 5) + 1;
-      let scoreMultiplier = (4 - timeIndex) * 20;
-
-      for (let i = 1; i <= 5; i++) {
-        if (i === yourRank) {
-           leaderboard.push({ rank: i, name: "You", score: Math.floor(Math.random() * 50) + scoreMultiplier + 50, avatar: "" });
-        } else {
-          let randomName;
-          do {
-            randomName = names[Math.floor(Math.random() * names.length)];
-          } while (usedNames.has(randomName));
-          usedNames.add(randomName);
-          leaderboard.push({ rank: i, name: randomName, score: Math.floor(Math.random() * 30) + scoreMultiplier + (5-i)*10, avatar: `/avatars/0${i}.png` });
-        }
-      }
-      // Simple sort by score and update ranks
-      leaderboard.sort((a, b) => b.score - a.score);
-      leaderboard.forEach((player, index) => player.rank = index + 1);
-
-      data[subject.label][timeframe] = leaderboard;
-    });
-  });
-
-  return data;
+// Helper function to get shimmer gradient color based on rarity
+function getShimmerColor(rarity: Achievement['rarity']): string {
+  switch (rarity) {
+    case 'rare':
+      return 'from-transparent via-blue-400/30 to-transparent';
+    case 'epic':
+      return 'from-transparent via-purple-400/30 to-transparent';
+    case 'legendary':
+      return 'from-transparent via-yellow-400/30 to-transparent';
+    default:
+      return 'from-transparent via-white/10 to-transparent';
+  }
 }
-
-const leaderboardSubjects = allSubjects.map(s => s.label);
+import { AchievementUnlockNotification } from '@/components/achievements/AchievementUnlockNotification';
+import { GlobalLeaderboard } from '@/components/achievements/GlobalLeaderboard';
+import { Award, Trophy, Clock, Target, BookOpen, Zap, Sparkles, Loader, Star, Flame, Calendar, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { checkAchievements, calculateUserStats, UserStats } from '@/lib/achievement-checker';
+import { updateUnlockedAchievements } from '@/lib/achievement-tracking';
 
 export default function AchievementsPage() {
-  const [leaderboards, setLeaderboards] = useState<Record<string, Record<string, { rank: number; name: string; score: number; avatar: string }[]>>>({});
-  const [selectedSubject, setSelectedSubject] = useState(leaderboardSubjects[0]);
-  const [selectedTimeframe, setSelectedTimeframe] = useState('Weekly');
-  
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const [unlockedAchievements, setUnlockedAchievements] = useState<Set<string>>(new Set());
+  const [newUnlockedAchievement, setNewUnlockedAchievement] = useState<Achievement | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'achievements' | 'leaderboard'>('achievements');
+
+  // Get user profile
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, firestore]);
+
+  const { data: userProfile } = useDoc(userProfileRef);
+
+  // Get student progress for score calculations
+  const progressQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return collection(firestore, `users/${user.uid}/studentProgress`);
+  }, [user, firestore]);
+
+  const { data: progressData } = useCollection(progressQuery);
+
+  // Calculate user stats and check achievements
   useEffect(() => {
-    // Generate data on the client side to avoid hydration mismatch
-    setLeaderboards(generateLeaderboardData(allSubjects));
-    // Set the first subject as default
-    if (allSubjects.length > 0) {
-      setSelectedSubject(allSubjects[0].label);
+    if (!user || !userProfile || !progressData) {
+      setIsLoading(false);
+      return;
     }
-  }, []);
 
+    const stats = calculateUserStats(userProfile, progressData);
+    setUserStats(stats);
 
-  const unlockedCount = personalAchievements.filter(a => a.unlocked).length;
-  const totalCount = personalAchievements.length;
+    // Check and unlock achievements
+    const newlyUnlocked = checkAchievements(stats, unlockedAchievements);
+    
+    if (newlyUnlocked.length > 0) {
+      // Update unlocked achievements
+      const newUnlockedSet = new Set([...unlockedAchievements, ...newlyUnlocked.map(a => a.id)]);
+      setUnlockedAchievements(newUnlockedSet);
+      
+      // Show notification for first newly unlocked achievement
+      if (newlyUnlocked[0]) {
+        setNewUnlockedAchievement(newlyUnlocked[0]);
+      }
+      
+      // Update user profile with unlocked achievements
+      if (newlyUnlocked.length > 0 && user && firestore) {
+        const allUnlocked = Array.from(newUnlockedSet);
+        updateUnlockedAchievements(firestore, user.uid, allUnlocked);
+      }
+    }
 
-  const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Medal className="h-6 w-6 text-yellow-500" />;
-    if (rank === 2) return <Medal className="h-6 w-6 text-gray-400" />;
-    if (rank === 3) return <Medal className="h-6 w-6 text-orange-600" />;
-    return <span className="font-bold text-lg">{rank}</span>;
+    setIsLoading(false);
+  }, [user, userProfile, progressData, unlockedAchievements]);
+
+  // Initialize unlocked achievements from user profile
+  useEffect(() => {
+    if (userProfile?.unlockedAchievements) {
+      setUnlockedAchievements(new Set(userProfile.unlockedAchievements));
+    }
+  }, [userProfile]);
+
+  // Filter achievements by category and sort by rarity then points
+  const filteredAchievements = useMemo(() => {
+    let achievements = selectedCategory === 'all' 
+      ? [...ALL_ACHIEVEMENTS] 
+      : ALL_ACHIEVEMENTS.filter(a => a.category === selectedCategory);
+    
+    // Define rarity order: common -> rare -> epic -> legendary
+    const rarityOrder: Record<Achievement['rarity'], number> = {
+      'common': 1,
+      'rare': 2,
+      'epic': 3,
+      'legendary': 4
+    };
+    
+    // Sort by rarity first, then by points (ascending - lowest to highest)
+    return achievements.sort((a, b) => {
+      const rarityDiff = rarityOrder[a.rarity] - rarityOrder[b.rarity];
+      if (rarityDiff !== 0) return rarityDiff;
+      return a.points - b.points;
+    });
+  }, [selectedCategory]);
+
+  // Calculate stats
+  const totalAchievements = ALL_ACHIEVEMENTS.length;
+  const unlockedCount = unlockedAchievements.size;
+  const totalPoints = ALL_ACHIEVEMENTS
+    .filter(a => unlockedAchievements.has(a.id))
+    .reduce((sum, a) => sum + a.points, 0);
+  const maxPoints = ALL_ACHIEVEMENTS.reduce((sum, a) => sum + a.points, 0);
+  const progressPercentage = (unlockedCount / totalAchievements) * 100;
+
+  // Group achievements by category
+  const achievementsByCategory = {
+    all: ALL_ACHIEVEMENTS.length,
+    login: ALL_ACHIEVEMENTS.filter(a => a.category === 'login').length,
+    time: ALL_ACHIEVEMENTS.filter(a => a.category === 'time').length,
+    score: ALL_ACHIEVEMENTS.filter(a => a.category === 'score').length,
+    subject: ALL_ACHIEVEMENTS.filter(a => a.category === 'subject').length,
+    streak: ALL_ACHIEVEMENTS.filter(a => a.category === 'streak').length,
+    special: ALL_ACHIEVEMENTS.filter(a => a.category === 'special').length,
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
   }
-  
-  const currentLeaderboard = leaderboards[selectedSubject]?.[selectedTimeframe] || [];
 
   return (
-    <div className="flex-1 space-y-8">
-      <div>
+    <>
+      <AchievementUnlockNotification
+        achievement={newUnlockedAchievement}
+        onClose={() => setNewUnlockedAchievement(null)}
+      />
+
+      <div className="flex-1 space-y-6 overflow-y-auto">
+        {/* View Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === 'achievements' ? 'default' : 'outline'}
+              onClick={() => setViewMode('achievements')}
+              className="flex items-center gap-2"
+            >
+              <Award className="h-4 w-4" />
+              Your Achievements
+            </Button>
+            <Button
+              variant={viewMode === 'leaderboard' ? 'default' : 'outline'}
+              onClick={() => setViewMode('leaderboard')}
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Global Leaderboard
+            </Button>
+          </div>
+        </div>
+
+        {viewMode === 'achievements' ? (
+          <>
+            {/* Header Stats */}
+            <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Achievements Unlocked</CardTitle>
+              <Trophy className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{unlockedCount} / {totalAchievements}</div>
+              <Progress value={progressPercentage} className="mt-2" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Points</CardTitle>
+              <Award className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalPoints}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                out of {maxPoints} possible
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
+              <Flame className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{userStats?.currentStreak || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">days in a row</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Achievements Display */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-3 font-headline text-3xl">
-              <Award className="h-8 w-8 text-primary" />
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-6 w-6 text-primary" />
               Your Achievements
             </CardTitle>
             <CardDescription>
-              You've unlocked {unlockedCount} of {totalCount} badges. Keep up the great work!
+              Keep studying to unlock more achievements and earn points!
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Carousel opts={{ align: "start" }} className="w-full">
-              <CarouselContent>
-                {personalAchievements.map((achievement, index) => (
-                  <CarouselItem key={index} className="basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
-                    <div className="p-1">
-                      <Card className={cn("transition-all h-full", !achievement.unlocked && "opacity-50 grayscale")}>
-                        <CardHeader className="items-center text-center p-4">
-                            <div className={cn("rounded-full p-3 mb-2", achievement.unlocked ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-                                <achievement.icon className="h-8 w-8" />
-                            </div>
-                          <CardTitle className="text-base">{achievement.title}</CardTitle>
+            <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+              <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7">
+                <TabsTrigger value="all">All ({achievementsByCategory.all})</TabsTrigger>
+                <TabsTrigger value="login">
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Login ({achievementsByCategory.login})
+                </TabsTrigger>
+                <TabsTrigger value="time">
+                  <Clock className="h-4 w-4 mr-1" />
+                  Time ({achievementsByCategory.time})
+                </TabsTrigger>
+                <TabsTrigger value="score">
+                  <Target className="h-4 w-4 mr-1" />
+                  Score ({achievementsByCategory.score})
+                </TabsTrigger>
+                <TabsTrigger value="subject">
+                  <BookOpen className="h-4 w-4 mr-1" />
+                  Subject ({achievementsByCategory.subject})
+                </TabsTrigger>
+                <TabsTrigger value="streak">
+                  <Zap className="h-4 w-4 mr-1" />
+                  Streak ({achievementsByCategory.streak})
+                </TabsTrigger>
+                <TabsTrigger value="special">
+                  <Sparkles className="h-4 w-4 mr-1" />
+                  Special ({achievementsByCategory.special})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value={selectedCategory} className="mt-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-4">
+                  {filteredAchievements.map((achievement) => {
+                    const isUnlocked = unlockedAchievements.has(achievement.id);
+                    const Icon = achievement.icon;
+                    const rarityColor = getRarityColor(achievement.rarity);
+                    const borderColor = getRarityBorderColor(achievement.rarity);
+
+                    return (
+                      <Card
+                        key={achievement.id}
+                        className={cn(
+                          "relative overflow-hidden transition-all duration-300",
+                          "hover:shadow-lg hover:scale-105",
+                          isUnlocked && "ring-2 ring-primary/50",
+                          !isUnlocked && "border-dashed",
+                          borderColor
+                        )}
+                      >
+                        {/* Rarity indicator bar */}
+                        <div className={cn(
+                          "absolute top-0 left-0 right-0 h-1",
+                          rarityColor.split(' ')[0].replace('text-', 'bg-')
+                        )} />
+
+                        <CardHeader className="text-center pb-2 pt-4">
+                          <div className={cn(
+                            "mx-auto rounded-full p-4 mb-2",
+                            isUnlocked ? rarityColor : "bg-muted/50 border-2 border-dashed border-muted-foreground/30",
+                            "transition-all duration-300"
+                          )}>
+                            <Icon className={cn(
+                              "h-8 w-8",
+                              isUnlocked ? "" : "text-muted-foreground/70"
+                            )} />
+                          </div>
+                          <CardTitle className={cn(
+                            "text-base",
+                            !isUnlocked && "text-muted-foreground"
+                          )}>
+                            {achievement.title}
+                          </CardTitle>
                         </CardHeader>
-                        <CardContent className="text-center p-4 pt-0">
-                          <p className="text-xs text-muted-foreground">{achievement.description}</p>
+                        <CardContent className="pt-0 text-center">
+                          <p className="text-xs text-muted-foreground mb-3 min-h-[2.5rem]">
+                            {achievement.description}
+                          </p>
+                          <div className="flex items-center justify-center gap-2">
+                            <Badge variant="outline" className={cn(
+                              "text-xs",
+                              rarityColor
+                            )}>
+                              {achievement.rarity.toUpperCase()}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              +{achievement.points} pts
+                            </Badge>
+                          </div>
+                          {!isUnlocked && (
+                            <Badge variant="outline" className="mt-2 text-xs border-dashed">
+                              Locked
+                            </Badge>
+                          )}
                         </CardContent>
+
+                        {/* Shimmer effect for all achievements */}
+                        <div className={cn(
+                          "absolute inset-0 bg-gradient-to-r",
+                          getShimmerColor(achievement.rarity),
+                          "animate-[shimmer_3s_infinite] pointer-events-none"
+                        )} />
                       </Card>
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious className="ml-12" />
-              <CarouselNext className="mr-12" />
-            </Carousel>
-          </CardContent>
-        </Card>
-      </div>
-      
-      <div>
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-              <div>
-                <CardTitle className="flex items-center gap-3 font-headline text-3xl">
-                  <Trophy className="h-8 w-8 text-primary" />
-                  Global Leaderboards
-                </CardTitle>
-                <CardDescription>
-                  See how you rank against other students.
-                </CardDescription>
-              </div>
-              <div className="w-full sm:w-auto">
-                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                  <SelectTrigger className="w-full sm:w-[240px]">
-                    <SelectValue placeholder="Select a subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {leaderboardSubjects.map(subject => (
-                      <SelectItem key={subject} value={subject}>{subject}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={selectedTimeframe} onValueChange={setSelectedTimeframe} className="mb-6">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-                    <TabsTrigger value="Weekly">Weekly</TabsTrigger>
-                    <TabsTrigger value="Monthly">Monthly</TabsTrigger>
-                    <TabsTrigger value="Yearly">Yearly</TabsTrigger>
-                    <TabsTrigger value="All Time">All Time</TabsTrigger>
-                </TabsList>
+                    );
+                  })}
+                </div>
+              </TabsContent>
             </Tabs>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">Rank</TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead className="text-right">Lessons Completed</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentLeaderboard.map((student) => (
-                  <TableRow key={student.rank} className={cn(student.name === "You" && "bg-accent")}>
-                    <TableCell className="w-[80px]">
-                        <div className="flex items-center justify-center h-10 w-10 rounded-full bg-muted">
-                           {getRankIcon(student.rank)}
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-4">
-                        <Avatar>
-                          <AvatarImage src={student.avatar} alt={student.name} />
-                          <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">{student.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-bold text-lg text-primary">{student.score}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
           </CardContent>
         </Card>
+          </>
+        ) : (
+          <GlobalLeaderboard />
+        )}
       </div>
 
-    </div>
+      <style jsx>{`
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+      `}</style>
+    </>
   );
 }
+

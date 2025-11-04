@@ -2,10 +2,14 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useUser } from '@/firebase';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { useContext } from 'react';
+import { FirebaseContext } from '@/firebase/provider';
 
 export function PublicHeader() {
-  const { user } = useUser();
+  // Safely get user from context - handles case where Firebase might not be initialized yet
+  const context = useContext(FirebaseContext);
+  const user = context?.user ?? null;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -20,12 +24,15 @@ export function PublicHeader() {
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">
+          <Link href="/how-it-works" className="text-sm text-muted-foreground hover:text-primary">How It Works</Link>
           <Link href="/caps-syllabus" className="text-sm text-muted-foreground hover:text-primary">CAPS Syllabus</Link>
+          <Link href="/news" className="text-sm text-muted-foreground hover:text-primary">News</Link>
           <Link href="/blog" className="text-sm text-muted-foreground hover:text-primary">Blog</Link>
           <Link href="/contact" className="text-sm text-muted-foreground hover:text-primary">Contact us</Link>
         </nav>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           {user ? (
             <Button asChild size="sm"><Link href="/dashboard">Go to dashboard</Link></Button>
           ) : (

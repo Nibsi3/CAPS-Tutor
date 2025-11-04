@@ -3,19 +3,18 @@
 import { StatCards } from "@/components/dashboard/StatCards";
 import { ProgressChart } from "@/components/dashboard/ProgressChart";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useDoc, useUser, useMemoFirebase } from "@/firebase";
-import { doc, getFirestore } from "firebase/firestore";
+import { useDoc, useUser, useMemoFirebase, useFirestore } from "@/firebase";
+import { doc } from "firebase/firestore";
 import Link from "next/link";
-import { BookOpen, Settings } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { useLanguage } from '@/components/language-provider';
 import { translations } from '@/lib/translations';
 
 
 export default function DashboardPage() {
     const { user } = useUser();
-    const firestore = getFirestore();
+    const firestore = useFirestore();
     const lang = useLanguage();
     const t = translations[lang];
 
@@ -26,50 +25,37 @@ export default function DashboardPage() {
 
     const { data: userProfile } = useDoc<{gradeLevel: number, subjects: string[]}>(userProfileRef);
 
-    const hasCompletedSetup = userProfile && userProfile.subjects && userProfile.subjects.length > 0;
+    const hasCompletedSetup = !!(userProfile && userProfile.subjects && userProfile.subjects.length > 0);
 
   return (
-    <div className="flex-1 space-y-4">
-      <div className="flex items-center justify-between space-y-2">
-        <h1 className="font-headline text-3xl font-bold tracking-tight">{t.welcomeBack}, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
+    <div className="flex-1 h-full flex flex-col gap-2 overflow-hidden">
+      <div className="flex items-center justify-between">
+        <h1 className="font-headline text-xl font-bold tracking-tight">{t.welcomeBack}, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
       </div>
 
       <StatCards hasActivity={hasCompletedSetup} />
 
       {hasCompletedSetup && userProfile.subjects && (
-        <Card>
-            <CardHeader>
-                <CardTitle>{t.yourSubjects}</CardTitle>
-                <CardDescription>{t.yourSubjectsDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div>
+            <h2 className="font-headline text-base font-bold">{t.yourSubjects}</h2>
+            <div className="flex flex-wrap gap-2 mt-1">
                 {userProfile.subjects.map((subject: string) => (
-                    <div key={subject} className="flex flex-col items-start gap-4 rounded-xl border bg-card p-6 text-card-foreground shadow">
-                        <div className="flex w-full items-start justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                                    <BookOpen className="h-6 w-6 text-primary" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">{t.gradeLevel} {userProfile.gradeLevel}</p>
-                                    <h3 className="font-headline text-2xl font-bold">{subject}</h3>
-                                </div>
-                            </div>
-                            <Button variant="ghost" size="sm" asChild>
-                                <Link href={`/dashboard/lessons`}>{t.view}</Link>
-                            </Button>
-                        </div>
-                    </div>
+                    <Button key={subject} variant="outline" size="sm" asChild className="h-8">
+                        <Link href={`/dashboard/lessons`}>
+                            <BookOpen className="mr-1 h-3 w-3" />
+                            <span className="font-medium text-sm">{subject}</span>
+                        </Link>
+                    </Button>
                 ))}
-            </CardContent>
-        </Card>
+            </div>
+        </div>
       )}
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <div className="lg:col-span-4">
+      <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-7 flex-1 min-h-0">
+        <div className="lg:col-span-4 h-full min-h-0">
           <ProgressChart hasActivity={hasCompletedSetup} />
         </div>
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 h-full min-h-0">
           <RecentActivity hasActivity={hasCompletedSetup} />
         </div>
       </div>

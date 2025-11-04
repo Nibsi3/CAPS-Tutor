@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUser, useDoc, useCollection, useMemoFirebase, useFirestore } from "@/firebase";
-import { doc, collection, query, where } from "firebase/firestore";
+import { doc, collection, query, where, Timestamp } from "firebase/firestore";
 import { Progress } from "@/components/ui/progress";
 import { Loader, BarChart2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,18 +14,12 @@ interface StudentProgress {
   learningObjectiveId: string;
   masteryLevel: number;
   completed: boolean;
-  lastAccessed: string;
-  topic?: string; // Will be added after fetching
+  lastAccessed: Timestamp | string;
+  topic?: string;
+  subject?: string;
+  gradeLevel?: number;
+  type?: string;
 }
-
-// Mock mapping from objective ID to topic for demo purposes
-const objectiveToTopicMap: Record<string, string> = {
-  "algebra-1": "Algebra",
-  "geometry-1": "Geometry",
-  "trig-1": "Trigonometry",
-  "calculus-1": "Calculus",
-  "prob-1": "Probability",
-};
 
 const topicColors = [
   "bg-chart-1",
@@ -45,23 +39,42 @@ export default function ProgressPage() {
   }, [user, firestore]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc(userProfileRef);
 
-  const progressQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    // In a real app, you might add more complex queries, e.g., for a specific subject
-    return query(collection(firestore, `users/${user.uid}/studentProgress`));
-  }, [user, firestore]);
-
-  const { data: progressData, isLoading: isProgressLoading } = useCollection<StudentProgress>(progressQuery);
-  
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
 
+  const progressQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    const progressCollection = collection(firestore, `users/${user.uid}/studentProgress`);
+    
+    // Filter by subject if one is selected
+    if (selectedSubject) {
+      return query(progressCollection, where('subject', '==', selectedSubject));
+    }
+    
+    return progressCollection;
+  }, [user, firestore, selectedSubject]);
+
+  const { data: progressData, isLoading: isProgressLoading } = useCollection<StudentProgress>(progressQuery);
+
   const processedProgress = useMemo(() => {
-    if (!progressData) return {};
+    if (!progressData || progressData.length === 0) return {};
     
     const progressByTopic: Record<string, { totalMastery: number, count: number }> = {};
     
     progressData.forEach(item => {
-      const topic = objectiveToTopicMap[item.learningObjectiveId] || "General";
+      // Use topic field directly if available, otherwise extract from learningObjectiveId or use subject
+      let topic = item.topic;
+      
+      if (!topic) {
+        // Try to extract topic from learningObjectiveId (e.g., "topic-Algebra" -> "Algebra")
+        if (item.learningObjectiveId.startsWith('topic-')) {
+          topic = decodeURIComponent(item.learningObjectiveId.replace('topic-', ''));
+        } else if (item.subject) {
+          topic = item.subject;
+        } else {
+          topic = "General";
+        }
+      }
+      
       if (!progressByTopic[topic]) {
         progressByTopic[topic] = { totalMastery: 0, count: 0 };
       }
@@ -147,13 +160,19 @@ export default function ProgressPage() {
                   <CardTitle>Topic Mastery</CardTitle>
                   <CardDescription>Your mastery level for each topic.</CardDescription>
                 </div>
-                 {userProfile?.subjects && (
-                    <Select onValueChange={setSelectedSubject} defaultValue={selectedSubject || undefined}>
+                 {userProfile?.subjects && userProfile.subjects.length > 0 && (
+                    <Select 
+                      onValueChange={(value) => setSelectedSubject(value === 'all' ? null : value)} 
+                      value={selectedSubject || 'all'}
+                    >
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Filter by subject" />
                         </SelectTrigger>
                         <SelectContent>
-                            {(userProfile.subjects as string[]).map((s:string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            <SelectItem value="all">All Subjects</SelectItem>
+                            {(userProfile.subjects as string[]).map((s:string) => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                  )}

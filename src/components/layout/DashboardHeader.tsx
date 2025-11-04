@@ -11,16 +11,150 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, Search, Home, BookOpen, Target, BarChart, Settings, Bot, Award } from "lucide-react"
+import { Menu, Search, Home, BookOpen, Target, BarChart, Settings, Bot, Award, FileText, CheckCircle } from "lucide-react"
 import Link from "next/link"
+import { usePathname, useSearchParams } from "next/navigation"
 import { UserNav } from "./UserNav"
 import { ThemeToggle } from "./ThemeToggle"
 import { useLanguage } from "@/components/language-provider"
 import { translations } from "@/lib/translations"
+import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { lessons, placeholderLessons } from '@/lib/data';
+import { useMemo, Fragment } from 'react';
+import { useAdminMode } from '@/hooks/use-admin-mode';
+
+const ADMIN_EMAIL = 'cameronfalck03@gmail.com';
 
 export function DashboardHeader() {
   const lang = useLanguage();
   const t = translations[lang];
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  
+  const isAdmin = user?.email === ADMIN_EMAIL;
+  const { adminModeEnabled, toggleAdminMode } = useAdminMode(isAdmin);
+  
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, firestore]);
+
+  const { data: userProfile } = useDoc<{ gradeLevel?: number }>(userProfileRef);
+  const userGrade = userProfile?.gradeLevel || 0;
+  
+  // Only show past papers for grades 10-12
+  const showPastPapers = userGrade >= 10;
+
+  // Build breadcrumb items based on current pathname
+  const breadcrumbItems = useMemo(() => {
+    const items: Array<{ label: string; href?: string }> = [];
+    
+    // Always start with Dashboard
+    items.push({ label: t.dashboard, href: '/dashboard' });
+    
+    if (pathname === '/dashboard') {
+      items.push({ label: t.overview });
+      return items;
+    }
+    
+    // Handle lesson detail pages: /dashboard/lessons/[id]
+    if (pathname?.startsWith('/dashboard/lessons/')) {
+      const lessonId = pathname.split('/dashboard/lessons/')[1];
+      if (lessonId) {
+        const allLessons = [...lessons, ...placeholderLessons];
+        const lesson = allLessons.find(l => l.id === lessonId);
+        
+        if (lesson) {
+          items.push({ label: t.lessons, href: '/dashboard/lessons' });
+          // Make subject clickable - links back to the lesson detail page
+          items.push({ label: lesson.subject, href: `/dashboard/lessons/${lessonId}` });
+          
+          // Only show topic if there's a topic query parameter (when a specific topic is selected)
+          const topicParam = searchParams?.get('topic');
+          if (topicParam) {
+            const decodedTopic = decodeURIComponent(topicParam);
+            // Clean up the topic name for breadcrumb display
+            const cleanTopic = decodedTopic.split('(')[0].trim() || decodedTopic;
+            items.push({ label: cleanTopic });
+          }
+        } else {
+          items.push({ label: t.lessons });
+        }
+      } else {
+        items.push({ label: t.lessons });
+      }
+      return items;
+    }
+    
+    // Handle practice page with topic query parameter
+    if (pathname === '/dashboard/practice') {
+      const topicParam = searchParams?.get('topic');
+      const subjectParam = searchParams?.get('subject');
+      const gradeParam = searchParams?.get('grade');
+      
+      if (topicParam && subjectParam) {
+        items.push({ label: t.practice, href: '/dashboard/practice' });
+        
+        // Find the lesson by subject (and grade if available) to make it clickable
+        const decodedSubject = decodeURIComponent(subjectParam);
+        const allLessons = [...lessons, ...placeholderLessons];
+        const lesson = allLessons.find(l => {
+          const subjectMatch = l.subject === decodedSubject;
+          if (gradeParam) {
+            // Compare grade levels as strings
+            return subjectMatch && String(l.gradeLevel) === String(gradeParam);
+          }
+          return subjectMatch;
+        });
+        
+        // Make subject clickable - link back to lesson detail page
+        if (lesson) {
+          items.push({ label: decodedSubject, href: `/dashboard/lessons/${lesson.id}` });
+        } else {
+          items.push({ label: decodedSubject });
+        }
+        
+        // Clean up the topic name for breadcrumb display
+        const decodedTopic = decodeURIComponent(topicParam);
+        let cleanTopic = decodedTopic.replace(/^Term \d+:\s*/i, '');
+        cleanTopic = cleanTopic.split('(')[0].trim() || cleanTopic;
+        items.push({ label: cleanTopic });
+      } else {
+        items.push({ label: t.practice });
+      }
+      return items;
+    }
+    
+    // Handle other routes
+    const breadcrumbMap: Record<string, string> = {
+      '/dashboard/lessons': t.lessons,
+      '/dashboard/practice': t.practice,
+      '/dashboard/past-papers': t.pastPapers,
+      '/dashboard/tutor': t.aiTutor,
+      '/dashboard/achievements': t.achievements,
+      '/dashboard/progress': t.progress,
+      '/dashboard/settings': t.settings,
+      '/dashboard/games': (t as any).games || 'Games',
+    };
+    
+    // Handle past paper practice
+    if (pathname?.startsWith('/dashboard/past-paper-practice/')) {
+      items.push({ label: t.pastPapers, href: '/dashboard/past-papers' });
+      items.push({ label: t.practice });
+      return items;
+    }
+    
+    const label = breadcrumbMap[pathname || ''] || t.overview;
+    if (label !== t.overview || pathname !== '/dashboard') {
+      items.push({ label });
+    }
+    
+    return items;
+  }, [pathname, searchParams, t]);
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
@@ -65,6 +199,15 @@ export function DashboardHeader() {
               <Target className="h-5 w-5" />
               {t.practice}
             </Link>
+            {showPastPapers && (
+              <Link
+                href="/dashboard/past-papers"
+                className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <FileText className="h-5 w-5" />
+                {t.pastPapers}
+              </Link>
+            )}
             <Link
               href="/dashboard/tutor"
               className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
@@ -98,15 +241,23 @@ export function DashboardHeader() {
       </Sheet>
       <Breadcrumb className="hidden md:flex">
         <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/dashboard">{t.dashboard}</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{t.overview}</BreadcrumbPage>
-          </BreadcrumbItem>
+          {breadcrumbItems.map((item, index) => {
+            const isLast = index === breadcrumbItems.length - 1;
+            return (
+              <Fragment key={index}>
+                <BreadcrumbItem>
+                  {item.href ? (
+                    <BreadcrumbLink asChild>
+                      <Link href={item.href}>{item.label}</Link>
+                    </BreadcrumbLink>
+                  ) : (
+                    <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                  )}
+                </BreadcrumbItem>
+                {!isLast && <BreadcrumbSeparator />}
+              </Fragment>
+            );
+          })}
         </BreadcrumbList>
       </Breadcrumb>
       <div className="relative ml-auto flex-1 md:grow-0">
@@ -117,6 +268,22 @@ export function DashboardHeader() {
           className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
         />
       </div>
+      {isAdmin && (
+        <button
+          onClick={toggleAdminMode}
+          className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md border transition-all cursor-pointer hover:opacity-80 ${
+            adminModeEnabled
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-primary/10 border-primary/20 text-primary'
+          }`}
+          title={adminModeEnabled ? 'Click to switch to Student Mode' : 'Click to switch to Admin Mode'}
+        >
+          <CheckCircle className={`w-4 h-4 ${adminModeEnabled ? 'text-primary-foreground' : 'text-primary'}`} />
+          <span className="text-sm font-semibold">
+            {adminModeEnabled ? 'Admin Mode' : 'Student Mode'}
+          </span>
+        </button>
+      )}
       <ThemeToggle />
       <UserNav />
     </header>

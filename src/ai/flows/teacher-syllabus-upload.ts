@@ -32,13 +32,13 @@ const UploadSyllabusOutputSchema = z.object({
 export type UploadSyllabusOutput = z.infer<typeof UploadSyllabusOutputSchema>;
 
 export async function uploadSyllabus(input: UploadSyllabusInput): Promise<UploadSyllabusOutput> {
-  // Placeholder implementation - replace with actual logic
-  console.log('Syllabus data URI:', input.syllabusDataUri);
-  console.log('Subject:', input.subject);
-  console.log('Grade:', input.grade);
+    // Placeholder implementation - replace with actual logic
+    console.log('Syllabus data URI:', input.syllabusDataUri);
+    console.log('Subject:', input.subject);
+    console.log('Grade:', input.grade);
 
-  return {
-    success: true,
+    return {
+      success: true,
     message: `Syllabus for ${input.subject} Grade ${input.grade} uploaded and indexing initiated.`,
-  };
-}
+    };
+  }

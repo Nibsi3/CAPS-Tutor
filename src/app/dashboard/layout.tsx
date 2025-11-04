@@ -12,6 +12,7 @@ import {
   Award,
   FileText,
   BarChart,
+  Gamepad2,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +21,12 @@ import { DashboardHeader } from "@/components/layout/DashboardHeader"
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/language-provider";
 import { translations } from "@/lib/translations";
+import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { Loader } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { trackLogin } from '@/lib/achievement-tracking';
 
 
 export default function DashboardLayout({
@@ -30,17 +37,65 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const lang = useLanguage();
   const t = translations[lang];
+  const router = useRouter();
+  
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
 
-  const navItems = [
+  // Track login when user is authenticated
+  useEffect(() => {
+    if (user && firestore && !isUserLoading) {
+      trackLogin(firestore, user.uid);
+    }
+  }, [user, firestore, isUserLoading]);
+  
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, firestore]);
+
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{ gradeLevel?: number }>(userProfileRef);
+  
+  // Show loading state while checking auth or loading profile
+  if (isUserLoading || !user || isProfileLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader className="h-16 w-16 animate-spin" />
+      </div>
+    );
+  }
+  const userGrade = userProfile?.gradeLevel || 0;
+  
+  // Only show past papers for grades 10-12
+  const showPastPapers = userGrade >= 10;
+  // Only show games for grades 1-3
+  const showGames = userGrade >= 1 && userGrade <= 3;
+
+  const allNavItems = [
     { href: "/dashboard", icon: Home, label: t.dashboard },
     { href: "/dashboard/lessons", icon: BookOpen, label: t.lessons },
     { href: "/dashboard/practice", icon: Target, label: t.practice },
-    { href: "/dashboard/past-papers", icon: FileText, label: t.pastPapers },
+    { href: "/dashboard/games", icon: Gamepad2, label: (t as any).games || "Games", requireGrade1to3: true },
+    { href: "/dashboard/past-papers", icon: FileText, label: t.pastPapers, requireGrade10: true },
     { href: "/dashboard/tutor", icon: Bot, label: t.aiTutor, badge: "New" },
     { href: "/dashboard/achievements", icon: Award, label: t.achievements },
     { href: "/dashboard/progress", icon: BarChart, label: t.progress },
     { href: "/dashboard/settings", icon: Settings, label: t.settings },
   ];
+
+  // Filter nav items based on user's grade
+  const navItems = allNavItems.filter(item => {
+    if (item.requireGrade10 && !showPastPapers) return false;
+    if (item.requireGrade1to3 && !showGames) return false;
+    return true;
+  });
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -91,9 +146,51 @@ export default function DashboardLayout({
           </div>
         </div>
       </div>
-      <div className="flex flex-col">
+      <div className="flex flex-col relative isolate overflow-visible h-screen">
+        {/* Top decorative element */}
+        <div
+          className="absolute left-[calc(50%-4rem)] top-10 -z-10 transform-gpu blur-3xl sm:left-[calc(50%-18rem)] lg:left-48 lg:top-[calc(50%-30rem)] xl:left-[calc(50%-24rem)]"
+          aria-hidden="true"
+        >
+          <div
+            className="aspect-[1108/632] w-[72.125rem] bg-gradient-to-r from-primary to-purple-500 opacity-20"
+            style={{
+              clipPath:
+                'polygon(73.6% 51.7%, 91.7% 11.8%, 100% 46.4%, 97.4% 82.2%, 92.5% 84.9%, 75.7% 64.3%, 55.3% 47.5%, 46.5% 49.4%, 45% 62.9%, 50.3% 87.2%, 21.3% 64.1%, 0.1% 100%, 5.4% 51.1%, 21.4% 63.9%, 58.9% 0.2%, 73.6% 51.7%)',
+            }}
+          />
+        </div>
+
+        {/* Bottom-left decorative element */}
+        <div
+          className="absolute bottom-0 left-0 -z-10 transform-gpu overflow-hidden blur-3xl"
+          aria-hidden="true"
+        >
+          <div
+            className="aspect-[1155/678] w-[72.1875rem] -translate-x-1/2 bg-gradient-to-tr from-[#1e40af] to-[#9333ea] opacity-30"
+            style={{
+              clipPath:
+                'polygon(20% 65%, 0% 50%, 10% 20%, 40% 0%, 70% 20%, 90% 50%, 100% 65%, 80% 85%, 50% 100%, 30% 85%)',
+            }}
+          />
+        </div>
+
+        {/* Bottom-right decorative element */}
+        <div
+          className="absolute bottom-0 right-0 -z-10 transform-gpu overflow-hidden blur-3xl"
+          aria-hidden="true"
+        >
+          <div
+            className="aspect-[1155/678] w-[72.1875rem] translate-x-1/2 bg-gradient-to-tl from-[#1e40af] to-[#9333ea] opacity-30"
+            style={{
+              clipPath:
+                'polygon(80% 65%, 100% 50%, 90% 20%, 60% 0%, 30% 20%, 10% 50%, 0% 65%, 20% 85%, 50% 100%, 70% 85%)',
+            }}
+          />
+        </div>
+
         <DashboardHeader />
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/40">
+        <main className="flex flex-1 flex-col overflow-y-auto p-4 lg:p-6 bg-muted/40">
           {children}
         </main>
       </div>

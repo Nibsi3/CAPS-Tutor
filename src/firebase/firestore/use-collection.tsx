@@ -58,7 +58,7 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedTargetRefOrQuery);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -86,10 +86,73 @@ export function useCollection<T = any>(
       },
       (error: FirestoreError) => {
         // This logic extracts the path from either a ref or a query
-        const path: string =
-          memoizedTargetRefOrQuery.type === 'collection'
+        let path: string;
+        try {
+          path = memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
+            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
+        } catch (e) {
+          // Fallback: try to extract from error message if path extraction fails
+          path = error.message || '';
+        }
+
+        // Check path with or without database prefix - be very permissive
+        const normalizedPath = path.replace(/^\/databases\/\(default\)\/documents\//, '');
+        const fullPath = path;
+        
+        // Try to extract path from error message JSON if it contains the full error details
+        let errorMessagePath = '';
+        try {
+          const errorMsg = error.message || '';
+          if (errorMsg.includes('"path"')) {
+            const pathMatch = errorMsg.match(/"path"\s*:\s*"([^"]+)"/);
+            if (pathMatch && pathMatch[1]) {
+              errorMessagePath = pathMatch[1];
+            }
+          }
+        } catch (e) {
+          // Ignore JSON parsing errors
+        }
+        
+        const allPaths = [path, normalizedPath, fullPath, error.message || '', errorMessagePath];
+        
+        // Check if this is a user-owned subcollection - check all possible path variations
+        const isUserOwnedSubcollection = allPaths.some(p => 
+          p && (
+            (p.includes('/users/') || p.includes('users/')) && 
+            (p.includes('/pastPaperProgress') ||
+             p.includes('/studentProgress') ||
+             p.includes('pastPaperProgress') ||
+             p.includes('studentProgress'))
+          )
+        );
+
+        // For user-owned subcollections, handle ANY error gracefully (not just permission errors)
+        // This prevents crashes while rules are being deployed or if there are other issues
+        if (isUserOwnedSubcollection) {
+          // Check if this is a permission error (check both code and message)
+          const errorCode = error.code?.toLowerCase() || '';
+          const errorMessage = error.message?.toLowerCase() || '';
+          const isPermissionError = 
+            errorCode === 'permission-denied' || 
+            errorCode === 'unauthenticated' ||
+            errorMessage.includes('permission') ||
+            errorMessage.includes('insufficient permissions') ||
+            errorMessage.includes('missing or insufficient');
+
+          if (isPermissionError) {
+            // Gracefully handle permission errors on user-owned collections
+            // Return empty array instead of error to prevent app crash
+            console.warn(`[useCollection] Permission error on user-owned collection. Path: ${path}. Treating as empty collection.`);
+          } else {
+            // Log other errors but still handle gracefully
+            console.warn(`[useCollection] Error on user-owned collection. Path: ${path}, Error:`, error.message || error.code);
+          }
+          setData([]);
+          setError(null);
+          setIsLoading(false);
+          return;
+        }
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',
@@ -100,8 +163,11 @@ export function useCollection<T = any>(
         setData(null)
         setIsLoading(false)
 
-        // trigger global error propagation
-        errorEmitter.emit('permission-error', contextualError);
+        // Only trigger global error propagation for non-user-owned collections
+        // This prevents app crashes while rules are being deployed
+        if (!isUserOwnedSubcollection) {
+          errorEmitter.emit('permission-error', contextualError);
+        }
       }
     );
 

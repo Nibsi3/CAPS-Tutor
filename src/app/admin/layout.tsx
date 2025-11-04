@@ -10,6 +10,7 @@ import {
   Settings,
   FileText,
   Loader,
+  Play,
 } from "lucide-react"
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
@@ -88,6 +89,13 @@ function AdminLayoutContent({
               >
                 <FileText className="h-4 w-4" />
                 Past Paper Uploader
+              </Link>
+              <Link
+                href="/admin/process-papers"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <Play className="h-4 w-4" />
+                Process All Papers
               </Link>
               <Link
                 href="#"

@@ -7,6 +7,7 @@ export type GroqChatOptions = {
 	model?: string;
 	temperature?: number;
 	maxTokens?: number;
+	images?: string[]; // Array of base64 data URIs for images
 };
 
 export async function groqChat(prompt: string, options: GroqChatOptions = {}): Promise<string> {
@@ -19,6 +20,20 @@ export async function groqChat(prompt: string, options: GroqChatOptions = {}): P
 	const temperature = options.temperature ?? 0.2;
 	const maxTokens = options.maxTokens ?? 2048;
 
+	// Build user message content - support both text and images
+	let userContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }> = prompt;
+	
+	// If images are provided, use multimodal format (OpenAI-compatible)
+	if (options.images && options.images.length > 0) {
+		userContent = [
+			{ type: 'text', text: prompt },
+			...options.images.map(img => ({
+				type: 'image_url' as const,
+				image_url: { url: img }
+			}))
+		];
+	}
+
 	const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
 		method: 'POST',
 		headers: {
@@ -29,7 +44,7 @@ export async function groqChat(prompt: string, options: GroqChatOptions = {}): P
 			model,
 			messages: [
 				{ role: 'system', content: 'You are a helpful AI tutor following instructions exactly and keeping outputs well-structured.' },
-				{ role: 'user', content: prompt },
+				{ role: 'user', content: userContent },
 			],
 			temperature,
 			max_tokens: maxTokens,
