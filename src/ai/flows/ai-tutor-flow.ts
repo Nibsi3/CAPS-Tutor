@@ -106,7 +106,7 @@ Tone: Always maintain a positive, supportive, and patient tone appropriate for a
 
   // For PDFs, we include them in the prompt description since vision APIs typically don't process PDFs directly
   // In a future enhancement, we could extract text from PDFs here using a PDF parser
-  const pdfNote = input.attachments?.filter(att => att.type === 'pdf').length > 0
+  const pdfNote = (input.attachments?.filter(att => att.type === 'pdf').length ?? 0) > 0
     ? `\n\nNote: The student has also uploaded PDF document(s). Please help them understand the content based on their question.`
     : '';
 

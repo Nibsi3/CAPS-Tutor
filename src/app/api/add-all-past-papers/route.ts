@@ -244,11 +244,11 @@ export async function POST(request: Request) {
 
         // Process each pair
         for (const pair of pairs) {
+            // Create a unique key to check for duplicates
+            const subjectName = pair.paper.paperNumber 
+                ? `${pair.subject} Paper ${pair.paper.paperNumber}` 
+                : pair.subject;
             try {
-                // Create a unique key to check for duplicates
-                const subjectName = pair.paper.paperNumber 
-                    ? `${pair.subject} Paper ${pair.paper.paperNumber}` 
-                    : pair.subject;
                 const baseSubject = subjectName.replace(/\s*(?:paper|p)\s*\d+.*/i, '').trim().toLowerCase();
                 const uniqueKey = `${baseSubject}_${pair.paper.year}_${pair.paper.paperNumber}_12`;
                 

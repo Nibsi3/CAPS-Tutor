@@ -3,7 +3,6 @@
  */
 
 import { Question } from './questions';
-import { PastPaperQuestion } from './past-paper-questions';
 
 export interface UserLiteratureSelection {
   'english-hl'?: {
@@ -44,7 +43,7 @@ const subjectToLiteratureKey: Record<string, keyof UserLiteratureSelection> = {
  * Checks if a question should be shown based on user's literature selections
  */
 export function shouldShowQuestion(
-  question: Question | PastPaperQuestion,
+  question: Question,
   subject: string,
   userLiterature?: UserLiteratureSelection
 ): boolean {
@@ -92,7 +91,7 @@ export function shouldShowQuestion(
 /**
  * Filters questions based on user's literature selections
  */
-export function filterQuestionsByLiterature<T extends Question | PastPaperQuestion>(
+export function filterQuestionsByLiterature<T extends Question>(
   questions: T[],
   subject: string,
   userLiterature?: UserLiteratureSelection

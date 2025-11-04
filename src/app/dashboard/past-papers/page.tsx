@@ -13,7 +13,6 @@ import { subjectColors } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { allSubjectsForLookup } from '@/lib/questions';
-import { getPastPaperStats } from '@/lib/past-paper-questions';
 import { shouldShowPaper2Questions, UserLiteratureSelection } from '@/lib/literature-filter';
 import {
   Dialog,
@@ -617,8 +616,7 @@ export default function PastPapersPage() {
                                                 colors = colorPalette[colorIndex];
                                             }
                                             
-                                            const stats = getPastPaperStats(paper.subject, paper.year);
-                                            const questionCount = stats?.count || paper.questionCount || 0;
+                                            const questionCount = paper.questionCount || 0;
                                             
                                             return (
                                                 <Card key={progress.id} className={cn(
@@ -739,9 +737,8 @@ export default function PastPapersPage() {
                                     colors = colorPalette[colorIndex];
                                 }
                                 
-                                const stats = getPastPaperStats(paper.subject, paper.year);
-                                const questionCount = stats?.count || paper.questionCount || 0;
-                                const topics = stats?.topics || [];
+                                const questionCount = paper.questionCount || 0;
+                                const topics: string[] = [];
                                 
                                 return (
                                     <Card key={paper.id} className={cn(

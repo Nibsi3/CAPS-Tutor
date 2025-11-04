@@ -1,78 +1,68 @@
-/**
- * @fileoverview Firestore Security Rules for CAPS Tutor application.
- *
- * Core Philosophy:
- * This ruleset enforces a user-ownership model for user-specific data while allowing public read access to shared resources like lessons and past papers.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profiles. Only the authenticated user can read/write their own profile.
- * - /users/{userId}/studentProgress/{studentProgressId}: Tracks student progress. Only the owning user can manage their progress.
- * - /lessons/{lessonId}: Stores lesson content. Publicly readable.
- * - /lessons/{lessonId}/learningObjectives/{learningObjectiveId}: Stores learning objectives for lessons. Publicly readable.
- * - /learningObjectives/{learningObjectiveId}/questions/{questionId}: Stores questions for learning objectives. Publicly readable.
- * - /users/{userId}/teacherUploadedSyllabus/{teacherUploadedSyllabusId}: Stores syllabus uploaded by teachers. Only the teacher can manage their syllabus.
- * - /pastPapers/{pastPaperId}: Stores past papers. Publicly readable, but only the uploading teacher can modify.
- *
- * Key Security Decisions:
- * - Users can only access their own data under /users/{userId}.
- * - Public read access is granted to /lessons, /learningObjectives, and /pastPapers.
- * - TeacherUploadedSyllabus is owned by the teacher who uploaded it.
- * - The rules do not enforce strict schema validation during the prototyping phase.
- *
- * Denormalization for Authorization:
- * - User ownership is enforced by nesting data under /users/{userId}, avoiding the need for `get()` calls to check ownership.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * @description Rules for the /users/{userId} collection.
-     * @path /users/{userId}
-     * @allow (create, update): Authenticated user can create/update their own user document.
-     * @deny (create, update): Authenticated user cannot create/update another user's document.
-     * @allow (get): Authenticated user can read their own user document.
-     * @allow (get): Authenticated user can read public fields (displayName, photoURL, unlockedAchievements, firstName, lastName, email) from other users for leaderboard purposes.
-     * @allow (list): Authenticated users can list users to build leaderboards (limited to public fields).
-     * @deny (get): Authenticated user cannot read private data from another user's document.
-     * @principle Enforces document ownership for writes, allows public read access for leaderboards.
-     */
+    // Old structure: pastPapers (camelCase) with generatedQuestions array
+    match /pastPapers/{pastPaperId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isOwner(teacherId) {
+        return request.auth.uid == teacherId;
+      }
+      function isExistingOwner(teacherId) {
+        return isOwner(teacherId) && resource != null;
+      }
+      function isAdminEmail() {
+        return request.auth != null && request.auth.token.email == 'cameronfalck03@gmail.com';
+      }
+      allow get, list: if true;
+      allow create: if (isSignedIn() && isOwner(request.resource.data.teacherId)) || 
+                     request.resource.data.teacherId != null;
+      allow update: if isSignedIn() && (isExistingOwner(resource.data.teacherId) || isAdminEmail());
+      allow delete: if isSignedIn() && isExistingOwner(resource.data.teacherId);
+    }
+    
+    // New structure: pastpapers (lowercase) with questions subcollection
+    match /pastpapers/{paperId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isAdminEmail() {
+        return request.auth != null && request.auth.token.email == 'cameronfalck03@gmail.com';
+      }
+      // Allow public read access to papers
+      allow get, list: if true;
+      // Allow admin to create/update/delete
+      allow create, update, delete: if isSignedIn() && isAdminEmail();
+      
+      // Questions subcollection
+      match /questions/{questionId} {
+        // Allow public read access to questions
+        allow get, list: if true;
+        // Allow admin to create/update/delete
+        allow create, update, delete: if isSignedIn() && isAdminEmail();
+      }
+    }
     match /users/{userId} {
       function isSignedIn() {
         return request.auth != null;
       }
-
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
-
-      // Allow full access to own document
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == request.auth.uid;
       allow get: if isSignedIn() && isOwner(userId);
-      // Allow listing for authenticated users (for leaderboard)
       allow list: if isSignedIn();
       allow update: if isSignedIn() && isOwner(userId) && resource.data.id == resource.data.id;
       allow delete: if false;
     }
-
-    /**
-     * @description Rules for the /users/{userId}/studentProgress/{studentProgressId} collection.
-     * @path /users/{userId}/studentProgress/{studentProgressId}
-     * @allow (create, update, delete): Authenticated user can create/update/delete their own student progress.
-     * @deny (create, update, delete): Authenticated user cannot create/update/delete another user's student progress.
-     * @allow (get, list): Authenticated user can read/list their own student progress.
-     * @deny (get, list): Authenticated user cannot read/list another user's student progress.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
-     */
     match /users/{userId}/studentProgress/{studentProgressId} {
       function isSignedIn() {
         return request.auth != null;
       }
-
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
-
       function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
       }
@@ -82,25 +72,13 @@ service cloud.firestore {
       allow update: if isSignedIn() && isExistingOwner(userId);
       allow delete: if isSignedIn() && isExistingOwner(userId);
     }
-
-    /**
-     * @description Rules for the /users/{userId}/pastPaperProgress/{paperId} collection.
-     * @path /users/{userId}/pastPaperProgress/{paperId}
-     * @allow (create, update): Authenticated user can create/update their own past paper progress.
-     * @deny (create, update): Authenticated user cannot create/update another user's past paper progress.
-     * @allow (get, list): Authenticated user can read/list their own past paper progress.
-     * @deny (get, list): Authenticated user cannot read/list another user's past paper progress.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
-     */
     match /users/{userId}/pastPaperProgress/{paperId} {
       function isSignedIn() {
         return request.auth != null;
       }
-
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
-
       function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
       }
@@ -110,103 +88,33 @@ service cloud.firestore {
       allow update: if isSignedIn() && isExistingOwner(userId);
       allow delete: if isSignedIn() && isExistingOwner(userId);
     }
-
-    /**
-     * @description Rules for the /lessons/{lessonId} collection.
-     * @path /lessons/{lessonId}
-     * @allow (get, list): Any user can read/list lessons.
-     * @deny (create, update, delete): No user can create/update/delete lessons.
-     * @principle Allows public read access, restricts write access.
-     */
     match /lessons/{lessonId} {
       allow get, list: if true;
       allow create, update, delete: if false;
     }
-
-    /**
-     * @description Rules for the /lessons/{lessonId}/learningObjectives/{learningObjectiveId} collection.
-     * @path /lessons/{lessonId}/learningObjectives/{learningObjectiveId}
-     * @allow (get, list): Any user can read/list learning objectives.
-     * @deny (create, update, delete): No user can create/update/delete learning objectives.
-     * @principle Allows public read access, restricts write access.
-     */
     match /lessons/{lessonId}/learningObjectives/{learningObjectiveId} {
       allow get, list: if true;
       allow create, update, delete: if false;
     }
-
-    /**
-     * @description Rules for the /learningObjectives/{learningObjectiveId}/questions/{questionId} collection.
-     * @path /learningObjectives/{learningObjectiveId}/questions/{questionId}
-     * @allow (get, list): Any user can read/list questions.
-     * @deny (create, update, delete): No user can create/update/delete questions.
-     * @principle Allows public read access, restricts write access.
-     */
     match /learningObjectives/{learningObjectiveId}/questions/{questionId} {
       allow get, list: if true;
       allow create, update, delete: if false;
     }
-
-    /**
-     * @description Rules for the /users/{userId}/teacherUploadedSyllabus/{teacherUploadedSyllabusId} collection.
-     * @path /users/{userId}/teacherUploadedSyllabus/{teacherUploadedSyllabusId}
-     * @allow (create, update, delete): Authenticated user can create/update/delete their own uploaded syllabus.
-     * @deny (create, update, delete): Authenticated user cannot create/update/delete another user's uploaded syllabus.
-     * @allow (get, list): Authenticated user can read/list their own uploaded syllabus.
-     * @deny (get, list): Authenticated user cannot read/list another user's uploaded syllabus.
-     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
-     */
     match /users/{userId}/teacherUploadedSyllabus/{teacherUploadedSyllabusId} {
       function isSignedIn() {
         return request.auth != null;
       }
-
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
-
       function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
       }
-
       allow create: if isSignedIn() && isOwner(userId);
       allow get: if isSignedIn() && isOwner(userId);
       allow list: if isSignedIn() && isOwner(userId);
       allow update: if isSignedIn() && isExistingOwner(userId);
       allow delete: if isSignedIn() && isExistingOwner(userId);
-    }
-
-    /**
-     * @description Rules for the /pastPapers/{pastPaperId} collection.
-     * @path /pastPapers/{pastPaperId}
-     * @allow (get, list): Any user can read/list past papers.
-     * @deny (create, update, delete): No user can create,update, or delete papers unless they are the owner.
-     * @principle Allows public read access, restricts write access.
-     */
-    match /pastPapers/{pastPaperId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-
-        function isOwner(teacherId) {
-          return request.auth.uid == teacherId;
-        }
-
-        function isExistingOwner(teacherId) {
-          return isOwner(teacherId) && resource != null;
-        }
-        
-        function isAdminEmail() {
-          return request.auth != null && request.auth.token.email == 'cameronfalck03@gmail.com';
-        }
-
-        allow get, list: if true;
-        // Allow creation if authenticated and owner, OR if teacherId exists (for server-side operations)
-        // TODO: Make this more secure in production - for now allowing server-side creation
-        allow create: if (isSignedIn() && isOwner(request.resource.data.teacherId)) || 
-                       request.resource.data.teacherId != null;
-        allow update: if isSignedIn() && isExistingOwner(resource.data.teacherId);
-        allow delete: if isSignedIn() && isExistingOwner(resource.data.teacherId);
     }
   }
 }

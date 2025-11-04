@@ -11,9 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, collection, addDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { getQuestionsForSubject, Question, allSubjectsForLookup } from '@/lib/questions';
-import { getPastPaperQuestionsByMetadata, PastPaperQuestion } from '@/lib/past-paper-questions';
+import { doc, collection, addDoc, setDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { Question, allSubjectsForLookup } from '@/lib/questions';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
@@ -98,7 +97,7 @@ export default function PastPaperPracticePage() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { id: paperId } = params;
+    const paperId = Array.isArray(params.id) ? params.id[0] : params.id;
     
     const { user } = useUser();
     const firestore = useFirestore();
@@ -119,12 +118,23 @@ export default function PastPaperPracticePage() {
     
     const [enlargedImageUrl, setEnlargedImageUrl] = useState<string | null>(null);
 
-    const paperRef = useMemoFirebase(() => {
+    // Check both old structure (pastPapers) and new structure (pastpapers)
+    const paperRefOld = useMemoFirebase(() => {
         if (!firestore || !paperId) return null;
         return doc(firestore, 'pastPapers', paperId as string);
     }, [firestore, paperId]);
 
-    const { data: paperData, isLoading: isPaperLoading } = useDoc<PastPaperMeta>(paperRef);
+    const paperRefNew = useMemoFirebase(() => {
+        if (!firestore || !paperId) return null;
+        return doc(firestore, 'pastpapers', paperId as string);
+    }, [firestore, paperId]);
+
+    const { data: paperDataOld } = useDoc<PastPaperMeta>(paperRefOld);
+    const { data: paperDataNew } = useDoc<PastPaperMeta>(paperRefNew);
+    
+    // Use new structure if available, otherwise fall back to old
+    const paperData = paperDataNew || paperDataOld;
+    const isPaperLoading = !paperDataNew && !paperDataOld;
 
     // Fetch user profile to get literature selections
     interface UserProfile {
@@ -268,9 +278,11 @@ export default function PastPaperPracticePage() {
     };
 
     useEffect(() => {
-        if (paperData) {
+        if (!paperData || !firestore) return;
+        
+        const loadQuestions = async () => {
             const baseSubject = getBaseSubject(paperData.subject) || paperData.subject;
-            let questions: (Question | PastPaperQuestion)[] = [];
+            let questions: Question[] = [];
 
             // Extract paper number from subject (e.g., "Mathematics Paper 1" -> "Paper 1")
             const paperNumberMatch = paperData.subject.match(/paper\s*(\d+)/i);
@@ -283,37 +295,61 @@ export default function PastPaperPracticePage() {
                 return;
             }
 
-            // Priority 0: Use generated questions from Firestore if available
-            if (paperData.generatedQuestions && paperData.generatedQuestions.length > 0) {
+            // Check for questions in subcollection (new structure) first
+            // Then fall back to generatedQuestions array (old structure)
+            let questionsFromSubcollection: Question[] = [];
+            
+            // Try to fetch from subcollection if using new structure
+            if (paperDataNew && paperId && firestore) {
+                try {
+                    const questionsRef = collection(firestore, 'pastpapers', paperId as string, 'questions');
+                    const questionsSnapshot = await getDocs(questionsRef);
+                    
+                    questionsFromSubcollection = questionsSnapshot.docs
+                        .map(doc => {
+                            const q = doc.data();
+                            return {
+                                id: `question-${q.number}`,
+                                question: q.question || q.questionText || '',
+                                topic: extractTopicFromQuestion(q.question || q.questionText || '', baseSubject),
+                                answer: q.answer || null,
+                                type: 'free-text' as const,
+                                imageUrl: q.image && (q.image.startsWith('data:image/') || q.image.startsWith('data:application/pdf')) ? q.image : undefined,
+                                questionNumber: q.number || q.questionNumber || '',
+                                marks: q.marks || 0,
+                            };
+                        })
+                        .sort((a, b) => {
+                            // Sort by question number (handle "1.1", "1.2", "2.1", etc.)
+                            const aParts = a.questionNumber.split('.').map(Number);
+                            const bParts = b.questionNumber.split('.').map(Number);
+                            for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                                const aVal = aParts[i] || 0;
+                                const bVal = bParts[i] || 0;
+                                if (aVal !== bVal) return aVal - bVal;
+                            }
+                            return 0;
+                        });
+                } catch (e) {
+                    console.warn('Could not fetch from subcollection:', e);
+                }
+            }
+            
+            // Use subcollection questions if available, otherwise use old structure
+            if (questionsFromSubcollection.length > 0) {
+                questions = questionsFromSubcollection;
+            } else if (paperData.generatedQuestions && paperData.generatedQuestions.length > 0) {
+                // Fall back to old structure
                 questions = paperData.generatedQuestions.map((gq, idx) => ({
                     id: `generated-${idx}`,
                     question: gq.questionText,
                     topic: extractTopicFromQuestion(gq.questionText, baseSubject),
                     answer: gq.answer,
                     type: 'free-text' as const,
-                    imageUrl: gq.hasImage && gq.imageDataUri ? gq.imageDataUri : undefined,
+                    imageUrl: gq.hasImage && gq.imageDataUri && (gq.imageDataUri.startsWith('data:image/') || gq.imageDataUri.startsWith('data:application/pdf')) ? gq.imageDataUri : undefined,
                     questionNumber: gq.questionNumber,
                     marks: gq.marks,
                 }));
-            }
-            // Priority 1: Use preloaded past paper questions from the codebase
-            else if (baseSubject && paperData.gradeLevel && paperData.year) {
-                const pastPaperQuestions = getPastPaperQuestionsByMetadata(
-                    baseSubject,
-                    paperData.gradeLevel,
-                    parseInt(paperData.year.toString()),
-                    paperNumber
-                );
-                
-                if (pastPaperQuestions.length > 0) {
-                    questions = pastPaperQuestions;
-                } else if (baseSubject && paperData.gradeLevel) {
-                    // Priority 2: Fall back to general subject questions
-                    questions = getQuestionsForSubject(baseSubject, paperData.gradeLevel);
-                }
-            } else if (baseSubject && paperData.gradeLevel) {
-                // Fall back to general subject questions if year not available
-                questions = getQuestionsForSubject(baseSubject, paperData.gradeLevel);
             }
             
             // Filter questions by literature selections
@@ -333,8 +369,10 @@ export default function PastPaperPracticePage() {
             } else {
                 setSession({ examQuestions: [] }); // Set to empty if no questions found
             }
-        }
-    }, [paperData, userProfile?.literature]);
+        };
+        
+        loadQuestions();
+    }, [paperData, paperDataNew, paperId, firestore, userProfile?.literature, userProfile?.gradeLevel]);
 
     useEffect(() => {
         tutorChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -574,16 +612,16 @@ export default function PastPaperPracticePage() {
                                                     {isFirstWithSharedDiagram ? (
                                                         // First sub-question: show large image
                                                         <div className="flex justify-center">
-                                                            {q.imageUrl.startsWith('data:image') || q.imageUrl.startsWith('data:application/pdf') ? (
+                                                            {q.imageUrl && (q.imageUrl.startsWith('data:image') || q.imageUrl.startsWith('data:application/pdf')) ? (
                                                                 <img 
                                                                     src={q.imageUrl} 
                                                                     alt="Question reference image" 
                                                                     className="max-w-full h-auto rounded-lg border border-border shadow-sm"
                                                                     style={{ maxHeight: '500px' }}
                                                                 />
-                                                            ) : q.imageUrl.startsWith('<svg') ? (
+                                                            ) : q.imageUrl && q.imageUrl.startsWith('<svg') ? (
                                                                 <div dangerouslySetInnerHTML={{ __html: q.imageUrl }} />
-                                                            ) : (
+                                                            ) : q.imageUrl && (q.imageUrl.startsWith('http://') || q.imageUrl.startsWith('https://')) ? (
                                                                 <Image 
                                                                     src={q.imageUrl} 
                                                                     alt="Question reference image" 
@@ -591,7 +629,7 @@ export default function PastPaperPracticePage() {
                                                                     height={600}
                                                                     className="rounded-lg border border-border shadow-sm"
                                                                 />
-                                                            )}
+                                                            ) : null}
                                                         </div>
                                                     ) : (
                                                         // Follow-up sub-question: show small clickable thumbnail at top
@@ -600,18 +638,18 @@ export default function PastPaperPracticePage() {
                                                                 onClick={() => setEnlargedImageUrl(q.imageUrl!)}
                                                                 className="flex items-center gap-3 w-full hover:opacity-80 transition-opacity text-left group"
                                                             >
-                                                                {q.imageUrl.startsWith('data:image') || q.imageUrl.startsWith('data:application/pdf') ? (
+                                                                {q.imageUrl && (q.imageUrl.startsWith('data:image') || q.imageUrl.startsWith('data:application/pdf')) ? (
                                                                     <img 
                                                                         src={q.imageUrl} 
                                                                         alt="Click to enlarge diagram" 
                                                                         className="w-40 h-auto rounded-lg border border-border shadow-sm group-hover:border-primary transition-colors"
                                                                     />
-                                                                ) : q.imageUrl.startsWith('<svg') ? (
+                                                                ) : q.imageUrl && q.imageUrl.startsWith('<svg') ? (
                                                                     <div 
                                                                         dangerouslySetInnerHTML={{ __html: q.imageUrl }} 
                                                                         className="w-40 h-auto rounded-lg border border-border shadow-sm group-hover:border-primary transition-colors"
                                                                     />
-                                                                ) : (
+                                                                ) : q.imageUrl && (q.imageUrl.startsWith('http://') || q.imageUrl.startsWith('https://')) ? (
                                                                     <Image 
                                                                         src={q.imageUrl} 
                                                                         alt="Click to enlarge diagram" 
@@ -619,7 +657,7 @@ export default function PastPaperPracticePage() {
                                                                         height={120}
                                                                         className="rounded-lg border border-border shadow-sm group-hover:border-primary transition-colors"
                                                                     />
-                                                                )}
+                                                                ) : null}
                                                                 <div className="flex-1">
                                                                     <p className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">Click to enlarge diagram</p>
                                                                     <p className="text-xs text-muted-foreground mt-1">Refer to the diagram shown above</p>
@@ -848,15 +886,15 @@ export default function PastPaperPracticePage() {
                         >
                             ✕
                         </button>
-                        {enlargedImageUrl.startsWith('data:image') || enlargedImageUrl.startsWith('data:application/pdf') ? (
+                        {enlargedImageUrl && (enlargedImageUrl.startsWith('data:image') || enlargedImageUrl.startsWith('data:application/pdf')) ? (
                             <img 
                                 src={enlargedImageUrl} 
                                 alt="Enlarged diagram" 
                                 className="max-w-full max-h-[90vh] object-contain"
                             />
-                        ) : enlargedImageUrl.startsWith('<svg') ? (
+                        ) : enlargedImageUrl && enlargedImageUrl.startsWith('<svg') ? (
                             <div dangerouslySetInnerHTML={{ __html: enlargedImageUrl }} />
-                        ) : (
+                        ) : enlargedImageUrl && (enlargedImageUrl.startsWith('http://') || enlargedImageUrl.startsWith('https://')) ? (
                             <Image 
                                 src={enlargedImageUrl} 
                                 alt="Enlarged diagram" 
@@ -864,7 +902,7 @@ export default function PastPaperPracticePage() {
                                 height={900}
                                 className="max-w-full max-h-[90vh] object-contain"
                             />
-                        )}
+                        ) : null}
                     </div>
                 </div>
             )}
