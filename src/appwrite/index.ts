@@ -19,18 +19,27 @@ export function getClient(): Client {
   }
 
   if (!clientInstance) {
-    // Validate project ID before initializing
-    if (!appwriteConfig.projectId) {
-      console.error(
-        'Appwrite Client: NEXT_PUBLIC_APPWRITE_PROJECT_ID is required but not set. ' +
-        'Please set it in your Appwrite Function environment variables.'
+    // Guard: Never initialize client if endpoint or projectId is missing
+    const endpoint = appwriteConfig.endpoint;
+    const projectId = appwriteConfig.projectId;
+    
+    if (!endpoint || !projectId) {
+      console.warn(
+        'Appwrite Client: Missing environment variables. ' +
+        `Endpoint: ${endpoint ? 'set' : 'missing'}, ` +
+        `Project ID: ${projectId ? 'set' : 'missing'}. ` +
+        'Client will not be initialized. Please set NEXT_PUBLIC_APPWRITE_ENDPOINT and NEXT_PUBLIC_APPWRITE_PROJECT_ID.'
       );
-      // Still create client but it will fail on requests
-      // This prevents the app from crashing during initialization
+      // Return a no-op mock client instead of initializing with missing values
+      return {
+        setEndpoint: () => {},
+        setProject: () => {},
+      } as any;
     }
+    
     clientInstance = new Client()
-      .setEndpoint(appwriteConfig.endpoint)
-      .setProject(appwriteConfig.projectId || 'missing-project-id');
+      .setEndpoint(endpoint)
+      .setProject(projectId);
   }
   return clientInstance;
 }
