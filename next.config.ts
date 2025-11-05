@@ -46,16 +46,22 @@ const nextConfig: NextConfig = {
   experimental: {
     // Force SWC transforms for faster compilation
     forceSwcTransforms: true,
-    // Optimize CSS processing
-    optimizeCss: true,
+    // Note: optimizeCss removed - requires 'critters' dependency which causes build failures
   },
-  // Generate build ID from git commit for better caching
+  // Generate build ID for better caching
+  // Note: Using timestamp in build environments where git may not be available
   generateBuildId: async () => {
-    // Use git commit hash if available, otherwise use timestamp
+    // Try git commit hash if available, otherwise use timestamp
     try {
       const { execSync } = require('child_process');
-      return execSync('git rev-parse --short HEAD').toString().trim();
+      const hash = execSync('git rev-parse --short HEAD', { 
+        encoding: 'utf8',
+        stdio: 'pipe',
+        timeout: 5000 
+      }).trim();
+      return hash || `build-${Date.now()}`;
     } catch {
+      // Fallback to timestamp if git is not available (e.g., in Appwrite build environment)
       return `build-${Date.now()}`;
     }
   },
