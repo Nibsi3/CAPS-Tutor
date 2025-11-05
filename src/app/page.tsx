@@ -7,6 +7,10 @@ import { AllSubjectsPreview } from "@/components/home/AllSubjectsPreview";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Target, Bot, BarChart } from "lucide-react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+// Force dynamic rendering to prevent SSG issues during preview mode
+export const dynamic = "force-dynamic";
 
 const features = [
   {
@@ -29,7 +33,8 @@ const features = [
 
 export default function HomePage() {
   return (
-    <main className="flex-1">
+    <ErrorBoundary>
+      <main className="flex-1">
         <div className="relative isolate overflow-hidden">
           {/* Decorative element from previous design, can be kept for visual flair */}
           <div
@@ -157,5 +162,6 @@ export default function HomePage() {
 
       </div>
     </main>
+    </ErrorBoundary>
   );
 }
