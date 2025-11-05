@@ -45,11 +45,16 @@ export default function RootLayout({
   
   try {
     // Log environment variables status
+    // Using globalThis to access process in a way TypeScript accepts
+    const globalProcess = (typeof globalThis !== 'undefined' && (globalThis as any).process) || 
+                          (typeof window !== 'undefined' && (window as any).process) ||
+                          undefined;
+    const processEnv = globalProcess?.env;
     const envData = {
-      NEXT_PUBLIC_APPWRITE_ENDPOINT: typeof process !== 'undefined' ? !!process.env?.NEXT_PUBLIC_APPWRITE_ENDPOINT : 'N/A',
-      NEXT_PUBLIC_APPWRITE_PROJECT_ID: typeof process !== 'undefined' ? !!process.env?.NEXT_PUBLIC_APPWRITE_PROJECT_ID : 'N/A',
-      NEXT_PUBLIC_APPWRITE_DATABASE_ID: typeof process !== 'undefined' ? !!process.env?.NEXT_PUBLIC_APPWRITE_DATABASE_ID : 'N/A',
-      NODE_ENV: typeof process !== 'undefined' ? process.env?.NODE_ENV : 'N/A',
+      NEXT_PUBLIC_APPWRITE_ENDPOINT: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_ENDPOINT : 'N/A',
+      NEXT_PUBLIC_APPWRITE_PROJECT_ID: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_PROJECT_ID : 'N/A',
+      NEXT_PUBLIC_APPWRITE_DATABASE_ID: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_DATABASE_ID : 'N/A',
+      NODE_ENV: processEnv ? processEnv.NODE_ENV : 'N/A',
     };
     console.log("layout-data", envData);
     
@@ -83,13 +88,17 @@ export default function RootLayout({
     // Log error for debugging in Appwrite Console
     console.error("layout-error", e);
     console.error("Error stack:", e?.stack);
+    const globalProcess = (typeof globalThis !== 'undefined' && (globalThis as any).process) || 
+                          (typeof window !== 'undefined' && (window as any).process) ||
+                          undefined;
+    const processEnv = globalProcess?.env;
     console.error("Error details:", {
       message: e?.message,
       name: e?.name,
       env: {
-        NEXT_PUBLIC_APPWRITE_ENDPOINT: typeof process !== 'undefined' ? !!process.env?.NEXT_PUBLIC_APPWRITE_ENDPOINT : 'N/A',
-        NEXT_PUBLIC_APPWRITE_PROJECT_ID: typeof process !== 'undefined' ? !!process.env?.NEXT_PUBLIC_APPWRITE_PROJECT_ID : 'N/A',
-        NEXT_PUBLIC_APPWRITE_DATABASE_ID: typeof process !== 'undefined' ? !!process.env?.NEXT_PUBLIC_APPWRITE_DATABASE_ID : 'N/A',
+        NEXT_PUBLIC_APPWRITE_ENDPOINT: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_ENDPOINT : 'N/A',
+        NEXT_PUBLIC_APPWRITE_PROJECT_ID: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_PROJECT_ID : 'N/A',
+        NEXT_PUBLIC_APPWRITE_DATABASE_ID: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_DATABASE_ID : 'N/A',
       }
     });
     
@@ -101,7 +110,7 @@ export default function RootLayout({
             <div className="text-center">
               <h1 className="text-2xl font-bold mb-4">Error loading layout</h1>
               <p className="text-muted-foreground">
-                {process.env.NODE_ENV === 'development' ? e?.message : 'An error occurred while loading the layout.'}
+                {processEnv?.NODE_ENV === 'development' ? e?.message : 'An error occurred while loading the layout.'}
               </p>
             </div>
           </div>
