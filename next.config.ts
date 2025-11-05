@@ -37,15 +37,86 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Enable compression
   compress: true,
+  // Optimize build performance and reduce memory usage
+  outputFileTracingExcludes: {
+    '*': [
+      // Exclude large files from serverless function tracing
+      '**/node_modules/@swc/core*/**',
+      '**/node_modules/@next/swc*/**',
+      '**/node_modules/next/dist/compiled/**',
+      '**/node_modules/next/dist/server/**',
+      // Exclude large source files that might be causing issues
+      '**/src/lib/questions.ts',
+      '**/past papers/**',
+      '**/extracted_papers/**',
+      '**/*.pdf',
+      '**/*.json',
+    ],
+  },
+  // Experimental features for better build performance
+  experimental: {
+    // Enable faster file tracing
+    turbo: {
+      resolveAlias: {
+        // Optimize alias resolution
+      },
+    },
+    // Externalize packages to reduce bundle size
+    serverComponentsExternalPackages: [
+      'firebase',
+      'firebase-admin',
+      'appwrite',
+      'node-appwrite',
+    ],
+  },
   // Reduce memory usage during build
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
+    // Optimize client bundle
     if (!isServer) {
-      // Optimize client bundle
       config.optimization = {
         ...config.optimization,
         moduleIds: 'deterministic',
+        // Split chunks for better code splitting
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            // Vendor chunk for node_modules
+            vendor: {
+              name: 'vendor',
+              chunks: 'all',
+              test: /node_modules/,
+              priority: 20,
+            },
+            // Common chunk for shared code
+            common: {
+              name: 'common',
+              minChunks: 2,
+              chunks: 'all',
+              priority: 10,
+              reuseExistingChunk: true,
+              enforce: true,
+            },
+          },
+        },
       };
     }
+
+    // Optimize module resolution
+    config.resolve = {
+      ...config.resolve,
+      // Reduce file system calls during resolution
+      cache: true,
+      // Optimize module resolution
+      symlinks: false,
+    };
+
+    // Reduce memory usage by limiting parallel processing
+    if (!dev) {
+      config.parallelism = 1;
+    }
+
     return config;
   },
 };
