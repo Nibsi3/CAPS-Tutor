@@ -37,6 +37,13 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Enable compression
   compress: true,
+  // Externalize packages to reduce bundle size (moved from experimental in Next.js 15)
+  serverExternalPackages: [
+    'firebase',
+    'firebase-admin',
+    'appwrite',
+    'node-appwrite',
+  ],
   // Optimize build performance and reduce memory usage
   outputFileTracingExcludes: {
     '*': [
@@ -51,22 +58,6 @@ const nextConfig: NextConfig = {
       '**/extracted_papers/**',
       '**/*.pdf',
       '**/*.json',
-    ],
-  },
-  // Experimental features for better build performance
-  experimental: {
-    // Enable faster file tracing
-    turbo: {
-      resolveAlias: {
-        // Optimize alias resolution
-      },
-    },
-    // Externalize packages to reduce bundle size
-    serverComponentsExternalPackages: [
-      'firebase',
-      'firebase-admin',
-      'appwrite',
-      'node-appwrite',
     ],
   },
   // Reduce memory usage during build
