@@ -1,3 +1,8 @@
+/**
+ * TEMPORARY: This API route uses Firebase Admin SDK for server-side operations.
+ * This will be migrated to Appwrite Server SDK in a future update.
+ * Client-side code has been fully migrated to Appwrite.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';

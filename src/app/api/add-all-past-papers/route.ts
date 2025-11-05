@@ -1,32 +1,12 @@
-// Server-side only - use dynamic require to avoid client bundling
-const getFirebase = () => {
-  const { firebaseConfig } = require('@/firebase/config');
-  const { initializeApp, getApps, getApp } = require('firebase/app');
-  const { getFirestore, collection, addDoc, updateDoc, getDocs, query, where, getDoc, doc } = require('firebase/firestore');
-  
-  let firebaseApp;
-  if (!getApps().length) {
-    try {
-      firebaseApp = initializeApp();
-    } catch (e) {
-      firebaseApp = initializeApp(firebaseConfig);
-    }
-  } else {
-    firebaseApp = getApp();
-  }
-  
-  return {
-    firestore: getFirestore(firebaseApp),
-    collection,
-    addDoc,
-    updateDoc,
-    getDocs,
-    query,
-    where,
-    getDoc,
-    doc,
-  };
-};
+/**
+ * TEMPORARY: This API route uses Firebase for server-side operations.
+ * This will be migrated to Appwrite Server SDK in a future update.
+ * Client-side code has been fully migrated to Appwrite.
+ */
+import { firebaseConfig } from '@/firebase/config';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, getDocs, query, where, getDoc, doc } from 'firebase/firestore';
 import { processPastPaper } from '@/ai/flows/past-paper-processing';
 import * as fs from 'fs';
 import * as path from 'path';

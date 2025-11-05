@@ -1,6 +1,10 @@
 /**
  * Auto-add all past papers - runs automatically when accessed
  * This endpoint processes all papers from the "past papers" folder
+ * 
+ * TEMPORARY: This API route uses Firebase for server-side operations.
+ * This will be migrated to Appwrite Server SDK in a future update.
+ * Client-side code has been fully migrated to Appwrite.
  */
 
 import { firebaseConfig } from '@/firebase/config';

@@ -1,3 +1,8 @@
+/**
+ * TEMPORARY: This API route uses Firebase for server-side operations.
+ * This will be migrated to Appwrite Server SDK in a future update.
+ * Client-side code has been fully migrated to Appwrite.
+ */
 import { processPastPaper } from '@/ai/flows/past-paper-processing';
 import { initializeFirebase } from '@/firebase';
 import { collection, addDoc, updateDoc, doc, getDocs, query, where } from 'firebase/firestore';

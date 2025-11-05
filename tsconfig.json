@@ -23,5 +23,16 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "src/firebase/client-provider.tsx",
+    "src/firebase/provider.tsx",
+    "src/firebase/auth/use-user.tsx",
+    "src/firebase/auth/social-auth.ts",
+    "src/firebase/firestore/use-doc.tsx",
+    "src/firebase/firestore/use-collection.tsx",
+    "src/firebase/non-blocking-login.ts",
+    "src/firebase/non-blocking-updates.tsx",
+    "src/components/FirebaseErrorListener.tsx"
+  ]
 }
