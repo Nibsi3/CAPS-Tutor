@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { AITryOut } from "@/components/home/AITryOut";
 import { HowItWorks } from "@/components/home/HowItWorks";
 import { CapsSyllabusSection, NewsSection, BlogSection, ContactSection, CompetitiveAdvantagesSection, FAQSection, StudyResourcesSection } from "@/components/home/HomeSections";
@@ -32,7 +33,24 @@ const features = [
 
 
 export default function HomePage() {
-  console.log("page-start");
+  const searchParams = useSearchParams();
+  const isPreview = searchParams?.get('appwrite-preview') === '1';
+  
+  console.log("page-start", { isPreview });
+  
+  // If preview mode, return minimal HTML to avoid client hooks during SSR
+  if (isPreview) {
+    return (
+      <main className="flex-1">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold">CAPS Tutor</h1>
+            <p className="text-muted-foreground mt-2">AI-Powered Learning Platform</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
   
   try {
     // Log environment and component initialization
