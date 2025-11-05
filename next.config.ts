@@ -37,6 +37,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Enable compression
   compress: true,
+  // Standalone output for Appwrite deployment
+  // This creates a minimal server bundle in .next/standalone
+  output: 'standalone',
   // Externalize packages to reduce bundle size (moved from experimental in Next.js 15)
   serverExternalPackages: [
     'firebase',
