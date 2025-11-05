@@ -114,7 +114,8 @@ export function NewsSection() {
 }
 
 export function BlogSection() {
-  const recentPosts = blogPosts.filter(post => !post.comingSoon).slice(0, 3);
+  // Defensive check: ensure blogPosts is defined and is an array
+  const recentPosts = (Array.isArray(blogPosts) ? blogPosts : []).filter(post => !post.comingSoon).slice(0, 3);
 
   return (
     <section className="py-24 sm:py-32 bg-background">

@@ -41,7 +41,18 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  console.log("layout-start");
+  
   try {
+    // Log environment variables status
+    const envData = {
+      NEXT_PUBLIC_APPWRITE_ENDPOINT: typeof process !== 'undefined' ? !!process.env?.NEXT_PUBLIC_APPWRITE_ENDPOINT : 'N/A',
+      NEXT_PUBLIC_APPWRITE_PROJECT_ID: typeof process !== 'undefined' ? !!process.env?.NEXT_PUBLIC_APPWRITE_PROJECT_ID : 'N/A',
+      NEXT_PUBLIC_APPWRITE_DATABASE_ID: typeof process !== 'undefined' ? !!process.env?.NEXT_PUBLIC_APPWRITE_DATABASE_ID : 'N/A',
+      NODE_ENV: typeof process !== 'undefined' ? process.env?.NODE_ENV : 'N/A',
+    };
+    console.log("layout-data", envData);
+    
     return (
       <html lang="en" suppressHydrationWarning>
         <body

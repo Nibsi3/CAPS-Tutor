@@ -32,9 +32,19 @@ const features = [
 
 
 export default function HomePage() {
-  return (
-    <ErrorBoundary>
-      <main className="flex-1">
+  console.log("page-start");
+  
+  try {
+    // Log environment and component initialization
+    const data = {
+      timestamp: new Date().toISOString(),
+      isClient: typeof window !== 'undefined',
+    };
+    console.log("page-data", data);
+    
+    return (
+      <ErrorBoundary>
+        <main className="flex-1">
         <div className="relative isolate overflow-hidden">
           {/* Decorative element from previous design, can be kept for visual flair */}
           <div
@@ -164,4 +174,8 @@ export default function HomePage() {
     </main>
     </ErrorBoundary>
   );
+  } catch (e) {
+    console.error("page-error", e);
+    throw e; // Re-throw to let ErrorBoundary handle it
+  }
 }
