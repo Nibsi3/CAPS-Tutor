@@ -40,6 +40,10 @@ const nextConfig: NextConfig = {
   // Standalone output for Appwrite deployment
   // This creates a minimal server bundle in .next/standalone
   output: 'standalone',
+  // Disable source maps in production for faster builds
+  productionBrowserSourceMaps: false,
+  // Optimize build performance
+  swcMinify: true,
   // Externalize packages to reduce bundle size (moved from experimental in Next.js 15)
   serverExternalPackages: [
     'firebase',
@@ -108,12 +112,15 @@ const nextConfig: NextConfig = {
     // Reduce memory usage by limiting parallel processing
     if (!dev) {
       config.parallelism = 1;
-      // Limit chunk count to reduce memory
+      // Limit chunk count to reduce memory and speed up build
       config.optimization = {
         ...config.optimization,
         ...(config.optimization || {}),
         usedExports: false, // Disable tree shaking analysis for faster builds
+        minimize: true, // Ensure minification is enabled
       };
+      // Disable source maps for faster builds
+      config.devtool = false;
     }
 
     // Exclude large files from webpack processing
