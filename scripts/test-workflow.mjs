@@ -87,3 +87,5 @@ console.log('   2. Run: node scripts/generate_questions_with_metadata.mjs');
 console.log('   3. Run: node scripts/upload_to_firebase_with_metadata.mjs');
 console.log('\n   Or run all at once: node scripts/run_full_workflow.mjs');
 
+
+

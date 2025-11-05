@@ -1,17 +1,88 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 .next/
 out/
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables
 .env
 .env.*
 .env.local
+.env.production
+
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.log
+
+# OS files
 .DS_Store
 Thumbs.db
 *.swp
+*.swo
+*~
+
+# IDE
 .idea/
 .vscode/
+*.sublime-*
+
+# Testing
 coverage/
-*.log
+.nyc_output/
+
+# Large binary files - should not be in git
+past papers/
+Past Paper Images/
+extracted_papers/
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.svg
+*.ico
+*.webp
+*.bmp
+*.tiff
+
+# Next.js build cache (can be very large)
+.next/cache/
+.next/static/
+
+# Large JSON data files - should not be in git
+pexels-image-results.json
+all-papers-image-conversions.json
+ls-p2-image-conversions.json
+missing-images-report.json
+questions_summary.json
+extraction_summary.json
+extracted_papers/**/*.json
+scripts/*-image-conversions.json
+scripts/missing-images-report.json
+
+# Cache and temporary files
+.cache/
+*.tmp
+*.temp
+.temp/
+.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Large source files that may be generated
+# (Keep questions.ts for now as it's source code, but consider moving to database)
