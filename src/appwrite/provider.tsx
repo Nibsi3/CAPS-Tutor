@@ -130,8 +130,32 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
 export const useAppwrite = (): AppwriteServicesAndUser => {
   const context = useContext(AppwriteContext);
 
+  // If context is undefined (AppwriteProvider not rendered), return safe fallbacks
+  // This happens during SSR/preview mode when env vars are missing
   if (context === undefined) {
-    throw new Error('useAppwrite must be used within an AppwriteProvider.');
+    // During SSR or when AppwriteProvider is missing, return safe fallbacks
+    if (typeof window === 'undefined') {
+      // Return mock objects for SSR to prevent build errors
+      return {
+        client: {} as Client,
+        account: {} as Account,
+        databases: {} as Databases,
+        user: null,
+        isUserLoading: false,
+        userError: null,
+      };
+    }
+    // On client-side, if AppwriteProvider doesn't exist, return safe fallbacks
+    // This allows components to render without crashing
+    console.warn('useAppwrite: AppwriteProvider not found. Returning safe fallbacks.');
+    return {
+      client: {} as Client,
+      account: {} as Account,
+      databases: {} as Databases,
+      user: null,
+      isUserLoading: false,
+      userError: null,
+    };
   }
 
   // During SSR or when services aren't available, return safe fallbacks
@@ -149,9 +173,17 @@ export const useAppwrite = (): AppwriteServicesAndUser => {
         userError: null,
       };
     }
-    // On client-side, if services aren't available after mount, throw error
-    // This indicates a configuration issue
-    throw new Error('Appwrite core services not available. Check AppwriteProvider props.');
+    // On client-side, if services aren't available after mount, return fallbacks
+    // Don't throw - just return safe fallbacks to allow rendering
+    console.warn('useAppwrite: Appwrite services not available. Returning safe fallbacks.');
+    return {
+      client: {} as Client,
+      account: {} as Account,
+      databases: {} as Databases,
+      user: null,
+      isUserLoading: false,
+      userError: null,
+    };
   }
 
   return {

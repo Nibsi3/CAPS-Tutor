@@ -15,6 +15,8 @@ export const useLanguage = () => useContext(LanguageContext);
 export const useSetLanguage = () => useContext(SetLanguageContext);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
+  // useAppwrite() now handles missing AppwriteProvider gracefully
+  // It returns safe fallbacks instead of throwing
   const { user } = useUser();
 
   const userProfileRef = useMemoAppwrite(() => {
