@@ -11,7 +11,7 @@ interface HomePageProps {
 export default async function HomePage({ searchParams }: HomePageProps) {
   // Check for preview mode server-side
   const params = await searchParams;
-  const isPreview = params?.appwrite-preview === '1' || params?.['appwrite-preview'] === '1';
+  const isPreview = params?.['appwrite-preview'] === '1' || params?.['appwrite-preview'] === '1';
   
   // If preview mode, return minimal HTML immediately (no client hooks)
   if (isPreview) {
