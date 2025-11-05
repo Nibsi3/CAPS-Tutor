@@ -15,7 +15,7 @@ import {
 import { grades, subjectColors, compulsorySubjectsByGrade } from "@/lib/data";
 import { BookOpen, GraduationCap, ArrowRight, Sparkles, CheckCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUser } from '@/firebase';
+import { useUser } from '@/appwrite';
 
 /**
  * Subject descriptions for better user understanding

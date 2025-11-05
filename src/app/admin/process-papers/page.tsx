@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUser } from '@/firebase';
+import { useUser } from '@/appwrite';
 import { Loader, Play, CheckCircle, XCircle } from 'lucide-react';
 
 export default function ProcessPastPapersPage() {
@@ -26,7 +26,7 @@ export default function ProcessPastPapersPage() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ userId: user.uid }),
+                body: JSON.stringify({ userId: user.$id }),
             });
 
             const data = await response.json();

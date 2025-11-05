@@ -3,13 +3,11 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import { useContext } from 'react';
-import { FirebaseContext } from '@/firebase/provider';
+import { useUser } from '@/appwrite';
 
 export function PublicHeader() {
-  // Safely get user from context - handles case where Firebase might not be initialized yet
-  const context = useContext(FirebaseContext);
-  const user = context?.user ?? null;
+  // Get user from Appwrite
+  const { user } = useUser();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">

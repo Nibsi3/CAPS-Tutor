@@ -12,7 +12,7 @@ import {
   Loader,
   Play,
 } from "lucide-react"
-import { useUser } from '@/firebase';
+import { useUser } from '@/appwrite';
 import { useRouter } from 'next/navigation';
 
 import { Badge } from "@/components/ui/badge"
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/card"
 
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
-import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { AppwriteClientProvider } from '@/appwrite/client-provider';
 
 const ADMIN_EMAIL = 'cameronfalck03@gmail.com';
 
@@ -149,8 +149,8 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   return (
-    <FirebaseClientProvider>
+    <AppwriteClientProvider>
       <AdminLayoutContent>{children}</AdminLayoutContent>
-    </FirebaseClientProvider>
+    </AppwriteClientProvider>
   )
 }
