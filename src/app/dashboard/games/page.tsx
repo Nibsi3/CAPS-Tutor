@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Loader, Gamepad2, Trophy, Star, Sparkles, Home, RotateCcw, CheckCircle2, XCircle, Zap, Flame } from "lucide-react";
-import { useUser, useDoc, useMemoFirebase, useFirestore } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useUser, useDoc, useMemoAppwrite } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
 import { useLanguage } from '@/components/language-provider';
 import { translations } from '@/lib/translations';
 import { cn } from '@/lib/utils';
@@ -60,14 +60,17 @@ const gamesByGradeAndSubject: Record<number, Record<string, Array<{ id: string; 
 
 export default function GamesPage() {
   const { user } = useUser();
-  const firestore = useFirestore();
   const lang = useLanguage();
   const t = translations[lang];
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    return doc(firestore, `users/${user.uid}`);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
   
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<{ gradeLevel?: number; subjects?: string[] }>(userProfileRef);
   const userGrade = userProfile?.gradeLevel || 0;

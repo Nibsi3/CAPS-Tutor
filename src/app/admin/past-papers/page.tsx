@@ -32,10 +32,9 @@ import {
 import { processPastPaper } from "@/ai/flows/past-paper-processing";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, addDoc, deleteDoc, updateDoc, writeBatch, DocumentReference } from 'firebase/firestore';
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
+import { useUser, useDatabases, useCollection, useMemoAppwrite } from "@/appwrite";
+import { appwriteConfig } from "@/appwrite/config";
+import { Query, ID } from "appwrite";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 
@@ -131,7 +130,7 @@ const languageKeywords: Record<string, string[]> = {
 export default function PastPaperUploaderPage() {
   const { toast } = useToast();
   const { user } = useUser();
-  const firestore = useFirestore();
+  const databases = useDatabases();
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [pairedFiles, setPairedFiles] = useState<PairedFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -167,10 +166,12 @@ export default function PastPaperUploaderPage() {
   }, [pairedFiles.length, toast]);
 
 
-  const pastPapersCollectionRef = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, `pastPapers`);
-  }, [firestore]);
+  const pastPapersCollectionRef = useMemoAppwrite(() => {
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'pastPapers',
+    };
+  }, []);
 
   const { data: processedPapers, isLoading: arePapersLoading } = useCollection<ProcessedPaper>(pastPapersCollectionRef);
 
@@ -403,7 +404,7 @@ export default function PastPaperUploaderPage() {
   };
 
   const handleProcessUploads = async () => {
-    if (!user || !pastPapersCollectionRef || !firestore || pairedFiles.length === 0) {
+    if (!user || !pastPapersCollectionRef || !databases || pairedFiles.length === 0) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -426,7 +427,7 @@ export default function PastPaperUploaderPage() {
         : pair.subject;
 
       const paperDocData = {
-        teacherId: user.uid,
+        teacherId: user.$id,
         gradeLevel: 12,
         subject: subjectName,
         year: pair.paper.year,
@@ -438,7 +439,8 @@ export default function PastPaperUploaderPage() {
       };
 
       try {
-        const docRef = await addDoc(pastPapersCollectionRef, paperDocData);
+        const docId = ID.unique();
+        await databases.createDocument(appwriteConfig.databaseId, 'pastPapers', docId, paperDocData);
         setProcessedInBatch(prev => prev + 1);
 
         // This part now runs sequentially for each file
@@ -447,8 +449,8 @@ export default function PastPaperUploaderPage() {
           const memoDataUri = await toDataUri(pair.memo.file);
           
           const result = await processPastPaper({
-            docId: docRef.id,
-            userId: user.uid,
+            docId: docId,
+            userId: user.$id,
             subject: pair.subject,
             grade: 12,
             year: parseInt(pair.paper.year),
@@ -456,7 +458,7 @@ export default function PastPaperUploaderPage() {
             memoDataUri,
           });
 
-          await updateDoc(docRef, {
+          await databases.updateDocument(appwriteConfig.databaseId, 'pastPapers', docId, {
               status: result.success ? 'Processed' : 'Failed',
               questionCount: result.generatedQuestions?.length || 0,
               generatedQuestions: result.generatedQuestions || [],
@@ -470,8 +472,8 @@ export default function PastPaperUploaderPage() {
             });
           }
         } catch (error) {
-            console.error("AI flow or update failed for doc ID:", docRef.id, error);
-            await updateDoc(docRef, { status: 'Failed' });
+            console.error("AI flow or update failed for doc ID:", docId, error);
+            await databases.updateDocument(appwriteConfig.databaseId, 'pastPapers', docId, { status: 'Failed' });
             toast({
                   variant: "destructive",
                   title: `Processing Error: ${pair.paper.file.name}`,
@@ -479,12 +481,8 @@ export default function PastPaperUploaderPage() {
             });
         }
       } catch (serverError) {
-        const permissionError = new FirestorePermissionError({
-          path: pastPapersCollectionRef.path,
-          operation: 'create',
-          requestResourceData: paperDocData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
+        // TODO: Handle Appwrite errors
+        console.error('Failed to create document:', serverError);
         toast({
           variant: 'destructive',
           title: 'Upload Failed',
@@ -529,27 +527,29 @@ export default function PastPaperUploaderPage() {
   }, [reprocessingId]);
 
   const handleReprocessPaper = async (paper: ProcessedPaper) => {
-    if (!user || !firestore) return;
+    if (!user || !databases) return;
     setReprocessingId(paper.id);
 
-    const docRef = doc(firestore, `pastPapers`, paper.id);
-
     try {
-        await updateDoc(docRef, { status: 'Processing', questionCount: 0, generatedQuestions: [] });
+        await databases.updateDocument(appwriteConfig.databaseId, 'pastPapers', paper.id, { 
+          status: 'Processing', 
+          questionCount: 0, 
+          generatedQuestions: [] 
+        });
 
         // This is a key limitation: we do not have the file content here anymore.
         // The AI flow MUST be able to re-process without the original PDFs.
         // The prompt is updated to generate questions based on metadata only.
         const result = await processPastPaper({
             docId: paper.id,
-            userId: user.uid,
+            userId: user.$id,
             subject: paper.subject.replace(/ Paper \d/,''), // Send base subject
             grade: paper.gradeLevel || 12,
             year: parseInt(paper.year),
             // paperDataUri and memoDataUri are omitted
         });
 
-        await updateDoc(docRef, {
+        await databases.updateDocument(appwriteConfig.databaseId, 'pastPapers', paper.id, {
             status: result.success ? 'Processed' : 'Failed',
             questionCount: result.generatedQuestions?.length || 0,
             generatedQuestions: result.generatedQuestions || [],
@@ -570,7 +570,7 @@ export default function PastPaperUploaderPage() {
 
     } catch (error) {
         console.error("Reprocessing failed:", error);
-        await updateDoc(docRef, { status: 'Failed' });
+        await databases.updateDocument(appwriteConfig.databaseId, 'pastPapers', paper.id, { status: 'Failed' });
         toast({
             variant: "destructive",
             title: "Reprocessing Error",
@@ -592,7 +592,7 @@ export default function PastPaperUploaderPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: user.uid }),
+        body: JSON.stringify({ userId: user.$id }),
       });
 
       const result = await response.json();
@@ -631,7 +631,7 @@ export default function PastPaperUploaderPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: user.uid }),
+        body: JSON.stringify({ userId: user.$id }),
       });
 
       const result = await response.json();
@@ -661,70 +661,53 @@ export default function PastPaperUploaderPage() {
   };
 
   const handleDeleteProcessedPaper = async (id: string) => {
-    if (!firestore) return;
-    const docRef = doc(firestore, 'pastPapers', id);
+    if (!databases) return;
     
-    deleteDoc(docRef)
+    databases.deleteDocument(appwriteConfig.databaseId, 'pastPapers', id)
       .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'delete',
-        });
-        errorEmitter.emit('permission-error', permissionError);
+        console.error('Failed to delete document:', serverError);
       });
   };
 
-  const handleBulkDelete = (paperIds?: string[]) => {
+  const handleBulkDelete = async (paperIds?: string[]) => {
     const idsToDelete = paperIds || selectedPapers;
-    if (!firestore || idsToDelete.length === 0) return;
+    if (!databases || idsToDelete.length === 0) return;
     
-    const batch = writeBatch(firestore);
-    idsToDelete.forEach(id => {
-        const docRef = doc(firestore, `pastPapers`, id);
-        batch.delete(docRef);
-    });
-
-    batch.commit()
-      .then(() => {
-        toast({
-            title: "Bulk Delete Successful",
-            description: `${idsToDelete.length} entries have been removed.`,
-        });
-        if (!paperIds) {
-          setSelectedPapers([]);
-        }
-      })
-      .catch(serverError => {
-        if (idsToDelete.length > 0) {
-            const firstDocRef = doc(firestore, `pastPapers`, idsToDelete[0]);
-            const permissionError = new FirestorePermissionError({
-                path: firstDocRef.path,
-                operation: 'delete',
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        }
+    try {
+      await Promise.all(idsToDelete.map(id => 
+        databases.deleteDocument(appwriteConfig.databaseId, 'pastPapers', id)
+      ));
+      
+      toast({
+        title: "Bulk Delete Successful",
+        description: `${idsToDelete.length} entries have been removed.`,
       });
+      if (!paperIds) {
+        setSelectedPapers([]);
+      }
+    } catch (serverError) {
+      console.error('Bulk delete failed:', serverError);
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: "Some entries could not be deleted.",
+      });
+    }
   }
   
   const handleSubjectUpdate = async () => {
-    if (!editingId || !firestore) return;
-
-    const docRef = doc(firestore, 'pastPapers', editingId);
+    if (!editingId || !databases) return;
     
     try {
-      await updateDoc(docRef, { subject: editingSubject });
+      await databases.updateDocument(appwriteConfig.databaseId, 'pastPapers', editingId, { 
+        subject: editingSubject 
+      });
       toast({
         title: "Subject Updated",
         description: "The subject name has been saved.",
       });
     } catch (error) {
        console.error("Subject update failed:", error);
-       const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-          requestResourceData: { subject: editingSubject },
-        });
-       errorEmitter.emit('permission-error', permissionError);
        toast({
         variant: "destructive",
         title: "Update Failed",

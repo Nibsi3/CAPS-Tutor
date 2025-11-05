@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { lessons, grades, placeholderLessons, subjectColors } from "@/lib/data";
 import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator, Loader, UserCheck, Settings, MessageSquare, Heart, Sparkles, Users, TrendingUp, Clock, Cpu, Laptop, Plane, ShoppingBag, UtensilsCrossed, Ruler } from "lucide-react";
 import { cn } from '@/lib/utils';
-import { useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useDoc, useUser, useDatabases, useMemoAppwrite } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
 import {
   Dialog,
   DialogContent,
@@ -64,15 +64,18 @@ const subjectIcons: Record<string, React.ElementType> = {
 
 export default function LessonsPage() {
   const { user } = useUser();
-  const firestore = useFirestore();
   const lang = useLanguage();
   const t = translations[lang];
 
   // Fetch user profile
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    return doc(firestore, `users/${user.uid}`);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<{gradeLevel: number, subjects: string[]}>(userProfileRef);
 
   // Manual filters state

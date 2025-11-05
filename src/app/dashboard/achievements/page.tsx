@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useDoc, useCollection, useMemoFirebase, useFirestore } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { useUser, useDoc, useCollection, useMemoAppwrite, useDatabases } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
+import { Query } from 'appwrite';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +38,7 @@ import { updateUnlockedAchievements } from '@/lib/achievement-tracking';
 
 export default function AchievementsPage() {
   const { user } = useUser();
-  const firestore = useFirestore();
+  const databases = useDatabases();
   const [unlockedAchievements, setUnlockedAchievements] = useState<Set<string>>(new Set());
   const [newUnlockedAchievement, setNewUnlockedAchievement] = useState<Achievement | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -46,18 +47,28 @@ export default function AchievementsPage() {
   const [viewMode, setViewMode] = useState<'achievements' | 'leaderboard'>('achievements');
 
   // Get user profile
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
 
   const { data: userProfile } = useDoc(userProfileRef);
 
   // Get student progress for score calculations
-  const progressQuery = useMemoFirebase(() => {
+  const progressQuery = useMemoAppwrite(() => {
     if (!user) return null;
-    return collection(firestore, `users/${user.uid}/studentProgress`);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'studentProgress',
+      queries: [
+        Query.equal('userId', user.$id),
+      ],
+    };
+  }, [user]);
 
   const { data: progressData } = useCollection(progressQuery);
 
@@ -85,14 +96,14 @@ export default function AchievementsPage() {
       }
       
       // Update user profile with unlocked achievements
-      if (newlyUnlocked.length > 0 && user && firestore) {
+      if (newlyUnlocked.length > 0 && user && databases) {
         const allUnlocked = Array.from(newUnlockedSet);
-        updateUnlockedAchievements(firestore, user.uid, allUnlocked);
+        updateUnlockedAchievements(databases, user.$id, allUnlocked);
       }
     }
 
     setIsLoading(false);
-  }, [user, userProfile, progressData, unlockedAchievements]);
+  }, [user, userProfile, progressData, unlockedAchievements, databases]);
 
   // Initialize unlocked achievements from user profile
   useEffect(() => {
