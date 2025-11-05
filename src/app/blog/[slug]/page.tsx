@@ -6,11 +6,22 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
 
+// Generate only the most recent 10 posts at build time for faster builds
+// Other posts will be generated on-demand via ISR
 export async function generateStaticParams() {
-  return blogPosts.map((post) => ({
+  // Sort by date (most recent first) and take top 10
+  const recentPosts = [...blogPosts]
+    .filter(post => !post.comingSoon)
+    .sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime())
+    .slice(0, 10);
+  
+  return recentPosts.map((post) => ({
     slug: post.slug,
   }));
 }
+
+// Enable ISR - pages will be regenerated every hour if accessed
+export const revalidate = 3600;
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

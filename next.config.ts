@@ -42,6 +42,23 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   // Disable source maps in production for faster builds
   productionBrowserSourceMaps: false,
+  // Experimental optimizations for faster builds
+  experimental: {
+    // Force SWC transforms for faster compilation
+    forceSwcTransforms: true,
+    // Optimize CSS processing
+    optimizeCss: true,
+  },
+  // Generate build ID from git commit for better caching
+  generateBuildId: async () => {
+    // Use git commit hash if available, otherwise use timestamp
+    try {
+      const { execSync } = require('child_process');
+      return execSync('git rev-parse --short HEAD').toString().trim();
+    } catch {
+      return `build-${Date.now()}`;
+    }
+  },
   // Externalize packages to reduce bundle size (moved from experimental in Next.js 15)
   serverExternalPackages: [
     // Firebase removed - migrating to Appwrite
@@ -71,14 +88,15 @@ const nextConfig: NextConfig = {
       '**/*.sh',
     ],
   },
-  // Simplified webpack config for faster builds
+  // Optimized webpack config for faster builds
   webpack: (config, { isServer, dev }) => {
     // Only apply optimizations in production
     if (!dev) {
-      // Reduce parallel processing to avoid memory issues
-      config.parallelism = 1;
+      // Increase parallelism for faster builds (use 4 workers)
+      // This balances speed with memory usage
+      config.parallelism = 4;
       
-      // Simplify optimization settings for faster builds
+      // Optimize build settings for faster compilation
       config.optimization = {
         ...config.optimization,
         // Disable expensive analysis for faster builds
@@ -90,13 +108,20 @@ const nextConfig: NextConfig = {
       // Disable source maps for faster builds
       config.devtool = false;
       
-      // Simplify chunk splitting - less analysis = faster builds
+      // Optimize chunk splitting for better caching and faster builds
       if (!isServer) {
         config.optimization.splitChunks = {
           chunks: 'all',
           cacheGroups: {
             default: false,
             vendors: false,
+            framework: {
+              chunks: 'all',
+              name: 'framework',
+              test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+              priority: 40,
+              enforce: true,
+            },
           },
         };
       }
@@ -107,7 +132,7 @@ const nextConfig: NextConfig = {
       ...config.resolve,
       cache: true,
       symlinks: false,
-    };
+      };
 
     // Exclude large files from webpack processing
     config.module = config.module || {};
