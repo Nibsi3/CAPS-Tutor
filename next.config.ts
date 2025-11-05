@@ -37,8 +37,6 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Enable compression
   compress: true,
-  // Optimize build performance
-  swcMinify: true,
   // Reduce memory usage during build
   webpack: (config, { isServer }) => {
     if (!isServer) {
