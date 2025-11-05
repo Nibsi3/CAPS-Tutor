@@ -47,9 +47,12 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
   account: providedAccount,
   databases: providedDatabases,
 }) => {
-  const client = providedClient || getClient();
-  const account = providedAccount || getAccount();
-  const databases = providedDatabases || getDatabases();
+  // Use provided services or get new ones, but only on client-side
+  // On server-side, use provided services or null to prevent initialization
+  const isClient = typeof window !== 'undefined';
+  const client = providedClient || (isClient ? getClient() : null);
+  const account = providedAccount || (isClient ? getAccount() : null);
+  const databases = providedDatabases || (isClient ? getDatabases() : null);
 
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
     user: null,
@@ -59,16 +62,39 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
 
   // Effect to check auth state and set up listener
   useEffect(() => {
+    // Only run on client-side and if account is available
+    if (typeof window === 'undefined' || !account) {
+      setUserAuthState({ user: null, isUserLoading: false, userError: null });
+      return;
+    }
+
     setUserAuthState({ user: null, isUserLoading: true, userError: null });
 
-    // Check current session
-    account.get()
+    // Create a timeout to prevent indefinite hanging
+    const timeout = setTimeout(() => {
+      console.warn('AppwriteProvider: account.get() timed out after 5 seconds');
+      setUserAuthState({ 
+        user: null, 
+        isUserLoading: false, 
+        userError: new Error('Appwrite authentication check timed out') 
+      });
+    }, 5000); // 5 second timeout
+
+    // Check current session with timeout protection
+    Promise.race([
+      account.get(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 5000)
+      )
+    ])
       .then((user) => {
-        setUserAuthState({ user, isUserLoading: false, userError: null });
+        clearTimeout(timeout);
+        setUserAuthState({ user: user as any, isUserLoading: false, userError: null });
       })
       .catch((error) => {
+        clearTimeout(timeout);
         // If no session exists, that's fine - user is just not logged in
-        if (error.code === 401 || error.type === 'general_unauthorized_scope') {
+        if (error.code === 401 || error.type === 'general_unauthorized_scope' || error.message === 'Timeout') {
           setUserAuthState({ user: null, isUserLoading: false, userError: null });
         } else {
           console.error("AppwriteProvider: get account error:", error);

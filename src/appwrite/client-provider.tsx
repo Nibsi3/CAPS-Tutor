@@ -10,6 +10,16 @@ interface AppwriteClientProviderProps {
 
 export function AppwriteClientProvider({ children }: AppwriteClientProviderProps) {
   const appwriteServices = useMemo(() => {
+    // Only initialize Appwrite on the client side
+    // On server-side, return null services to prevent blocking
+    if (typeof window === 'undefined') {
+      return {
+        client: null,
+        account: null,
+        databases: null,
+      };
+    }
+    
     // Initialize Appwrite on the client side, once per component mount.
     return {
       client: getClient(),
@@ -20,9 +30,9 @@ export function AppwriteClientProvider({ children }: AppwriteClientProviderProps
 
   return (
     <AppwriteProvider
-      client={appwriteServices.client}
-      account={appwriteServices.account}
-      databases={appwriteServices.databases}
+      client={appwriteServices.client || undefined}
+      account={appwriteServices.account || undefined}
+      databases={appwriteServices.databases || undefined}
     >
       {children}
     </AppwriteProvider>

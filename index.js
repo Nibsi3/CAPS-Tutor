@@ -1,7 +1,7 @@
 // Entry point for Appwrite Functions
-// This script finds and starts the Next.js standalone server
+// Simplified entry point that directly requires server.js instead of spawning
+// This avoids potential issues with spawn in Appwrite Functions environment
 
-const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -31,42 +31,23 @@ if (!serverPath) {
 }
 
 // Set environment variables
-const env = {
-  ...process.env,
-  PORT: process.env.PORT || '3000',
-  HOSTNAME: process.env.HOSTNAME || '0.0.0.0',
-  NODE_ENV: process.env.NODE_ENV || 'production',
-};
+process.env.PORT = process.env.PORT || '3000';
+process.env.HOSTNAME = process.env.HOSTNAME || '0.0.0.0';
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
-console.log(`Starting Next.js server on port ${env.PORT}`);
+console.log(`Starting Next.js server on port ${process.env.PORT}`);
 console.log(`Server path: ${serverPath}`);
 console.log(`Working directory: ${process.cwd()}`);
 
-// Start the server
-const server = spawn('node', [serverPath], {
-  stdio: 'inherit',
-  env: env,
-  cwd: path.dirname(serverPath),
-});
+// Change to the directory containing server.js
+process.chdir(path.dirname(serverPath));
 
-server.on('error', (err) => {
-  console.error('Failed to start server:', err);
+// Directly require the server.js file
+// This is simpler and more reliable than spawn in Appwrite Functions
+try {
+  require(serverPath);
+} catch (error) {
+  console.error('Failed to start server:', error);
   process.exit(1);
-});
-
-server.on('exit', (code) => {
-  console.error(`Server exited with code ${code}`);
-  process.exit(code || 1);
-});
-
-// Handle termination signals
-process.on('SIGTERM', () => {
-  console.log('Received SIGTERM, shutting down gracefully');
-  server.kill('SIGTERM');
-});
-
-process.on('SIGINT', () => {
-  console.log('Received SIGINT, shutting down gracefully');
-  server.kill('SIGINT');
-});
+}
 

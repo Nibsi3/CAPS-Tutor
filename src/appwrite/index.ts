@@ -8,6 +8,16 @@ let accountInstance: Account | null = null;
 let databasesInstance: Databases | null = null;
 
 export function getClient(): Client {
+  // Only initialize on client-side to prevent server-side API calls
+  if (typeof window === 'undefined') {
+    // Return a mock client for server-side rendering
+    // This prevents server-side Appwrite API calls that could block startup
+    return {
+      setEndpoint: () => {},
+      setProject: () => {},
+    } as any;
+  }
+
   if (!clientInstance) {
     // Validate project ID before initializing
     if (!appwriteConfig.projectId) {
@@ -26,6 +36,11 @@ export function getClient(): Client {
 }
 
 export function getAccount(): Account {
+  // Only initialize on client-side
+  if (typeof window === 'undefined') {
+    return {} as any;
+  }
+
   const client = getClient();
   if (!accountInstance) {
     accountInstance = new Account(client);
@@ -34,6 +49,11 @@ export function getAccount(): Account {
 }
 
 export function getDatabases(): Databases {
+  // Only initialize on client-side
+  if (typeof window === 'undefined') {
+    return {} as any;
+  }
+
   const client = getClient();
   if (!databasesInstance) {
     databasesInstance = new Databases(client);
