@@ -11,8 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useAuth, useUser } from "@/firebase"
-import { logOut } from "@/firebase/auth/social-auth"
+import { useAccount, useUser } from "@/appwrite"
+import { logOut } from "@/appwrite/auth/social-auth"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "@/components/language-provider"
@@ -20,13 +20,13 @@ import { translations } from "@/lib/translations"
 
 export function UserNav() {
   const { user, isUserLoading } = useUser();
-  const auth = useAuth();
+  const account = useAccount();
   const router = useRouter();
   const lang = useLanguage();
   const t = translations[lang];
 
   const handleLogout = async () => {
-    await logOut(auth);
+    await logOut(account);
     router.push('/login');
   };
 
@@ -47,15 +47,14 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || "User Avatar"} />}
-            <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}</AvatarFallback>
+            <AvatarFallback>{(user.name || user.email || 'U').charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.displayName}</p>
+            <p className="text-sm font-medium leading-none">{user.name || 'User'}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}
             </p>

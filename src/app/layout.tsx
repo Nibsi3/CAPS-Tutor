@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { AppwriteClientProvider } from '@/appwrite/client-provider';
 import { PT_Sans, Space_Grotesk, Source_Code_Pro } from 'next/font/google';
 import { LanguageProvider } from '@/components/language-provider';
 import { ConditionalPublicLayout } from '@/components/layout/ConditionalPublicLayout';
@@ -52,7 +52,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <FirebaseClientProvider>
+          <AppwriteClientProvider>
             <LanguageProvider>
               <div className="min-h-screen flex flex-col">
                 {/* Public header and footer only on public routes */}
@@ -62,7 +62,7 @@ export default function RootLayout({
               </div>
               <Toaster />
             </LanguageProvider>
-          </FirebaseClientProvider>
+          </AppwriteClientProvider>
         </ThemeProvider>
       </body>
     </html>

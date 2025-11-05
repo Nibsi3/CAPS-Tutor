@@ -11,9 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { signInWithGoogle } from '@/firebase/auth/social-auth';
-import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
+import { useUser, useAccount, useDatabases, useDoc, useMemoAppwrite } from '@/appwrite';
+import { signInWithGoogle, ensureUserProfile } from '@/appwrite/auth/social-auth';
+import { initiateEmailSignIn } from '@/appwrite/auth/email-auth';
+import { appwriteConfig } from '@/appwrite/config';
 import { Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -24,7 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { doc, getDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -33,8 +33,8 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const { user, isUserLoading } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const account = useAccount();
+  const databases = useDatabases();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,10 +48,14 @@ export default function LoginPage() {
     },
   });
   
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    return doc(firestore, `users/${user.uid}`);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<{subjects?: string[]}>(userProfileRef);
 
 
@@ -69,29 +73,18 @@ export default function LoginPage() {
   const handleSocialSignIn = async (provider: 'google') => {
     setIsSubmitting(true);
     try {
-      if (provider === 'google' && firestore) {
-        const userCred = await signInWithGoogle(auth, firestore);
-        if (userCred) {
-          // After sign-in and profile creation, check where to redirect
-          const profileSnap = await getDoc(doc(firestore, 'users', userCred.user.uid));
-          if (profileSnap.exists() && profileSnap.data().subjects?.length > 0) {
-            router.push('/dashboard');
-          } else {
-            router.push('/onboarding');
-          }
-        }
+      if (provider === 'google') {
+        await signInWithGoogle(account, databases);
+        // OAuth will redirect, so we don't need to handle the redirect here
+        // The redirect will happen automatically
       }
     } catch (error: any) {
       console.error(`${provider} Sign-In Error:`, error);
       
       let description = `Could not sign in with ${provider}. Please try again.`;
 
-      if (error.code === 'auth/popup-closed-by-user') {
-          setShowPopupError(true);
-      } else if (error.code === 'auth/account-exists-with-different-credential') {
-          description = 'An account already exists with the same email address but different sign-in credentials. Try signing in with the original method.';
-      } else if (error.code === 'auth/operation-not-allowed') {
-         description = `Sign-in with ${provider} is not enabled. Please enable it in your Firebase project's Authentication settings under "Sign-in method".`;
+      if (error.code === 401 || error.type === 'general_unauthorized_scope') {
+        description = 'OAuth sign-in failed. Please try again.';
       }
 
       toast({
@@ -99,28 +92,39 @@ export default function LoginPage() {
         title: "Authentication Error",
         description: description,
       });
-    } finally {
-       setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      const userCred = await initiateEmailSignIn(auth, values.email, values.password);
-      if (userCred && firestore) {
-        const profileSnap = await getDoc(doc(firestore, 'users', userCred.user.uid));
-        if (profileSnap.exists() && profileSnap.data().subjects?.length > 0) {
-          router.push('/dashboard');
-        } else {
+      await initiateEmailSignIn(account, values.email, values.password);
+      
+      // After successful sign-in, get the user and check profile
+      const currentUser = await account.get();
+      if (currentUser && databases) {
+        try {
+          const profile = await databases.getDocument(
+            appwriteConfig.databaseId,
+            'users',
+            currentUser.$id
+          );
+          if (profile && (profile as any).subjects?.length > 0) {
+            router.push('/dashboard');
+          } else {
+            router.push('/onboarding');
+          }
+        } catch (profileError: any) {
+          // Profile doesn't exist or error, redirect to onboarding
           router.push('/onboarding');
         }
       }
     } catch (signInError: any) {
       let description = 'An unexpected error occurred during sign-in.';
-      if (signInError.code === 'auth/wrong-password' || signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/invalid-password' || signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-email') {
+      if (signInError.code === 401 || signInError.type === 'general_unauthorized_scope') {
         description = 'The email or password you entered is incorrect. Please try again.';
-      } else if (signInError.code === 'auth/too-many-requests') {
+      } else if (signInError.code === 429) {
         description = 'Access to this account has been temporarily disabled due to many failed login attempts. You can reset your password or try again later.';
       }
       toast({
@@ -128,7 +132,7 @@ export default function LoginPage() {
         title: 'Sign In Failed',
         description: description,
       });
-      setIsSubmitting(false); // Only set to false on error, success will redirect
+      setIsSubmitting(false);
     }
   };
 
@@ -151,13 +155,12 @@ export default function LoginPage() {
             <AlertDialogDescription>
               The sign-in pop-up was closed. This usually happens because your application's domain isn't authorized for sign-in.
               <br /><br />
-              Please go to your Firebase project's Authentication settings and add this domain to the list of "Authorized domains".
-              The correct value to add is the hostname, for example: `my-app-12345.cloudworkstations.dev` (without `https://` or port numbers).
+              Please go to your Appwrite project's settings and add this domain to the list of authorized domains.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogAction asChild>
-            <a href={auth?.app?.options?.projectId ? `https://console.firebase.google.com/project/${auth.app.options.projectId}/authentication/settings` : '#'} target="_blank" rel="noopener noreferrer" onClick={() => setShowPopupError(false)}>
-              Go to Firebase Settings
+            <a href={`${appwriteConfig.endpoint.replace('/v1', '')}/console/project-${appwriteConfig.projectId}/auth`} target="_blank" rel="noopener noreferrer" onClick={() => setShowPopupError(false)}>
+              Go to Appwrite Settings
             </a>
           </AlertDialogAction>
         </AlertDialogContent>

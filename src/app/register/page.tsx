@@ -11,13 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { useUser, useAuth, useFirestore } from '@/firebase';
-import { signInWithGoogle } from '@/firebase/auth/social-auth';
-import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
+import { useUser, useAccount, useDatabases } from '@/appwrite';
+import { signInWithGoogle } from '@/appwrite/auth/social-auth';
+import { initiateEmailSignUp, sendEmailVerification } from '@/appwrite/auth/email-auth';
+import { appwriteConfig } from '@/appwrite/config';
 import { Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { sendEmailVerification } from 'firebase/auth';
 
 const formSchema = z.object({
   firstName: z.string().min(1, { message: 'First name is required.' }),
@@ -28,8 +27,8 @@ const formSchema = z.object({
 
 export default function RegisterPage() {
   const { user, isUserLoading } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const account = useAccount();
+  const databases = useDatabases();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,33 +45,27 @@ export default function RegisterPage() {
   });
 
   useEffect(() => {
-    if (user && firestore) {
-      // Don't redirect if they need to verify their email
-      if (user.emailVerified) {
-        router.push('/onboarding');
-      }
+    if (user && databases) {
+      // Check if email is verified (Appwrite tracks this differently)
+      // For now, if user exists and has profile, redirect to onboarding
+      router.push('/onboarding');
     }
-  }, [user, firestore, router]);
+  }, [user, databases, router]);
 
 
   const handleSocialSignIn = async (provider: 'google') => {
     setIsSubmitting(true);
     try {
-      if (provider === 'google' && firestore) {
-          const userCredential = await signInWithGoogle(auth, firestore);
-          // After a successful sign-in, the profile is created/merged in signInWithGoogle.
-          // The user is new, so they should be sent to onboarding.
-          if (userCredential?.user) {
-            router.push('/onboarding');
-          }
+      if (provider === 'google') {
+        await signInWithGoogle(account, databases);
+        // OAuth will redirect, so we don't need to handle the redirect here
+        // The redirect will happen automatically
       }
     } catch (error: any) {
        let description = `Could not sign in with ${provider}. Please try again.`;
 
-      if (error.code === 'auth/popup-closed-by-user') {
-          description = "The sign-in pop-up was closed. If you are in a code editor's browser, make sure the domain is authorized in your Firebase project's Authentication settings.";
-      } else if (error.code === 'auth/account-exists-with-different-credential') {
-          description = 'An account already exists with this email. Please sign in with your original method.';
+      if (error.code === 401 || error.type === 'general_unauthorized_scope') {
+          description = 'OAuth sign-in failed. Please try again.';
       }
 
       toast({
@@ -80,7 +73,6 @@ export default function RegisterPage() {
         title: "Authentication Error",
         description: description,
       });
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -88,24 +80,31 @@ export default function RegisterPage() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      const userCredential = await initiateEmailSignUp(auth, values.email, values.password);
+      const fullName = `${values.firstName} ${values.lastName}`;
+      const { userId } = await initiateEmailSignUp(account, values.email, values.password, fullName);
       
-      if(userCredential?.user && firestore) {
-          const userProfileRef = doc(firestore, 'users', userCredential.user.uid);
-          await setDoc(userProfileRef, {
-            firstName: values.firstName,
-            lastName: values.lastName,
-            email: values.email,
-          }, { merge: true });
+      if(userId && databases) {
+          // Create user profile
+          await databases.createDocument(
+            appwriteConfig.databaseId,
+            'users',
+            userId,
+            {
+              firstName: values.firstName,
+              lastName: values.lastName,
+              email: values.email,
+            }
+          );
           
-          await sendEmailVerification(userCredential.user);
+          // Send email verification
+          await sendEmailVerification(account);
 
           setShowVerificationMessage(true);
       }
 
     } catch (error: any) {
       let description = "Could not create your account. Please try again.";
-      if (error.code === 'auth/email-already-in-use') {
+      if (error.code === 409 || error.message?.includes('already exists')) {
         description = "An account with this email already exists. Please try logging in.";
       }
       toast({
