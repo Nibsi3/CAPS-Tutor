@@ -22,6 +22,11 @@ export async function initiateEmailSignIn(account: Account, email: string, passw
  * Sends email verification.
  */
 export async function sendEmailVerification(account: Account): Promise<void> {
-  await account.createVerification(process.env.NEXT_PUBLIC_APPWRITE_VERIFICATION_URL || window.location.origin + '/verify-email');
+  // Guard: Handle missing env var (becomes false in preview mode)
+  const verificationUrl = (typeof process !== 'undefined' && (process as any).env?.NEXT_PUBLIC_APPWRITE_VERIFICATION_URL) 
+    ? String((process as any).env.NEXT_PUBLIC_APPWRITE_VERIFICATION_URL)
+    : (typeof window !== 'undefined' ? window.location.origin + '/verify-email' : '/verify-email');
+  
+  await account.createVerification(verificationUrl);
 }
 
