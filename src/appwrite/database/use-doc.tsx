@@ -26,11 +26,14 @@ export function useDoc<T = any>(
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedDocRef && !!databases);
+  // Check if databases is a valid Appwrite Databases instance (has getDocument method)
+  const isValidDatabases = databases && typeof databases.getDocument === 'function';
+  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedDocRef && isValidDatabases);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!memoizedDocRef || !databases) {
+    // Only run on client-side and if we have valid databases instance
+    if (typeof window === 'undefined' || !memoizedDocRef || !isValidDatabases) {
       setData(null);
       setIsLoading(false);
       setError(null);
@@ -64,7 +67,7 @@ export function useDoc<T = any>(
     // Note: Appwrite doesn't have real-time subscriptions by default in the web SDK
     // You would need to use Appwrite Realtime or poll for updates
     // For now, we'll just fetch once
-  }, [memoizedDocRef, databases]);
+  }, [memoizedDocRef, databases, isValidDatabases]);
 
   return { data, isLoading, error };
 }

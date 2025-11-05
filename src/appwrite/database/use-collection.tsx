@@ -27,11 +27,14 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedCollectionRef && !!databases);
+  // Check if databases is a valid Appwrite Databases instance (has listDocuments method)
+  const isValidDatabases = databases && typeof databases.listDocuments === 'function';
+  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedCollectionRef && isValidDatabases);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!memoizedCollectionRef || !databases) {
+    // Only run on client-side and if we have valid databases instance
+    if (typeof window === 'undefined' || !memoizedCollectionRef || !isValidDatabases) {
       setData(null);
       setIsLoading(false);
       setError(null);
@@ -83,7 +86,7 @@ export function useCollection<T = any>(
     // Note: Appwrite doesn't have real-time subscriptions by default in the web SDK
     // You would need to use Appwrite Realtime or poll for updates
     // For now, we'll just fetch once
-  }, [memoizedCollectionRef, databases]);
+  }, [memoizedCollectionRef, databases, isValidDatabases]);
 
   return { data, isLoading, error };
 }

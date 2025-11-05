@@ -125,6 +125,7 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
 
 /**
  * Hook to access core Appwrite services and user authentication state.
+ * Returns safe fallbacks during SSR or when services aren't available.
  */
 export const useAppwrite = (): AppwriteServicesAndUser => {
   const context = useContext(AppwriteContext);
@@ -133,7 +134,23 @@ export const useAppwrite = (): AppwriteServicesAndUser => {
     throw new Error('useAppwrite must be used within an AppwriteProvider.');
   }
 
+  // During SSR or when services aren't available, return safe fallbacks
+  // This allows static pages to render without Appwrite services
   if (!context.areServicesAvailable || !context.client || !context.account || !context.databases) {
+    // Check if we're on the server-side
+    if (typeof window === 'undefined') {
+      // Return mock objects for SSR to prevent build errors
+      return {
+        client: {} as Client,
+        account: {} as Account,
+        databases: {} as Databases,
+        user: null,
+        isUserLoading: false,
+        userError: null,
+      };
+    }
+    // On client-side, if services aren't available after mount, throw error
+    // This indicates a configuration issue
     throw new Error('Appwrite core services not available. Check AppwriteProvider props.');
   }
 
@@ -150,18 +167,30 @@ export const useAppwrite = (): AppwriteServicesAndUser => {
 /** Hook to access Appwrite Account instance. */
 export const useAccount = (): Account => {
   const { account } = useAppwrite();
+  // Return mock account during SSR if services aren't available
+  if (!account || typeof account.get !== 'function') {
+    return {} as Account;
+  }
   return account;
 };
 
 /** Hook to access Appwrite Databases instance. */
 export const useDatabases = (): Databases => {
   const { databases } = useAppwrite();
+  // Return mock databases during SSR if services aren't available
+  if (!databases || typeof databases.listDocuments !== 'function') {
+    return {} as Databases;
+  }
   return databases;
 };
 
 /** Hook to access Appwrite Client instance. */
 export const useClient = (): Client => {
   const { client } = useAppwrite();
+  // Return mock client during SSR if services aren't available
+  if (!client || typeof client.setEndpoint !== 'function') {
+    return {} as Client;
+  }
   return client;
 };
 
