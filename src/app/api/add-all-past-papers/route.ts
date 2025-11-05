@@ -1,7 +1,32 @@
-import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { collection, addDoc, updateDoc, getDocs, query, where, getDoc, doc } from 'firebase/firestore';
+// Server-side only - use dynamic require to avoid client bundling
+const getFirebase = () => {
+  const { firebaseConfig } = require('@/firebase/config');
+  const { initializeApp, getApps, getApp } = require('firebase/app');
+  const { getFirestore, collection, addDoc, updateDoc, getDocs, query, where, getDoc, doc } = require('firebase/firestore');
+  
+  let firebaseApp;
+  if (!getApps().length) {
+    try {
+      firebaseApp = initializeApp();
+    } catch (e) {
+      firebaseApp = initializeApp(firebaseConfig);
+    }
+  } else {
+    firebaseApp = getApp();
+  }
+  
+  return {
+    firestore: getFirestore(firebaseApp),
+    collection,
+    addDoc,
+    updateDoc,
+    getDocs,
+    query,
+    where,
+    getDoc,
+    doc,
+  };
+};
 import { processPastPaper } from '@/ai/flows/past-paper-processing';
 import * as fs from 'fs';
 import * as path from 'path';
