@@ -18,8 +18,8 @@ import { UserNav } from "./UserNav"
 import { ThemeToggle } from "./ThemeToggle"
 import { useLanguage } from "@/components/language-provider"
 import { translations } from "@/lib/translations"
-import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useUser, useDoc, useMemoAppwrite } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
 import { lessons, placeholderLessons } from '@/lib/data';
 import { useMemo, Fragment } from 'react';
 import { useAdminMode } from '@/hooks/use-admin-mode';
@@ -33,15 +33,18 @@ export function DashboardHeader() {
   const searchParams = useSearchParams();
   
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
   
   const isAdmin = user?.email === ADMIN_EMAIL;
   const { adminModeEnabled, toggleAdminMode } = useAdminMode(isAdmin);
   
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
 
   const { data: userProfile } = useDoc<{ gradeLevel?: number }>(userProfileRef);
   const userGrade = userProfile?.gradeLevel || 0;

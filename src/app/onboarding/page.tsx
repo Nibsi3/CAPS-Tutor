@@ -30,13 +30,11 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from "@/components/ui/checkbox"
-import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { useUser, useDoc, useDatabases, useMemoAppwrite } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from 'lucide-react';
 import { grades, subjects } from '@/lib/data';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { useRouter } from 'next/navigation';
 
 const provinces = [
@@ -80,14 +78,18 @@ interface UserProfile {
 
 export default function OnboardingPage() {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const databases = useDatabases();
   const { toast } = useToast();
   const router = useRouter();
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
@@ -134,7 +136,21 @@ export default function OnboardingPage() {
         gradeLevel: parseInt(data.gradeLevel, 10), // Convert grade back to number
     };
 
-    setDoc(userProfileRef, dataToSave, { merge: true })
+    if (!userProfileRef || !databases) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "User not logged in.",
+      });
+      return;
+    }
+
+    databases.updateDocument(
+      userProfileRef.databaseId,
+      userProfileRef.collectionId,
+      userProfileRef.documentId,
+      dataToSave
+    )
       .then(() => {
         toast({
           title: 'Profile Saved!',
@@ -143,12 +159,7 @@ export default function OnboardingPage() {
         router.push('/dashboard');
       })
       .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: userProfileRef.path,
-          operation: 'update',
-          requestResourceData: dataToSave,
-        });
-        errorEmitter.emit('permission-error', permissionError);
+        console.error('Error saving profile:', serverError);
         toast({
             variant: "destructive",
             title: "Uh oh! Something went wrong.",

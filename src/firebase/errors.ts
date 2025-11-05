@@ -1,5 +1,6 @@
 'use client';
-import { getAuth, type User } from 'firebase/auth';
+// Firebase migration: This file is deprecated but kept for backward compatibility
+// It's no longer used in the migrated codebase
 
 type SecurityRuleContext = {
   path: string;
@@ -39,31 +40,31 @@ interface SecurityRuleRequest {
  * @param currentUser The currently authenticated Firebase user.
  * @returns An object that mirrors request.auth in security rules, or null.
  */
-function buildAuthObject(currentUser: User | null): FirebaseAuthObject | null {
+function buildAuthObject(currentUser: any | null): FirebaseAuthObject | null {
   if (!currentUser) {
     return null;
   }
 
   const token: FirebaseAuthToken = {
-    name: currentUser.displayName,
-    email: currentUser.email,
-    email_verified: currentUser.emailVerified,
-    phone_number: currentUser.phoneNumber,
-    sub: currentUser.uid,
+    name: currentUser.displayName || null,
+    email: currentUser.email || null,
+    email_verified: currentUser.emailVerified || false,
+    phone_number: currentUser.phoneNumber || null,
+    sub: currentUser.uid || '',
     firebase: {
-      identities: currentUser.providerData.reduce((acc, p) => {
+      identities: (currentUser.providerData || []).reduce((acc: Record<string, string[]>, p: any) => {
         if (p.providerId) {
           acc[p.providerId] = [p.uid];
         }
         return acc;
       }, {} as Record<string, string[]>),
-      sign_in_provider: currentUser.providerData[0]?.providerId || 'custom',
-      tenant: currentUser.tenantId,
+      sign_in_provider: currentUser.providerData?.[0]?.providerId || 'custom',
+      tenant: currentUser.tenantId || null,
     },
   };
 
   return {
-    uid: currentUser.uid,
+    uid: currentUser.uid || '',
     token: token,
   };
 }
@@ -78,11 +79,8 @@ function buildRequestObject(context: SecurityRuleContext): SecurityRuleRequest {
   let authObject: FirebaseAuthObject | null = null;
   try {
     // Safely attempt to get the current user.
-    const firebaseAuth = getAuth();
-    const currentUser = firebaseAuth.currentUser;
-    if (currentUser) {
-      authObject = buildAuthObject(currentUser);
-    }
+    // Note: Firebase auth is no longer available after migration
+    // This is kept for backward compatibility only
   } catch {
     // This will catch errors if the Firebase app is not yet initialized.
     // In this case, we'll proceed without auth information.

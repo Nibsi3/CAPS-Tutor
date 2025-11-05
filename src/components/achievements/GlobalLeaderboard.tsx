@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useDoc, useMemoFirebase, useFirestore } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useUser, useDoc, useMemoAppwrite } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -23,16 +23,19 @@ interface LeaderboardEntry {
 
 export function GlobalLeaderboard() {
   const { user } = useUser();
-  const firestore = useFirestore();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
 
   // Get user profile for current user's stats
-  const userProfileRef = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [user, firestore]);
+  const userProfileRef = useMemoAppwrite(() => {
+    if (!user) return null;
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
 
   const { data: userProfile } = useDoc(userProfileRef);
 
@@ -153,7 +156,7 @@ export function GlobalLeaderboard() {
     // Add current user if they have achievements
     if (user && userTotalPoints > 0) {
       mockLeaderboard.push({
-        userId: user.uid,
+        userId: user.$id,
         displayName: userDisplayName,
         email: user.email || null,
         photoURL: userProfile?.photoURL || null,
@@ -180,12 +183,12 @@ export function GlobalLeaderboard() {
 
     // Find current user's rank
     if (user) {
-      const userRankIndex = mockLeaderboard.findIndex(entry => entry.userId === user.uid);
+      const userRankIndex = mockLeaderboard.findIndex(entry => entry.userId === user.$id);
       setCurrentUserRank(userRankIndex >= 0 ? userRankIndex + 1 : null);
     }
 
     setIsLoading(false);
-  }, [user, userProfile, firestore]);
+  }, [user, userProfile]);
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="h-6 w-6 text-yellow-500" />;
@@ -203,7 +206,7 @@ export function GlobalLeaderboard() {
 
   // Get top 10 and current user's position
   const topTen = leaderboard.slice(0, 10);
-  const currentUserEntry = leaderboard.find(entry => entry.userId === user?.uid);
+  const currentUserEntry = leaderboard.find(entry => entry.userId === user?.$id);
 
   if (isLoading) {
     return (
@@ -245,7 +248,7 @@ export function GlobalLeaderboard() {
               </p>
             ) : (
               topTen.map((entry) => {
-                const isCurrentUser = entry.userId === user?.uid;
+                const isCurrentUser = entry.userId === user?.$id;
                 return (
                   <div
                     key={entry.userId}

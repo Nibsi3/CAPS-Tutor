@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, Dispatch, SetStateAction } from 'react';
 import { translations } from '@/lib/translations';
-import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useDoc, useUser, useMemoAppwrite } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
 
 
 type Language = keyof typeof translations;
@@ -16,12 +16,15 @@ export const useSetLanguage = () => useContext(SetLanguageContext);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const { user } = useUser();
-  const firestore = useFirestore();
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    return doc(firestore, `users/${user.uid}`);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
   
   const { data: userProfile } = useDoc<{ language?: Language }>(userProfileRef);
 
