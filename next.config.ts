@@ -46,6 +46,10 @@ const nextConfig: NextConfig = {
   experimental: {
     // Force SWC transforms for faster compilation
     forceSwcTransforms: true,
+    // Enable build cache for faster rebuilds
+    // This caches compiled outputs in .next/cache/
+    // Note: Appwrite may need to preserve .next/cache/ between builds
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
     // Note: optimizeCss removed - requires 'critters' dependency which causes build failures
   },
   // Generate build ID for better caching
