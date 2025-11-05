@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useUser, useDoc, useCollection, useMemoFirebase, useFirestore } from "@/firebase";
-import { doc, collection, query, where, Timestamp } from "firebase/firestore";
+import { useUser, useDoc, useCollection, useMemoAppwrite } from "@/appwrite";
+import { appwriteConfig } from "@/appwrite/config";
+import { Query } from "appwrite";
 import { Progress } from "@/components/ui/progress";
 import { Loader, BarChart2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,7 +15,7 @@ interface StudentProgress {
   learningObjectiveId: string;
   masteryLevel: number;
   completed: boolean;
-  lastAccessed: Timestamp | string;
+  lastAccessed: string | Date;
   topic?: string;
   subject?: string;
   gradeLevel?: number;
@@ -31,27 +32,35 @@ const topicColors = [
 
 export default function ProgressPage() {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc(userProfileRef);
 
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
 
-  const progressQuery = useMemoFirebase(() => {
+  const progressQuery = useMemoAppwrite(() => {
     if (!user) return null;
-    const progressCollection = collection(firestore, `users/${user.uid}/studentProgress`);
+    
+    const queries = [Query.equal('userId', user.$id)];
     
     // Filter by subject if one is selected
     if (selectedSubject) {
-      return query(progressCollection, where('subject', '==', selectedSubject));
+      queries.push(Query.equal('subject', selectedSubject));
     }
     
-    return progressCollection;
-  }, [user, firestore, selectedSubject]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'studentProgress',
+      queries,
+    };
+  }, [user, selectedSubject]);
 
   const { data: progressData, isLoading: isProgressLoading } = useCollection<StudentProgress>(progressQuery);
 

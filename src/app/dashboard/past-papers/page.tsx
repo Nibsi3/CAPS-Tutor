@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FileText, Loader, Search, BookOpen, BarChart, FlaskConical, Globe, Landmark, Calculator, MessageSquare, Briefcase, Paintbrush, Wrench, VenetianMask, Lightbulb, Tractor, ArrowRight, Plus, X, Music, Info } from "lucide-react";
-import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@/firebase';
-import { collection, query, where, doc, orderBy, limit } from 'firebase/firestore';
+import { useCollection, useDatabases, useMemoAppwrite, useUser, useDoc } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
+import { Query } from 'appwrite';
 import { subjectColors } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -172,7 +173,7 @@ interface SavedFilters {
 }
 
 export default function PastPapersPage() {
-    const firestore = useFirestore();
+    const databases = useDatabases();
     const { user, isUserLoading: isAuthLoading } = useUser();
 
     // Load saved filters from localStorage on mount
@@ -221,36 +222,31 @@ export default function PastPapersPage() {
     }, [searchTerm, selectedSubjects]);
     
     // Get user profile to access grade from settings
-    const userProfileRef = useMemoFirebase(() => {
-        if (!firestore || isAuthLoading || !user) return null;
-        return doc(firestore, 'users', user.uid);
-    }, [user, firestore, isAuthLoading]);
+    const userProfileRef = useMemoAppwrite(() => {
+        if (isAuthLoading || !user) return null;
+        return {
+            databaseId: appwriteConfig.databaseId,
+            collectionId: 'users',
+            documentId: user.$id,
+        };
+    }, [user, isAuthLoading]);
 
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
     
     // Query for user's past paper progress
-    // TODO: Replace with API call when migrating from Firebase
-    const pastPaperProgressQuery = useMemoFirebase(() => {
-        if (!firestore || isAuthLoading || !user) return null;
-        // Feature flag: can be disabled if Firebase rules aren't deployed
-        const ENABLE_PAST_PAPER_PROGRESS = true; // Set to false to disable query
-        if (!ENABLE_PAST_PAPER_PROGRESS) return null;
+    const pastPaperProgressQuery = useMemoAppwrite(() => {
+        if (isAuthLoading || !user) return null;
         
-        try {
-            // Try with orderBy - if index doesn't exist, this will fail gracefully
-            // and useCollection will handle it
-            return query(
-                collection(firestore, 'users', user.uid, 'pastPaperProgress'),
-                orderBy('lastAccessed', 'desc'),
-                limit(5)
-            );
-        } catch (error) {
-            // Fallback: if orderBy fails, just get all progress (no ordering)
-            // This can happen if the Firestore index isn't created yet
-            console.warn('Failed to create ordered query, using fallback:', error);
-            return collection(firestore, 'users', user.uid, 'pastPaperProgress');
-        }
-    }, [firestore, user, isAuthLoading]);
+        return {
+            databaseId: appwriteConfig.databaseId,
+            collectionId: 'pastPaperProgress',
+            queries: [
+                Query.equal('userId', user.$id),
+                Query.orderDesc('lastAccessed'),
+                Query.limit(5),
+            ],
+        };
+    }, [user, isAuthLoading]);
 
     const { data: pastPaperProgress, isLoading: isProgressLoading, error: progressError } = useCollection<PastPaperProgress>(pastPaperProgressQuery);
     
@@ -306,11 +302,14 @@ export default function PastPapersPage() {
     // Query for all papers (not filtered by status)
     // Note: This is publicly readable, but we wait for auth to finish initializing
     // to ensure Firestore is fully ready before making queries
-    const pastPapersQuery = useMemoFirebase(() => {
-        if (!firestore || isAuthLoading) return null;
+    const pastPapersQuery = useMemoAppwrite(() => {
+        if (isAuthLoading) return null;
         // Query for all papers regardless of status, we'll filter out "Unknown" in the client
-        return collection(firestore, `pastPapers`);
-    }, [firestore, isAuthLoading]);
+        return {
+            databaseId: appwriteConfig.databaseId,
+            collectionId: 'pastPapers',
+        };
+    }, [isAuthLoading]);
 
     const { data: processedPapers, isLoading: arePapersLoading } = useCollection<ProcessedPaper>(pastPapersQuery);
 

@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from '@/components/ui/textarea';
 import { Loader, Bot, User, Sparkles, PencilRuler, BookText, BrainCircuit, Camera, Image as ImageIcon, FileText, X } from "lucide-react";
-import { useUser, useDoc, useMemoFirebase, useFirestore } from '@/firebase';
+import { useUser, useDoc, useMemoAppwrite } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
 import { useToast } from '@/hooks/use-toast';
-import { doc } from 'firebase/firestore';
 import { askAiTutor, AiTutorOutput } from '@/ai/flows/ai-tutor-flow';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -142,7 +142,6 @@ const getExamplePrompts = (gradeLevel?: number, subjects?: string[]) => {
 
 export default function AiTutorPage() {
   const { user } = useUser();
-  const firestore = useFirestore();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -155,10 +154,14 @@ export default function AiTutorPage() {
   const lang = useLanguage();
 
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    return doc(firestore, `users/${user.uid}`);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
   const { data: userProfile } = useDoc<{ gradeLevel: number; subjects: string[]; language?: string; }>(userProfileRef);
 
   // Memoize example prompts to ensure they update when grade or subjects change

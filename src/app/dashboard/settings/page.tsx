@@ -31,13 +31,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from "@/components/ui/checkbox"
-import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { useUser, useDoc, useDatabases, useMemoAppwrite, useAccount } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, Settings as SettingsIcon, AlertTriangle, Languages, Globe, Plus, X } from 'lucide-react';
 import { grades, contentSubjects, languageSubjects, appLanguages, compulsorySubjectsByGrade } from '@/lib/data';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,7 +58,7 @@ import {
 import { Slider } from "@/components/ui/slider"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
-import { deleteCurrentUser } from '@/firebase/auth/social-auth';
+import { deleteCurrentUser } from '@/appwrite/auth/social-auth';
 import { useRouter } from 'next/navigation';
 import { LiteratureSelection, literatureSchema } from '@/components/forms/LiteratureSelection';
 import { useLanguage, useSetLanguage } from '@/components/language-provider';
@@ -105,8 +103,8 @@ interface UserProfile {
 
 export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const account = useAccount();
+  const databases = useDatabases();
   const { toast } = useToast();
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -117,10 +115,14 @@ export default function SettingsPage() {
   const setLanguage = useSetLanguage();
   const t = translations[currentLang];
 
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
@@ -184,8 +186,8 @@ export default function SettingsPage() {
     } else if (user && !userProfile && !isProfileLoading) {
       // Set defaults from user object if no profile exists
       reset({
-        firstName: user.displayName?.split(' ')[0] || '',
-        lastName: user.displayName?.split(' ')[1] || '',
+        firstName: user.name?.split(' ')[0] || '',
+        lastName: user.name?.split(' ')[1] || '',
         language: 'en',
         contentSubjects: [],
         gradeLevel: '',
@@ -240,7 +242,21 @@ export default function SettingsPage() {
         literature: data.literature,
     };
 
-    setDoc(userProfileRef, dataToSave, { merge: true })
+    if (!userProfileRef || !databases) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "User not logged in.",
+      });
+      return;
+    }
+
+    databases.updateDocument(
+      userProfileRef.databaseId,
+      userProfileRef.collectionId,
+      userProfileRef.documentId,
+      dataToSave
+    )
       .then(() => {
         if (data.language) {
           setLanguage(data.language as keyof typeof translations);
@@ -252,12 +268,7 @@ export default function SettingsPage() {
         form.reset(data); // Resets the form's dirty state
       })
       .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: userProfileRef.path,
-          operation: 'update',
-          requestResourceData: dataToSave,
-        });
-        errorEmitter.emit('permission-error', permissionError);
+        console.error('Error saving settings:', serverError);
         toast({
             variant: "destructive",
             title: "Uh oh! Something went wrong.",
@@ -267,14 +278,18 @@ export default function SettingsPage() {
   }
 
   const handleDeleteAccount = async () => {
-    if (!user || !userProfileRef) return;
+    if (!user || !userProfileRef || !databases || !account) return;
     setIsDeleting(true);
     try {
-      // First, delete the Firestore document.
-      await deleteDoc(userProfileRef);
+      // First, delete the user document from Appwrite.
+      await databases.deleteDocument(
+        userProfileRef.databaseId,
+        userProfileRef.collectionId,
+        userProfileRef.documentId
+      );
       
       // Then, delete the user from Authentication
-      await deleteCurrentUser(auth);
+      await deleteCurrentUser(account);
 
       toast({
         title: "Account Deleted",

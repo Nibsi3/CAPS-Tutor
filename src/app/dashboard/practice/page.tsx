@@ -16,8 +16,9 @@ import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import { TypingText } from '@/components/ui/typing-text';
 import { Progress } from '@/components/ui/progress';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { useUser, useDatabases, useDoc, useMemoAppwrite } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
+import { ID } from 'appwrite';
 import { filterQuestionsByLiterature, UserLiteratureSelection } from '@/lib/literature-filter';
 import { useAdminMode } from '@/hooks/use-admin-mode';
 
@@ -52,7 +53,7 @@ export default function PracticePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useUser();
-  const firestore = useFirestore();
+  const databases = useDatabases();
   
   const isAdmin = user?.email === ADMIN_EMAIL;
   const { adminModeEnabled } = useAdminMode(isAdmin);
@@ -74,10 +75,14 @@ export default function PracticePage() {
   const tutorChatEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch user profile to get literature selections
-  const userProfileRef = useMemoFirebase(() => {
+  const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [user, firestore]);
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'users',
+      documentId: user.$id,
+    };
+  }, [user]);
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
   const loadQuestions = useCallback((currentTopic: string, currentGrade: string, currentSubject: string) => {
@@ -201,7 +206,7 @@ export default function PracticePage() {
   };
 
   const handleFinish = async () => {
-    if (!exam || !user || !firestore || !topic || !subject || !grade) return;
+    if (!exam || !user || !databases || !topic || !subject || !grade) return;
 
     setIsFinishing(true);
 
@@ -214,15 +219,23 @@ export default function PracticePage() {
         learningObjectiveId: `topic-${encodeURIComponent(topic)}`,
         masteryLevel: percentageScore,
         completed: true,
-        lastAccessed: serverTimestamp(),
+        lastAccessed: new Date().toISOString(),
         topic: topic,
         subject: subject,
         gradeLevel: parseInt(grade),
         type: 'practice',
       };
 
-      const progressRef = collection(firestore, `users/${user.uid}/studentProgress`);
-      await addDoc(progressRef, progressData);
+      const progressDataWithId = {
+        ...progressData,
+        userId: user.$id,
+      };
+      await databases.createDocument(
+        appwriteConfig.databaseId,
+        'studentProgress',
+        ID.unique(),
+        progressDataWithId
+      );
 
       toast({
         title: 'Progress Saved!',

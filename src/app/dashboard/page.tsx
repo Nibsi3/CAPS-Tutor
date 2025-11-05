@@ -4,8 +4,8 @@ import { StatCards } from "@/components/dashboard/StatCards";
 import { ProgressChart } from "@/components/dashboard/ProgressChart";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { Button } from "@/components/ui/button";
-import { useDoc, useUser, useMemoFirebase, useFirestore } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { useDoc, useUser, useMemoAppwrite } from "@/appwrite";
+import { appwriteConfig } from "@/appwrite/config";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { useLanguage } from '@/components/language-provider';
@@ -14,14 +14,17 @@ import { translations } from '@/lib/translations';
 
 export default function DashboardPage() {
     const { user } = useUser();
-    const firestore = useFirestore();
     const lang = useLanguage();
     const t = translations[lang];
 
-    const userProfileRef = useMemoFirebase(() => {
+    const userProfileRef = useMemoAppwrite(() => {
         if (!user) return null;
-        return doc(firestore, `users/${user.uid}`);
-    }, [user, firestore]);
+        return {
+            databaseId: appwriteConfig.databaseId,
+            collectionId: 'users',
+            documentId: user.$id,
+        };
+    }, [user]);
 
     const { data: userProfile } = useDoc<{gradeLevel: number, subjects: string[]}>(userProfileRef);
 
@@ -30,7 +33,7 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 h-full flex flex-col gap-2 overflow-hidden">
       <div className="flex items-center justify-between">
-        <h1 className="font-headline text-xl font-bold tracking-tight">{t.welcomeBack}, {user?.displayName?.split(' ')[0] || 'Student'}!</h1>
+        <h1 className="font-headline text-xl font-bold tracking-tight">{t.welcomeBack}, {user?.name?.split(' ')[0] || 'Student'}!</h1>
       </div>
 
       <StatCards hasActivity={hasCompletedSetup} />

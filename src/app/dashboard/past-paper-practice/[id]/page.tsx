@@ -10,8 +10,9 @@ import { Loader, Target, Bot, ArrowRight, ArrowLeft, AlertTriangle, User, CheckC
 import { Progress } from "@/components/ui/progress";
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, collection, addDoc, setDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { useUser, useDatabases, useDoc, useMemoAppwrite } from '@/appwrite';
+import { appwriteConfig } from '@/appwrite/config';
+import { Query, ID } from 'appwrite';
 import { Question, allSubjectsForLookup } from '@/lib/questions';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -100,7 +101,7 @@ export default function PastPaperPracticePage() {
     const paperId = Array.isArray(params.id) ? params.id[0] : params.id;
     
     const { user } = useUser();
-    const firestore = useFirestore();
+    const databases = useDatabases();
 
     // Get initial question from query parameter (0-indexed, so subtract 1)
     const initialQuestionParam = searchParams.get('question');
@@ -119,15 +120,23 @@ export default function PastPaperPracticePage() {
     const [enlargedImageUrl, setEnlargedImageUrl] = useState<string | null>(null);
 
     // Check both old structure (pastPapers) and new structure (pastpapers)
-    const paperRefOld = useMemoFirebase(() => {
-        if (!firestore || !paperId) return null;
-        return doc(firestore, 'pastPapers', paperId as string);
-    }, [firestore, paperId]);
+    const paperRefOld = useMemoAppwrite(() => {
+        if (!paperId) return null;
+        return {
+            databaseId: appwriteConfig.databaseId,
+            collectionId: 'pastPapers',
+            documentId: paperId as string,
+        };
+    }, [paperId]);
 
-    const paperRefNew = useMemoFirebase(() => {
-        if (!firestore || !paperId) return null;
-        return doc(firestore, 'pastpapers', paperId as string);
-    }, [firestore, paperId]);
+    const paperRefNew = useMemoAppwrite(() => {
+        if (!paperId) return null;
+        return {
+            databaseId: appwriteConfig.databaseId,
+            collectionId: 'pastpapers',
+            documentId: paperId as string,
+        };
+    }, [paperId]);
 
     const { data: paperDataOld } = useDoc<PastPaperMeta>(paperRefOld);
     const { data: paperDataNew } = useDoc<PastPaperMeta>(paperRefNew);
@@ -143,10 +152,14 @@ export default function PastPaperPracticePage() {
         language?: string;
         literature?: UserLiteratureSelection;
     }
-    const userProfileRef = useMemoFirebase(() => {
+    const userProfileRef = useMemoAppwrite(() => {
         if (!user) return null;
-        return doc(firestore, 'users', user.uid);
-    }, [user, firestore]);
+        return {
+            databaseId: appwriteConfig.databaseId,
+            collectionId: 'users',
+            documentId: user.$id,
+        };
+    }, [user]);
     const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
     // Helper function to extract topic from question text
@@ -300,14 +313,17 @@ export default function PastPaperPracticePage() {
             let questionsFromSubcollection: Question[] = [];
             
             // Try to fetch from subcollection if using new structure
-            if (paperDataNew && paperId && firestore) {
+            if (paperDataNew && paperId && databases) {
                 try {
-                    const questionsRef = collection(firestore, 'pastpapers', paperId as string, 'questions');
-                    const questionsSnapshot = await getDocs(questionsRef);
+                    const questionsSnapshot = await databases.listDocuments(
+                        appwriteConfig.databaseId,
+                        'questions',
+                        [Query.equal('paperId', paperId as string)]
+                    );
                     
-                    questionsFromSubcollection = questionsSnapshot.docs
+                    questionsFromSubcollection = questionsSnapshot.documents
                         .map(doc => {
-                            const q = doc.data();
+                            const q = doc;
                             return {
                                 id: `question-${q.number}`,
                                 question: q.question || q.questionText || '',
@@ -372,7 +388,7 @@ export default function PastPaperPracticePage() {
         };
         
         loadQuestions();
-    }, [paperData, paperDataNew, paperId, firestore, userProfile?.literature, userProfile?.gradeLevel]);
+    }, [paperData, paperDataNew, paperId, databases, userProfile?.literature, userProfile?.gradeLevel]);
 
     useEffect(() => {
         tutorChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -391,19 +407,43 @@ export default function PastPaperPracticePage() {
 
     // Track progress when question changes or session loads
     useEffect(() => {
-        if (!user || !firestore || !paperId || !session || session.examQuestions.length === 0) return;
+        if (!user || !databases || !paperId || !session || session.examQuestions.length === 0) return;
         
         const currentQuestion = currentQuestionIndex + 1; // Convert to 1-indexed
-        const progressRef = doc(firestore, 'users', user.uid, 'pastPaperProgress', paperId);
         
-        setDoc(progressRef, {
-            paperId,
-            currentQuestion,
-            lastAccessed: serverTimestamp(),
-        }, { merge: true }).catch((error) => {
-            console.error('Error saving progress:', error);
-        });
-    }, [user, firestore, paperId, currentQuestionIndex, session]);
+        // Check if progress document exists, then update or create
+        databases.getDocument(appwriteConfig.databaseId, 'pastPaperProgress', paperId)
+            .then(() => {
+                // Document exists, update it
+                return databases.updateDocument(
+                    appwriteConfig.databaseId,
+                    'pastPaperProgress',
+                    paperId,
+                    {
+                        paperId,
+                        currentQuestion,
+                        lastAccessed: new Date().toISOString(),
+                    }
+                );
+            })
+            .catch(() => {
+                // Document doesn't exist, create it
+                return databases.createDocument(
+                    appwriteConfig.databaseId,
+                    'pastPaperProgress',
+                    paperId,
+                    {
+                        paperId,
+                        currentQuestion,
+                        lastAccessed: new Date().toISOString(),
+                        userId: user.$id,
+                    }
+                );
+            })
+            .catch((error) => {
+                console.error('Error saving progress:', error);
+            });
+    }, [user, databases, paperId, currentQuestionIndex, session]);
 
     const handleAnswerChange = (index: number, answer: string) => {
         if (!session) return;
@@ -453,7 +493,7 @@ export default function PastPaperPracticePage() {
     };
 
     const handleFinish = async () => {
-        if (!session || !user || !firestore || !paperData) return;
+        if (!session || !user || !databases || !paperData) return;
 
         setIsFinishing(true);
 
@@ -462,22 +502,27 @@ export default function PastPaperPracticePage() {
             const questionsCount = session.examQuestions.length;
             const percentageScore = questionsCount > 0 ? Math.round((score / questionsCount) * 100) : 0;
 
-            // Save progress to Firestore
+            // Save progress to Appwrite
             const progressData = {
                 learningObjectiveId: `past-paper-${paperId}`,
                 masteryLevel: percentageScore,
                 completed: true,
-                lastAccessed: serverTimestamp(),
+                lastAccessed: new Date().toISOString(),
                 topic: baseSubject,
                 subject: baseSubject,
                 gradeLevel: paperData.gradeLevel,
                 paperTitle: paperData.subject,
                 year: paperData.year,
                 type: 'past-paper',
+                userId: user.$id,
             };
 
-            const progressRef = collection(firestore, `users/${user.uid}/studentProgress`);
-            await addDoc(progressRef, progressData);
+            await databases.createDocument(
+                appwriteConfig.databaseId,
+                'studentProgress',
+                ID.unique(),
+                progressData
+            );
 
             toast({
                 title: 'Progress Saved!',
