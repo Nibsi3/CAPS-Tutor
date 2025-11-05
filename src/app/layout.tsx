@@ -41,83 +41,85 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  console.log("layout-start");
+  // Guard: Check env vars during SSR - if missing (preview mode), skip Appwrite initialization
+  const globalProcess = (typeof globalThis !== 'undefined' && (globalThis as any).process) || 
+                        (typeof window !== 'undefined' && (window as any).process) ||
+                        undefined;
+  const processEnv = globalProcess?.env;
   
-  try {
-    // Log environment variables status
-    // Using globalThis to access process in a way TypeScript accepts
-    const globalProcess = (typeof globalThis !== 'undefined' && (globalThis as any).process) || 
-                          (typeof window !== 'undefined' && (window as any).process) ||
-                          undefined;
-    const processEnv = globalProcess?.env;
-    const envData = {
-      NEXT_PUBLIC_APPWRITE_ENDPOINT: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_ENDPOINT : 'N/A',
-      NEXT_PUBLIC_APPWRITE_PROJECT_ID: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_PROJECT_ID : 'N/A',
-      NEXT_PUBLIC_APPWRITE_DATABASE_ID: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_DATABASE_ID : 'N/A',
-      NODE_ENV: processEnv ? processEnv.NODE_ENV : 'N/A',
-    };
-    console.log("layout-data", envData);
-    
-    return (
-      <html lang="en" suppressHydrationWarning>
-        <body
-          className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
+  // Get env vars with guards - handle false/undefined values
+  const endpoint = processEnv?.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+  const project = processEnv?.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+  const db = processEnv?.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+  
+  // Convert to strings and check if they're valid (not false, undefined, or empty)
+  const hasEndpoint = endpoint && endpoint !== false && String(endpoint).trim() !== '';
+  const hasProject = project && project !== false && String(project).trim() !== '';
+  const hasDb = db && db !== false && String(db).trim() !== '';
+  
+  // If missing env vars (preview mode), render without Appwrite
+  const hasAppwriteConfig = hasEndpoint && hasProject && hasDb;
+  
+  console.log("layout-start", { hasAppwriteConfig, hasEndpoint, hasProject, hasDb });
+  
+  // Base layout content without Appwrite during SSR/preview
+  const baseContent = (
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
+      >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
         >
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <AppwriteClientProvider>
-              <LanguageProvider>
-                <div className="min-h-screen flex flex-col">
-                  {/* Public header and footer only on public routes */}
-                  <ConditionalPublicLayout>
-                    {children}
-                  </ConditionalPublicLayout>
-                </div>
-                <Toaster />
-              </LanguageProvider>
-            </AppwriteClientProvider>
-          </ThemeProvider>
-        </body>
-      </html>
-    );
-  } catch (e: any) {
-    // Log error for debugging in Appwrite Console
-    console.error("layout-error", e);
-    console.error("Error stack:", e?.stack);
-    const globalProcess = (typeof globalThis !== 'undefined' && (globalThis as any).process) || 
-                          (typeof window !== 'undefined' && (window as any).process) ||
-                          undefined;
-    const processEnv = globalProcess?.env;
-    console.error("Error details:", {
-      message: e?.message,
-      name: e?.name,
-      env: {
-        NEXT_PUBLIC_APPWRITE_ENDPOINT: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_ENDPOINT : 'N/A',
-        NEXT_PUBLIC_APPWRITE_PROJECT_ID: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_PROJECT_ID : 'N/A',
-        NEXT_PUBLIC_APPWRITE_DATABASE_ID: processEnv ? !!processEnv.NEXT_PUBLIC_APPWRITE_DATABASE_ID : 'N/A',
-      }
-    });
-    
-    // Return a minimal error layout
-    return (
-      <html lang="en">
-        <body className="font-body antialiased">
-          <div className="flex items-center justify-center min-h-screen p-8">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold mb-4">Error loading layout</h1>
-              <p className="text-muted-foreground">
-                {processEnv?.NODE_ENV === 'development' ? e?.message : 'An error occurred while loading the layout.'}
-              </p>
+          <LanguageProvider>
+            <div className="min-h-screen flex flex-col">
+              {/* Public header and footer only on public routes */}
+              <ConditionalPublicLayout>
+                {children}
+              </ConditionalPublicLayout>
             </div>
-          </div>
-        </body>
-      </html>
-    );
+            <Toaster />
+          </LanguageProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+  
+  // If env vars are missing, return layout without Appwrite (preview mode)
+  if (!hasAppwriteConfig) {
+    return baseContent;
   }
+  
+  // Normal branch: env vars exist, wrap with AppwriteClientProvider
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
+      >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AppwriteClientProvider>
+            <LanguageProvider>
+              <div className="min-h-screen flex flex-col">
+                {/* Public header and footer only on public routes */}
+                <ConditionalPublicLayout>
+                  {children}
+                </ConditionalPublicLayout>
+              </div>
+              <Toaster />
+            </LanguageProvider>
+          </AppwriteClientProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  );
 }
 
     
