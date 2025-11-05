@@ -67,30 +67,27 @@ const nextConfig: NextConfig = {
       config.optimization = {
         ...config.optimization,
         moduleIds: 'deterministic',
-        // Split chunks for better code splitting
+        // Simplified chunk splitting for faster builds
         splitChunks: {
           chunks: 'all',
+          maxInitialRequests: 25,
+          minSize: 20000,
           cacheGroups: {
-            default: false,
-            vendors: false,
-            // Vendor chunk for node_modules
-            vendor: {
-              name: 'vendor',
-              chunks: 'all',
-              test: /node_modules/,
-              priority: 20,
-            },
-            // Common chunk for shared code
-            common: {
-              name: 'common',
+            default: {
               minChunks: 2,
-              chunks: 'all',
-              priority: 10,
+              priority: -20,
               reuseExistingChunk: true,
-              enforce: true,
+            },
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              priority: -10,
+              chunks: 'all',
             },
           },
         },
+        // Minimize runtime chunk size
+        runtimeChunk: 'single',
       };
     }
 
@@ -101,12 +98,33 @@ const nextConfig: NextConfig = {
       cache: true,
       // Optimize module resolution
       symlinks: false,
+      // Reduce module resolution attempts
+      extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
     };
 
     // Reduce memory usage by limiting parallel processing
     if (!dev) {
       config.parallelism = 1;
+      // Limit chunk count to reduce memory
+      config.optimization = {
+        ...config.optimization,
+        ...(config.optimization || {}),
+        usedExports: false, // Disable tree shaking analysis for faster builds
+      };
     }
+
+    // Exclude large files from webpack processing
+    config.module = config.module || {};
+    config.module.rules = config.module.rules || [];
+    
+    // Add rule to ignore large files during build
+    config.module.rules.push({
+      test: /\.(pdf|json)$/,
+      type: 'asset/resource',
+      generator: {
+        emit: false, // Don't emit these files during build
+      },
+    });
 
     return config;
   },
