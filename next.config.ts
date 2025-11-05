@@ -44,8 +44,7 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   // Externalize packages to reduce bundle size (moved from experimental in Next.js 15)
   serverExternalPackages: [
-    'firebase',
-    'firebase-admin',
+    // Firebase removed - migrating to Appwrite
     'appwrite',
     'node-appwrite',
   ],

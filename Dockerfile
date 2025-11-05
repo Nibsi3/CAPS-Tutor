@@ -17,7 +17,7 @@ COPY . .
 
 # Set environment variables for build
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max-old-space-size=6144"
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build the application
