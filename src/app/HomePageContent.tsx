@@ -1,26 +1,64 @@
 'use client';
 
-import { Suspense } from 'react';
-import HomePageContent from "./HomePageContent";
+import { useSearchParams } from 'next/navigation';
+import { AITryOut } from "@/components/home/AITryOut";
+import { HowItWorks } from "@/components/home/HowItWorks";
+import { CapsSyllabusSection, NewsSection, BlogSection, ContactSection, CompetitiveAdvantagesSection, FAQSection, StudyResourcesSection } from "@/components/home/HomeSections";
+import { AllSubjectsPreview } from "@/components/home/AllSubjectsPreview";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Target, Bot, BarChart } from "lucide-react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-// Force dynamic rendering to prevent SSG issues during preview mode
-export const dynamic = "force-dynamic";
+const features = [
+  {
+    name: 'Adaptive Practice',
+    description: 'Generate custom quizzes that focus on your weak topics, helping you improve where it matters most.',
+    icon: Target,
+  },
+  {
+    name: 'Instant AI Feedback',
+    description: 'Never get stuck again. Our AI provides instant, step-by-step explanations for every question.',
+    icon: Bot,
+  },
+  {
+    name: 'Progress Tracking',
+    description: 'Visualize your progress with detailed analytics on topic mastery, time spent, and historical performance.',
+    icon: BarChart,
+  },
+];
 
-export default function HomePage() {
-  return (
-    <Suspense fallback={
+export default function HomePageContent() {
+  const searchParams = useSearchParams();
+  const isPreview = searchParams?.get('appwrite-preview') === '1';
+  
+  console.log("page-start", { isPreview });
+  
+  // If preview mode, return minimal HTML to avoid client hooks during SSR
+  if (isPreview) {
+    return (
       <main className="flex-1">
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <h1 className="text-2xl font-bold">CAPS Tutor</h1>
+            <p className="text-muted-foreground mt-2">AI-Powered Learning Platform</p>
           </div>
         </div>
       </main>
-    }>
-      <HomePageContent />
-    </Suspense>
-  );
-}
+    );
+  }
+  
+  try {
+    // Log environment and component initialization
+    const data = {
+      timestamp: new Date().toISOString(),
+      isClient: typeof window !== 'undefined',
+    };
+    console.log("page-data", data);
+    
+    return (
+      <ErrorBoundary>
+        <main className="flex-1">
         <div className="relative isolate overflow-hidden">
           {/* Decorative element from previous design, can be kept for visual flair */}
           <div
@@ -155,3 +193,4 @@ export default function HomePage() {
     throw e; // Re-throw to let ErrorBoundary handle it
   }
 }
+
