@@ -42,8 +42,6 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   // Disable source maps in production for faster builds
   productionBrowserSourceMaps: false,
-  // Optimize build performance
-  swcMinify: true,
   // Externalize packages to reduce bundle size (moved from experimental in Next.js 15)
   serverExternalPackages: [
     'firebase',
@@ -65,74 +63,62 @@ const nextConfig: NextConfig = {
       '**/extracted_papers/**',
       '**/*.pdf',
       '**/*.json',
+      '**/scripts/**',
+      '**/docs/**',
+      '**/*.md',
+      '**/*.py',
+      '**/*.ps1',
+      '**/*.bat',
+      '**/*.sh',
     ],
   },
-  // Reduce memory usage during build
+  // Simplified webpack config for faster builds
   webpack: (config, { isServer, dev }) => {
-    // Optimize client bundle
-    if (!isServer) {
+    // Only apply optimizations in production
+    if (!dev) {
+      // Reduce parallel processing to avoid memory issues
+      config.parallelism = 1;
+      
+      // Simplify optimization settings for faster builds
       config.optimization = {
         ...config.optimization,
-        moduleIds: 'deterministic',
-        // Simplified chunk splitting for faster builds
-        splitChunks: {
-          chunks: 'all',
-          maxInitialRequests: 25,
-          minSize: 20000,
-          cacheGroups: {
-            default: {
-              minChunks: 2,
-              priority: -20,
-              reuseExistingChunk: true,
-            },
-            vendor: {
-              test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              priority: -10,
-              chunks: 'all',
-            },
-          },
-        },
-        // Minimize runtime chunk size
-        runtimeChunk: 'single',
+        // Disable expensive analysis for faster builds
+        usedExports: false,
+        sideEffects: false,
+        minimize: true,
       };
+      
+      // Disable source maps for faster builds
+      config.devtool = false;
+      
+      // Simplify chunk splitting - less analysis = faster builds
+      if (!isServer) {
+        config.optimization.splitChunks = {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+          },
+        };
+      }
     }
 
     // Optimize module resolution
     config.resolve = {
       ...config.resolve,
-      // Reduce file system calls during resolution
       cache: true,
-      // Optimize module resolution
       symlinks: false,
-      // Reduce module resolution attempts
-      extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
     };
-
-    // Reduce memory usage by limiting parallel processing
-    if (!dev) {
-      config.parallelism = 1;
-      // Limit chunk count to reduce memory and speed up build
-      config.optimization = {
-        ...config.optimization,
-        ...(config.optimization || {}),
-        usedExports: false, // Disable tree shaking analysis for faster builds
-        minimize: true, // Ensure minification is enabled
-      };
-      // Disable source maps for faster builds
-      config.devtool = false;
-    }
 
     // Exclude large files from webpack processing
     config.module = config.module || {};
     config.module.rules = config.module.rules || [];
     
-    // Add rule to ignore large files during build
     config.module.rules.push({
       test: /\.(pdf|json)$/,
       type: 'asset/resource',
       generator: {
-        emit: false, // Don't emit these files during build
+        emit: false,
       },
     });
 

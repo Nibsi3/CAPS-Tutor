@@ -29,9 +29,11 @@ coverage
 .DS_Store
 Thumbs.db
 
-# Large data files
+# Large data files and directories
 past papers
 extracted_papers
+**/past papers/**
+**/extracted_papers/**
 *.pdf
 *.json
 !package.json
@@ -40,6 +42,26 @@ extracted_papers
 !next.config.ts
 !tailwind.config.ts
 !postcss.config.mjs
+!components.json
+
+# Large source files
+src/lib/questions.ts
+src/lib/*.json
+!src/lib/utils.ts
+!src/lib/translations.ts
+
+# Image files (already optimized or not needed in build)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
+!public/**/*.svg
+!public/**/*.png
+!public/**/*.jpg
+!public/**/*.jpeg
+!public/**/*.webp
 
 # Scripts (not needed in production)
 scripts
