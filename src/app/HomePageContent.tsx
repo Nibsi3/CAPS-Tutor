@@ -1,6 +1,5 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
 import { AITryOut } from "@/components/home/AITryOut";
 import { HowItWorks } from "@/components/home/HowItWorks";
 import { CapsSyllabusSection, NewsSection, BlogSection, ContactSection, CompetitiveAdvantagesSection, FAQSection, StudyResourcesSection } from "@/components/home/HomeSections";
