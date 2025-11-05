@@ -9,9 +9,18 @@ let databasesInstance: Databases | null = null;
 
 export function getClient(): Client {
   if (!clientInstance) {
+    // Validate project ID before initializing
+    if (!appwriteConfig.projectId) {
+      console.error(
+        'Appwrite Client: NEXT_PUBLIC_APPWRITE_PROJECT_ID is required but not set. ' +
+        'Please set it in your Appwrite Function environment variables.'
+      );
+      // Still create client but it will fail on requests
+      // This prevents the app from crashing during initialization
+    }
     clientInstance = new Client()
       .setEndpoint(appwriteConfig.endpoint)
-      .setProject(appwriteConfig.projectId);
+      .setProject(appwriteConfig.projectId || 'missing-project-id');
   }
   return clientInstance;
 }
