@@ -185,9 +185,10 @@ if (typeof window !== 'undefined' && !(window as any).__appwriteConfigValidated)
     if (process.env.NODE_ENV === 'development') {
       console.log(`✅ Appwrite Config: Project ID is set (${effectiveProjectId.substring(0, 8)}...)`);
     }
-    // Note: We don't need to set projectId - the getter already reads from multiple sources
+    // Note: Cannot set properties on config object with getters
+    // The getter will read from process.env at runtime, so no need to set it
   }
-  
+
   if (!hasDatabaseId) {
     console.warn(
       '⚠️ NEXT_PUBLIC_APPWRITE_DATABASE_ID is not set. ' +
@@ -198,7 +199,8 @@ if (typeof window !== 'undefined' && !(window as any).__appwriteConfigValidated)
     if (process.env.NODE_ENV === 'development') {
       console.log(`✅ Appwrite Config: Database ID is set (${effectiveDatabaseId})`);
     }
-    // Note: We don't need to set databaseId - the getter already reads from multiple sources
+    // Note: Cannot set properties on config object with getters
+    // The getter will read from process.env at runtime, so no need to set it
   }
   
   (window as any).__appwriteConfigValidated = true;
