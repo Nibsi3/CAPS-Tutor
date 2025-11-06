@@ -167,7 +167,7 @@ export async function ensureUserProfile(databases: Databases, userId: string, em
  */
 export async function logOut(account: Account): Promise<void> {
   try {
-    await account.deleteSession('current');
+    await account.deleteSession({ sessionId: 'current' });
   } catch (error) {
     console.error("Error signing out: ", error);
     throw error;
