@@ -41,59 +41,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Guard: Check env vars during SSR - if missing (preview mode), skip Appwrite initialization
-  const globalProcess = (typeof globalThis !== 'undefined' && (globalThis as any).process) || 
-                        (typeof window !== 'undefined' && (window as any).process) ||
-                        undefined;
-  const processEnv = globalProcess?.env;
+  // Note: AppwriteClientProvider handles missing env vars gracefully with safe fallbacks
+  // Debug logging removed to reduce console noise - check browser console for one-time warnings
   
-  // Get env vars with guards - handle false/undefined values
-  const endpoint = processEnv?.NEXT_PUBLIC_APPWRITE_ENDPOINT;
-  const project = processEnv?.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
-  const db = processEnv?.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
-  
-  // Convert to strings and check if they're valid (not false, undefined, or empty)
-  const hasEndpoint = endpoint && endpoint !== false && String(endpoint).trim() !== '';
-  const hasProject = project && project !== false && String(project).trim() !== '';
-  const hasDb = db && db !== false && String(db).trim() !== '';
-  
-  // If missing env vars (preview mode), render without Appwrite
-  const hasAppwriteConfig = hasEndpoint && hasProject && hasDb;
-  
-  console.log("layout-start", { hasAppwriteConfig, hasEndpoint, hasProject, hasDb });
-  
-  // Base layout content without Appwrite during SSR/preview
-  const baseContent = (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
-      >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <LanguageProvider>
-            <div className="min-h-screen flex flex-col">
-              {/* Public header and footer only on public routes */}
-              <ConditionalPublicLayout>
-                {children}
-              </ConditionalPublicLayout>
-            </div>
-            <Toaster />
-          </LanguageProvider>
-        </ThemeProvider>
-      </body>
-    </html>
-  );
-  
-  // If env vars are missing, return layout without Appwrite (preview mode)
-  if (!hasAppwriteConfig) {
-    return baseContent;
-  }
-  
-  // Normal branch: env vars exist, wrap with AppwriteClientProvider
+  // Always render AppwriteClientProvider - it handles missing env vars gracefully
+  // The provider will return safe fallbacks when env vars are not set
   return (
     <html lang="en" suppressHydrationWarning>
       <body

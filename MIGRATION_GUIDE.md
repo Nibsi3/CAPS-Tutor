@@ -175,7 +175,7 @@ user.name
 Add the following to your `.env.local`:
 
 ```env
-NEXT_PUBLIC_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+NEXT_PUBLIC_APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1
 NEXT_PUBLIC_APPWRITE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_APPWRITE_DATABASE_ID=your_database_id
 NEXT_PUBLIC_APPWRITE_VERIFICATION_URL=http://localhost:9002/verify-email
@@ -183,7 +183,7 @@ NEXT_PUBLIC_APPWRITE_VERIFICATION_URL=http://localhost:9002/verify-email
 
 For server-side (API routes):
 ```env
-APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1
 APPWRITE_PROJECT_ID=your_project_id
 APPWRITE_API_KEY=your_api_key
 APPWRITE_DATABASE_ID=your_database_id

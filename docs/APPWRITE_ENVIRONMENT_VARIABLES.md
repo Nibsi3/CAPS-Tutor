@@ -11,7 +11,7 @@ You MUST set these in Appwrite Console → Functions → Your Function → Setti
 ### Required Variables
 
 1. **NEXT_PUBLIC_APPWRITE_ENDPOINT**
-   - Value: `https://cloud.appwrite.io/v1`
+   - Value: `https://fra.cloud.appwrite.io/v1`
    - Required: Yes
    - Purpose: Appwrite API endpoint
 
@@ -76,7 +76,7 @@ After setting variables, check the logs:
 
 ## Quick Setup Checklist
 
-- [ ] `NEXT_PUBLIC_APPWRITE_ENDPOINT` = `https://cloud.appwrite.io/v1`
+- [ ] `NEXT_PUBLIC_APPWRITE_ENDPOINT` = `https://fra.cloud.appwrite.io/v1`
 - [ ] `NEXT_PUBLIC_APPWRITE_PROJECT_ID` = `690a39bf0011810ee554`
 - [ ] `NEXT_PUBLIC_APPWRITE_DATABASE_ID` = (your database ID)
 - [ ] `PORT` = `3000` (if needed)

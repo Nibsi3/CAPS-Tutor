@@ -47,6 +47,7 @@ interface PastPaperProgress {
     paperId: string;
     currentQuestion: number;
     lastAccessed: Date | any;
+    userId?: string; // The user ID (lowercase 'd')
     paperSubject?: string;
     paperYear?: string;
     paperName?: string;
@@ -226,7 +227,7 @@ export default function PastPapersPage() {
         if (isAuthLoading || !user) return null;
         return {
             databaseId: appwriteConfig.databaseId,
-            collectionId: 'users',
+            collectionId: 'user',
             documentId: user.$id,
         };
     }, [user, isAuthLoading]);

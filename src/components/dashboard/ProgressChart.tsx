@@ -25,7 +25,7 @@ const emptyProgressData = [
 export function ProgressChart({ hasActivity = false }: { hasActivity?: boolean }) {
   const data = hasActivity ? progressChartData : emptyProgressData;
   const lang = useLanguage();
-  const t = translations[lang];
+  const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
 
   return (
     <Card className="h-full flex flex-col">

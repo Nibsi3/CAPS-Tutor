@@ -15,13 +15,13 @@ import { translations } from '@/lib/translations';
 export default function DashboardPage() {
     const { user } = useUser();
     const lang = useLanguage();
-    const t = translations[lang];
+    const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
 
     const userProfileRef = useMemoAppwrite(() => {
         if (!user) return null;
         return {
             databaseId: appwriteConfig.databaseId,
-            collectionId: 'users',
+            collectionId: 'user',
             documentId: user.$id,
         };
     }, [user]);

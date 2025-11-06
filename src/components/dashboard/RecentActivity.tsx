@@ -7,7 +7,7 @@ import { translations } from "@/lib/translations"
 
 export function RecentActivity({ hasActivity = false }: { hasActivity?: boolean }) {
   const lang = useLanguage();
-  const t = translations[lang];
+  const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
 
   return (
     <Card className="h-full flex flex-col">

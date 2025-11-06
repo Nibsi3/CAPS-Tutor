@@ -13,14 +13,44 @@ const possiblePaths = [
   path.join(process.cwd(), 'server.js'),
 ];
 
+// Also search recursively in .next/standalone for server.js
+function findServerInStandalone(dir) {
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        const found = findServerInStandalone(fullPath);
+        if (found) return found;
+      } else if (entry.name === 'server.js') {
+        return fullPath;
+      }
+    }
+  } catch (err) {
+    // Ignore errors
+  }
+  return null;
+}
+
 let serverPath = null;
 
-// Find the server.js file
+// First try the standard paths
 for (const possiblePath of possiblePaths) {
   if (fs.existsSync(possiblePath)) {
     serverPath = possiblePath;
     console.log(`Found server.js at: ${serverPath}`);
     break;
+  }
+}
+
+// If not found, search recursively in standalone directory
+if (!serverPath) {
+  const standaloneDir = path.join(process.cwd(), '.next/standalone');
+  if (fs.existsSync(standaloneDir)) {
+    serverPath = findServerInStandalone(standaloneDir);
+    if (serverPath) {
+      console.log(`Found server.js at: ${serverPath}`);
+    }
   }
 }
 
@@ -39,15 +69,21 @@ console.log(`Starting Next.js server on port ${process.env.PORT}`);
 console.log(`Server path: ${serverPath}`);
 console.log(`Working directory: ${process.cwd()}`);
 
-// Change to the directory containing server.js
-process.chdir(path.dirname(serverPath));
+// Change to the directory containing server.js (this is the standalone root)
+// The standalone directory should contain server.js, node_modules, and other required files
+const standaloneRoot = path.dirname(serverPath);
+process.chdir(standaloneRoot);
 
-// Directly require the server.js file
-// This is simpler and more reliable than spawn in Appwrite Functions
+console.log(`Changed working directory to: ${process.cwd()}`);
+
+// Require server.js using relative path from the standalone root
+// Since we changed to the standalone root, we can use './server.js'
 try {
-  require(serverPath);
+  require('./server.js');
 } catch (error) {
   console.error('Failed to start server:', error);
+  console.error('Error details:', error.message);
+  console.error('Stack:', error.stack);
   process.exit(1);
 }
 

@@ -37,7 +37,7 @@ export default function ProgressPage() {
     if (!user) return null;
     return {
       databaseId: appwriteConfig.databaseId,
-      collectionId: 'users',
+      collectionId: 'user',
       documentId: user.$id,
     };
   }, [user]);
@@ -48,7 +48,7 @@ export default function ProgressPage() {
   const progressQuery = useMemoAppwrite(() => {
     if (!user) return null;
     
-    const queries = [Query.equal('userId', user.$id)];
+    const queries = [Query.equal('userID', user.$id)];
     
     // Filter by subject if one is selected
     if (selectedSubject) {
@@ -57,7 +57,7 @@ export default function ProgressPage() {
     
     return {
       databaseId: appwriteConfig.databaseId,
-      collectionId: 'studentProgress',
+      collectionId: 'userprogress',
       queries,
     };
   }, [user, selectedSubject]);

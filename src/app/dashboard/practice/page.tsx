@@ -79,7 +79,7 @@ export default function PracticePage() {
     if (!user) return null;
     return {
       databaseId: appwriteConfig.databaseId,
-      collectionId: 'users',
+      collectionId: 'user',
       documentId: user.$id,
     };
   }, [user]);
@@ -228,11 +228,11 @@ export default function PracticePage() {
 
       const progressDataWithId = {
         ...progressData,
-        userId: user.$id,
+        userID: user.$id,
       };
       await databases.createDocument(
         appwriteConfig.databaseId,
-        'studentProgress',
+        'userprogress',
         ID.unique(),
         progressDataWithId
       );

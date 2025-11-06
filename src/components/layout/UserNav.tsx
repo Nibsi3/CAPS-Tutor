@@ -23,7 +23,7 @@ export function UserNav() {
   const account = useAccount();
   const router = useRouter();
   const lang = useLanguage();
-  const t = translations[lang];
+  const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
 
   const handleLogout = async () => {
     await logOut(account);

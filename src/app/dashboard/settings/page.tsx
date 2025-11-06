@@ -113,18 +113,19 @@ export default function SettingsPage() {
   
   const currentLang = useLanguage();
   const setLanguage = useSetLanguage();
-  const t = translations[currentLang];
+  const t = translations[currentLang] || translations.en; // Fallback to English if lang is invalid
 
   const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
     return {
       databaseId: appwriteConfig.databaseId,
-      collectionId: 'users',
+      collectionId: 'user',
       documentId: user.$id,
     };
   }, [user]);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+  const [lastSavedTimestamp, setLastSavedTimestamp] = useState<number>(0);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -156,7 +157,12 @@ export default function SettingsPage() {
   const watchedSubjects = [watchedEnglish, watchedAfrikaans, ...(watchedContentSubjects || [])].filter(s => s && s !== 'none') as string[];
 
   useEffect(() => {
-    if (userProfile && !formState.isDirty) {
+    // Only reset form from userProfile if:
+    // 1. userProfile exists
+    // 2. Form is not dirty (user hasn't made changes)
+    // 3. Form is not currently submitting
+    // This prevents overwriting user's unsaved changes or resetting during save
+    if (userProfile && !formState.isDirty && !formState.isSubmitting) {
       const allUserSubjects = userProfile.subjects || [];
       const englishSelection = allUserSubjects.find(s => s.startsWith('English')) || 'none';
       const afrikaansSelection = allUserSubjects.find(s => s.startsWith('Afrikaans')) || 'none';
@@ -231,16 +237,42 @@ export default function SettingsPage() {
 
     const finalSubjects = [data.english, data.afrikaans, ...(data.contentSubjects || [])].filter(s => s && s !== 'none') as string[];
 
-    const dataToSave = {
-        ...userProfile, // preserve existing data
+    // Exclude Appwrite system fields and frontend-added fields when saving
+    const userProfileData = userProfile ? {
+      ...userProfile,
+      id: undefined,
+      $id: undefined,
+      $createdAt: undefined,
+      $updatedAt: undefined,
+    } : {};
+    
+    // Remove undefined values
+    Object.keys(userProfileData).forEach(key => {
+      if (userProfileData[key as keyof typeof userProfileData] === undefined) {
+        delete userProfileData[key as keyof typeof userProfileData];
+      }
+    });
+    
+    const dataToSave: any = {
+        ...userProfileData, // preserve existing data (without system fields)
         firstName: data.firstName,
         lastName: data.lastName,
         email: user?.email,
         language: data.language,
         gradeLevel: parseInt(data.gradeLevel, 10),
         subjects: finalSubjects,
-        literature: data.literature,
     };
+    
+    // Only include literature if it's provided and not empty
+    // Note: You need to add a 'literature' attribute (JSON type) to the 'user' collection in Appwrite
+    // if you want to save literature selections
+    if (data.literature && Object.keys(data.literature).length > 0) {
+      // Check if literature attribute exists by checking if it was in the original profile
+      // If the attribute doesn't exist in Appwrite, this will cause an error
+      // For now, we'll skip it to avoid errors
+      // TODO: Add 'literature' attribute (JSON type) to 'user' collection in Appwrite
+      // dataToSave.literature = data.literature;
+    }
 
     if (!userProfileRef || !databases) {
       toast({
@@ -257,7 +289,45 @@ export default function SettingsPage() {
       userProfileRef.documentId,
       dataToSave
     )
-      .then(() => {
+      .then(async () => {
+        // Refetch the updated document to get the latest data from server
+        try {
+          const updatedDoc = await databases.getDocument(
+            userProfileRef.databaseId,
+            userProfileRef.collectionId,
+            userProfileRef.documentId
+          );
+          
+          // Update form with the fresh data from server
+          const allUserSubjects = (updatedDoc.subjects || []) as string[];
+          const englishSelection = allUserSubjects.find(s => s.startsWith('English')) || 'none';
+          const afrikaansSelection = allUserSubjects.find(s => s.startsWith('Afrikaans')) || 'none';
+          const contentSelection = allUserSubjects.filter(s => !s.startsWith('English') && !s.startsWith('Afrikaans'));
+
+          const formData = {
+            firstName: updatedDoc.firstName || '',
+            lastName: updatedDoc.lastName || '',
+            language: updatedDoc.language || 'en',
+            gradeLevel: updatedDoc.gradeLevel ? updatedDoc.gradeLevel.toString() : '',
+            english: englishSelection,
+            afrikaans: afrikaansSelection,
+            contentSubjects: contentSelection,
+            literature: (updatedDoc as any).literature || {
+              'english-hl': { novel: '', drama: '', poems: [] },
+              'english-fal': { novel: '', drama: '', poems: [] },
+              'afrikaans-ht': { novel: '', drama: '', poems: [] },
+              'afrikaans-eat': { novel: '', drama: '', poems: [] },
+            },
+          };
+          
+          form.reset(formData, { keepValues: false }); // Reset form with fresh server data
+          setLastSavedTimestamp(Date.now()); // Trigger useEffect to update from userProfile
+        } catch (refetchError) {
+          console.error('Error refetching document:', refetchError);
+          // If refetch fails, just reset with form data
+          form.reset(data, { keepValues: false });
+        }
+        
         if (data.language) {
           setLanguage(data.language as keyof typeof translations);
         }
@@ -265,7 +335,6 @@ export default function SettingsPage() {
           title: t.settingsSavedTitle,
           description: t.settingsSavedDescription,
         });
-        form.reset(data); // Resets the form's dirty state
       })
       .catch((serverError) => {
         console.error('Error saving settings:', serverError);

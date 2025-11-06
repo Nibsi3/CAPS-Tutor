@@ -51,7 +51,7 @@ export default function AchievementsPage() {
     if (!user) return null;
     return {
       databaseId: appwriteConfig.databaseId,
-      collectionId: 'users',
+      collectionId: 'user',
       documentId: user.$id,
     };
   }, [user]);
@@ -63,9 +63,9 @@ export default function AchievementsPage() {
     if (!user) return null;
     return {
       databaseId: appwriteConfig.databaseId,
-      collectionId: 'studentProgress',
+      collectionId: 'userprogress',
       queries: [
-        Query.equal('userId', user.$id),
+        Query.equal('userID', user.$id),
       ],
     };
   }, [user]);

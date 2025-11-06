@@ -52,7 +52,7 @@ export default function LoginPage() {
     if (!user) return null;
     return {
       databaseId: appwriteConfig.databaseId,
-      collectionId: 'users',
+      collectionId: 'user',
       documentId: user.$id,
     };
   }, [user]);
@@ -107,7 +107,7 @@ export default function LoginPage() {
         try {
           const profile = await databases.getDocument(
             appwriteConfig.databaseId,
-            'users',
+            'user',
             currentUser.$id
           );
           if (profile && (profile as any).subjects?.length > 0) {
@@ -137,11 +137,18 @@ export default function LoginPage() {
   };
 
 
-  if (isUserLoading || (user && isProfileLoading)) {
+  // Use client-side only rendering to prevent hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted || isUserLoading || (user && isProfileLoading)) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-muted/50 p-4">
         <Loader className="h-12 w-12 animate-spin" />
-        <p className="ml-4 text-lg">Loading...</p>
+        <p className="mt-4 text-lg">Loading...</p>
       </div>
     );
   }

@@ -1,0 +1,13 @@
+Attribute Key,Type,Size,Required,Array,Default,Min,Max,Indexed
+userId,String,255,true,false,,,,
+learningObjectiveId,String,255,true,false,,,,
+masteryLevel,Integer,,true,false,0,0,100,false
+completed,Boolean,,true,false,false,,,true
+lastAccessed,String,100,true,false,,,,
+topic,String,255,false,false,,,,
+subject,String,100,false,false,,,,
+gradeLevel,Integer,,false,false,,1,12,true
+type,String,100,false,false,,,,
+score,Integer,,false,false,,0,,false
+totalQuestions,Integer,,false,false,,0,,false
+

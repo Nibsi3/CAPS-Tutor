@@ -6,7 +6,7 @@ import { translations } from "@/lib/translations"
 
 export function StatCards({ hasActivity = false }: { hasActivity?: boolean }) {
   const lang = useLanguage();
-  const t = translations[lang];
+  const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
 
   const activeStatCardsData = [
     {

@@ -1,4 +1,5 @@
 import type {NextConfig} from 'next';
+import path from 'path';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -40,12 +41,14 @@ const nextConfig: NextConfig = {
   // Standalone output for Appwrite deployment
   // This creates a minimal server bundle in .next/standalone
   output: 'standalone',
+  // Fix standalone path issue on Windows by setting the root explicitly
+  // This prevents Next.js from creating nested paths with spaces
+  outputFileTracingRoot: path.resolve(process.cwd()),
   // Disable source maps in production for faster builds
   productionBrowserSourceMaps: false,
   // Experimental optimizations for faster builds
   experimental: {
-    // Force SWC transforms for faster compilation
-    forceSwcTransforms: true,
+    // Note: forceSwcTransforms removed - not compatible with Turbopack
     // Enable build cache for faster rebuilds
     // This caches compiled outputs in .next/cache/
     // Note: Appwrite may need to preserve .next/cache/ between builds
@@ -133,7 +136,7 @@ const nextConfig: NextConfig = {
               enforce: true,
             },
           },
-        };
+      };
       }
     }
 

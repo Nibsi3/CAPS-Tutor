@@ -65,14 +65,14 @@ const subjectIcons: Record<string, React.ElementType> = {
 export default function LessonsPage() {
   const { user } = useUser();
   const lang = useLanguage();
-  const t = translations[lang];
+  const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
 
   // Fetch user profile
   const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
     return {
       databaseId: appwriteConfig.databaseId,
-      collectionId: 'users',
+      collectionId: 'user',
       documentId: user.$id,
     };
   }, [user]);

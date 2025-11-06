@@ -87,7 +87,7 @@ export default function RegisterPage() {
           // Create user profile
           await databases.createDocument(
             appwriteConfig.databaseId,
-            'users',
+            'user',
             userId,
             {
               firstName: values.firstName,

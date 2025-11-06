@@ -36,7 +36,7 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const lang = useLanguage();
-  const t = translations[lang];
+  const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
   const router = useRouter();
   
   const { user, isUserLoading } = useUser();
@@ -60,7 +60,7 @@ export default function DashboardLayout({
     if (!user) return null;
     return {
       databaseId: appwriteConfig.databaseId,
-      collectionId: 'users',
+      collectionId: 'user',
       documentId: user.$id,
     };
   }, [user]);

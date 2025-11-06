@@ -28,7 +28,7 @@ const ADMIN_EMAIL = 'cameronfalck03@gmail.com';
 
 export function DashboardHeader() {
   const lang = useLanguage();
-  const t = translations[lang];
+  const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
@@ -41,7 +41,7 @@ export function DashboardHeader() {
     if (!user) return null;
     return {
       databaseId: appwriteConfig.databaseId,
-      collectionId: 'users',
+      collectionId: 'user',
       documentId: user.$id,
     };
   }, [user]);

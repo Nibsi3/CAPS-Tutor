@@ -1,0 +1,1 @@
+studentProgress in capstutor: userId(S255,req,idx), learningObjectiveId(S255,req), masteryLevel(I0-100,req), completed(B,req,idx), lastAccessed(S100,req,idx), topic(S255,opt,idx), subject(S100,opt,idx), gradeLevel(I1-12,opt,idx), type(S100,opt), score(I,opt), totalQuestions(I,opt). Users(CRU). Idx: userId, userId+subject, userId+completed.

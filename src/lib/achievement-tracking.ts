@@ -13,7 +13,7 @@ export async function trackLogin(databases: Databases, userId: string): Promise<
     try {
       const userDoc = await databases.getDocument(
         appwriteConfig.databaseId,
-        'users',
+        'user',
         userId
       );
 
@@ -23,7 +23,7 @@ export async function trackLogin(databases: Databases, userId: string): Promise<
       if (!loginDates.includes(today)) {
         await databases.updateDocument(
           appwriteConfig.databaseId,
-          'users',
+          'user',
           userId,
           {
             loginDates: [...loginDates, today],
@@ -35,7 +35,7 @@ export async function trackLogin(databases: Databases, userId: string): Promise<
         // Update last login timestamp even if date already exists
         await databases.updateDocument(
           appwriteConfig.databaseId,
-          'users',
+          'user',
           userId,
           {
             lastLoginTimestamp: now,
@@ -47,7 +47,7 @@ export async function trackLogin(databases: Databases, userId: string): Promise<
       if (error.code === 404) {
         await databases.createDocument(
           appwriteConfig.databaseId,
-          'users',
+          'user',
           userId,
           {
             loginDates: [today],
@@ -77,7 +77,7 @@ export async function trackStudyTime(
     try {
       const userDoc = await databases.getDocument(
         appwriteConfig.databaseId,
-        'users',
+        'user',
         userId
       );
 
@@ -86,7 +86,7 @@ export async function trackStudyTime(
 
       await databases.updateDocument(
         appwriteConfig.databaseId,
-        'users',
+        'user',
         userId,
         {
           totalStudyTimeMinutes: newTotal,
@@ -97,7 +97,7 @@ export async function trackStudyTime(
       if (error.code === 404) {
         await databases.createDocument(
           appwriteConfig.databaseId,
-          'users',
+          'user',
           userId,
           {
             totalStudyTimeMinutes: minutesStudied,
@@ -114,6 +114,8 @@ export async function trackStudyTime(
 
 /**
  * Update unlocked achievements in user profile
+ * Note: If unlockedAchievements is an Integer array in Appwrite, 
+ * you need to change it to String array to store achievement IDs
  */
 export async function updateUnlockedAchievements(
   databases: Databases,
@@ -121,16 +123,23 @@ export async function updateUnlockedAchievements(
   achievementIds: string[]
 ): Promise<void> {
   try {
+    // Convert string IDs to the format expected by Appwrite
+    // If your Appwrite attribute is String array, use achievementIds directly
+    // If it's Integer array, you'd need to map IDs to integers (not recommended)
     await databases.updateDocument(
       appwriteConfig.databaseId,
-      'users',
+      'user',
       userId,
       {
-        unlockedAchievements: achievementIds,
+        unlockedAchievements: achievementIds, // String array
       }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating unlocked achievements:', error);
+    if (error.message?.includes('integer')) {
+      console.error('⚠️ unlockedAchievements must be a String array, not Integer array. Please update the attribute type in Appwrite.');
+    }
+    throw error;
   }
 }
 

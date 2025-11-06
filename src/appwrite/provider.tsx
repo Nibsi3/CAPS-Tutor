@@ -3,6 +3,7 @@
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { Client, Account, Databases, Models } from 'appwrite';
 import { getClient, getAccount, getDatabases } from './index';
+import { appwriteLogger } from './logger';
 
 interface AppwriteProviderProps {
   children: ReactNode;
@@ -70,13 +71,16 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
 
     setUserAuthState({ user: null, isUserLoading: true, userError: null });
 
+    const startTime = Date.now();
+
     // Create a timeout to prevent indefinite hanging
     const timeout = setTimeout(() => {
-      console.warn('AppwriteProvider: account.get() timed out after 5 seconds');
+      const timeoutError = new Error('Appwrite authentication check timed out');
+      appwriteLogger.warn('auth', 'Account.get() timed out after 5 seconds', {}, timeoutError);
       setUserAuthState({ 
         user: null, 
         isUserLoading: false, 
-        userError: new Error('Appwrite authentication check timed out') 
+        userError: timeoutError
       });
     }, 5000); // 5 second timeout
 
@@ -89,15 +93,36 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
     ])
       .then((user) => {
         clearTimeout(timeout);
-        setUserAuthState({ user: user as any, isUserLoading: false, userError: null });
+        const userData = user as any;
+        appwriteLogger.logApiCall(
+          'auth',
+          'account.get()',
+          startTime,
+          true,
+          {
+            userId: userData?.$id,
+            email: userData?.email,
+          }
+        );
+        setUserAuthState({ user: userData, isUserLoading: false, userError: null });
+        appwriteLogger.info('auth', 'User authenticated', { userId: userData?.$id });
       })
       .catch((error) => {
         clearTimeout(timeout);
         // If no session exists, that's fine - user is just not logged in
         if (error.code === 401 || error.type === 'general_unauthorized_scope' || error.message === 'Timeout') {
+          appwriteLogger.debug('auth', 'No active session found (user not logged in)');
           setUserAuthState({ user: null, isUserLoading: false, userError: null });
         } else {
-          console.error("AppwriteProvider: get account error:", error);
+          appwriteLogger.error('auth', 'Failed to get account', error);
+          appwriteLogger.logApiCall(
+            'auth',
+            'account.get()',
+            startTime,
+            false,
+            {},
+            error
+          );
           setUserAuthState({ user: null, isUserLoading: false, userError: error });
         }
       });

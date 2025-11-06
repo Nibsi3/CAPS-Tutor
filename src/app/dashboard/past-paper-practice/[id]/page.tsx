@@ -156,7 +156,7 @@ export default function PastPaperPracticePage() {
         if (!user) return null;
         return {
             databaseId: appwriteConfig.databaseId,
-            collectionId: 'users',
+            collectionId: 'user',
             documentId: user.$id,
         };
     }, [user]);
@@ -514,12 +514,12 @@ export default function PastPaperPracticePage() {
                 paperTitle: paperData.subject,
                 year: paperData.year,
                 type: 'past-paper',
-                userId: user.$id,
+                userID: user.$id,
             };
 
             await databases.createDocument(
                 appwriteConfig.databaseId,
-                'studentProgress',
+                'userprogress',
                 ID.unique(),
                 progressData
             );

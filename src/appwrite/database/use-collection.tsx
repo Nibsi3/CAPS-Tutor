@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Databases, Models } from 'appwrite';
 import { useDatabases } from '../provider';
 import { appwriteConfig } from '../config';
+import { appwriteLogger } from '../logger';
 
 export type WithId<T> = T & { id: string };
 
@@ -48,6 +49,7 @@ export function useCollection<T = any>(
 
     // Build query array
     const queryArray = queries || [];
+    const startTime = Date.now();
 
     // Fetch documents
     databases.listDocuments<Models.Document & T>(databaseId, collectionId, queryArray)
@@ -59,6 +61,18 @@ export function useCollection<T = any>(
         setData(results);
         setError(null);
         setIsLoading(false);
+        
+        appwriteLogger.logApiCall(
+          'database',
+          `listDocuments(${collectionId})`,
+          startTime,
+          true,
+          {
+            collectionId,
+            documentCount: response.documents.length,
+            total: response.total,
+          }
+        );
       })
       .catch((err: Error) => {
         // Handle permission errors gracefully
@@ -71,16 +85,69 @@ export function useCollection<T = any>(
           errorMessage.includes('permission') ||
           errorMessage.includes('unauthorized');
 
-        if (isPermissionError) {
+        // Check if collection doesn't exist
+        const isCollectionNotFound = 
+          errorCode === 404 && 
+          (errorMessage.includes('collection') || errorMessage.includes('could not be found'));
+        
+        if (isCollectionNotFound) {
+          const helpfulMessage = `Collection "${collectionId}" not found in database "${databaseId}". ` +
+            `Please create it in Appwrite Console. ` +
+            `See docs/APPWRITE_COLLECTIONS_SETUP.md for instructions.`;
+          
+          console.error(`❌ ${helpfulMessage}`);
+          console.error('Collection details:', {
+            collectionId: collectionId || 'MISSING',
+            databaseId: databaseId || 'MISSING',
+            errorCode: errorCode || 'MISSING',
+            errorMessage: (err as any).message || 'MISSING',
+            config: {
+              databaseId: appwriteConfig.databaseId || 'MISSING',
+              projectId: appwriteConfig.projectId || 'MISSING',
+            }
+          });
+          
+          appwriteLogger.error(
+            'database',
+            `Collection "${collectionId}" not found`,
+            err,
+            { collectionId, databaseId }
+          );
+          
+          // Return empty array instead of null to prevent app crashes
+          // The error is still set so components can show a message if needed
+          setError(new Error(helpfulMessage));
+          setData([]);
+        } else if (isPermissionError) {
           // Return empty array for permission errors to prevent app crashes
-          console.warn(`[useCollection] Permission error on collection. Collection: ${collectionId}. Treating as empty collection.`);
+          appwriteLogger.warn(
+            'database',
+            `Permission error on collection: ${collectionId}`,
+            { collectionId, databaseId },
+            err
+          );
           setData([]);
           setError(null);
         } else {
+          appwriteLogger.error(
+            'database',
+            `Failed to list documents from collection: ${collectionId}`,
+            err,
+            { collectionId, databaseId }
+          );
           setError(err);
           setData(null);
         }
         setIsLoading(false);
+        
+        appwriteLogger.logApiCall(
+          'database',
+          `listDocuments(${collectionId})`,
+          startTime,
+          false,
+          { collectionId },
+          err
+        );
       });
 
     // Note: Appwrite doesn't have real-time subscriptions by default in the web SDK

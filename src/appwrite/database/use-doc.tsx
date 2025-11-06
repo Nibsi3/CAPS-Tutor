@@ -45,6 +45,16 @@ export function useDoc<T = any>(
 
     const { databaseId, collectionId, documentId } = memoizedDocRef;
 
+    // Debug: Log what we're trying to access
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 useDoc: Attempting to fetch document:', {
+        databaseId: databaseId || 'MISSING',
+        collectionId: collectionId || 'MISSING',
+        documentId: documentId || 'MISSING',
+        configDatabaseId: appwriteConfig.databaseId || 'MISSING',
+      });
+    }
+
     // Fetch document
     databases.getDocument<Models.Document & T>(databaseId, collectionId, documentId)
       .then((document) => {
@@ -53,11 +63,64 @@ export function useDoc<T = any>(
         setIsLoading(false);
       })
       .catch((err: Error) => {
-        if ((err as any).code === 404) {
-          // Document doesn't exist
+        const errorCode = (err as any).code;
+        const errorMessage = (err as any).message?.toLowerCase() || '';
+        const errorType = (err as any).type;
+        
+        // Check if collection doesn't exist (404 with "Collection" in message)
+        const isCollectionNotFound = 
+          errorCode === 404 && 
+          (errorMessage.includes('collection') || 
+           errorMessage.includes('could not be found') ||
+           (errorType === 'document_not_found' && errorMessage.includes('collection')));
+        
+        if (isCollectionNotFound) {
+          const helpfulError = new Error(
+            `Collection "${collectionId}" not found in database "${databaseId}".\n\n` +
+            `To fix this:\n` +
+            `1. Go to: https://cloud.appwrite.io/console\n` +
+            `2. Select project: CAPS Tutor\n` +
+            `3. Go to: Databases → ${databaseId}\n` +
+            `4. Click: Create Collection\n` +
+            `5. Collection ID: ${collectionId}\n` +
+            `6. See: docs/APPWRITE_COLLECTIONS_SETUP.md for details`
+          );
+          
+          // Log detailed error information
+          const errorDetails = {
+            collectionId: collectionId || 'MISSING',
+            databaseId: databaseId || 'MISSING',
+            errorCode: errorCode || 'MISSING',
+            errorMessage: (err as any).message || 'MISSING',
+            errorType: errorType || 'MISSING',
+            config: {
+              databaseId: appwriteConfig.databaseId || 'MISSING',
+              projectId: appwriteConfig.projectId || 'MISSING',
+              endpoint: appwriteConfig.endpoint || 'MISSING',
+            },
+            errorString: String(err),
+            errorStack: err.stack || 'No stack trace',
+          };
+          
+          console.error('❌ Collection Missing:', errorDetails);
+          console.error('Full error object:', err);
+          setError(helpfulError);
+          setData(null);
+        } else if (errorCode === 404) {
+          // Document doesn't exist (but collection does) - this is fine
           setData(null);
           setError(null);
         } else {
+          // Log other errors for debugging
+          console.error('❌ useDoc Error:', {
+            collectionId: collectionId || 'MISSING',
+            databaseId: databaseId || 'MISSING',
+            documentId: documentId || 'MISSING',
+            errorCode: errorCode || 'MISSING',
+            errorMessage: (err as any).message || 'MISSING',
+            errorType: errorType || 'MISSING',
+            error: err,
+          });
           setError(err);
           setData(null);
         }

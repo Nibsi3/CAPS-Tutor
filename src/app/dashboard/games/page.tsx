@@ -61,13 +61,13 @@ const gamesByGradeAndSubject: Record<number, Record<string, Array<{ id: string; 
 export default function GamesPage() {
   const { user } = useUser();
   const lang = useLanguage();
-  const t = translations[lang];
+  const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
 
   const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
     return {
       databaseId: appwriteConfig.databaseId,
-      collectionId: 'users',
+      collectionId: 'user',
       documentId: user.$id,
     };
   }, [user]);

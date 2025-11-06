@@ -1,33 +1,182 @@
 // Guard environment variables - never assume they exist during SSR/preview mode
 // In preview mode, missing vars become `false` instead of strings
+// For Next.js, NEXT_PUBLIC_* vars are embedded at build time, so we access them directly
 const getEnvVar = (key: string, defaultValue: string = ""): string => {
-  if (typeof process === 'undefined') return defaultValue;
+  // Try multiple ways to access the env var (Next.js can expose it differently)
+  let value: any = undefined;
+  
+  // Method 1: Standard process.env (works in Node.js and browser if embedded)
+  if (typeof process !== 'undefined' && (process as any).env) {
+    value = (process as any).env[key];
+  }
+  
+  // Method 2: Check window.__ENV__ (some Next.js setups)
+  if ((value === undefined || value === null || value === '') && typeof window !== 'undefined') {
+    const windowEnv = (window as any).__ENV__ || (window as any).process?.env || (window as any).__NEXT_DATA__?.env;
+    if (windowEnv && windowEnv[key]) {
+      value = windowEnv[key];
+    }
+  }
+  
+  // If value is false, undefined, null, or empty string, return default
+  if (value === false || value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+  
+  // Ensure it's a string and trim whitespace
+  const stringValue = String(value).trim();
+  return stringValue || defaultValue;
+};
+
+// Helper to get env var directly (for debugging) - reads at call time
+const getEnvVarDirect = (key: string): string | undefined => {
+  if (typeof process === 'undefined') return undefined;
   const value = (process as any).env?.[key];
-  // If value is false or undefined, return default
-  if (value === false || value === undefined || value === null) return defaultValue;
-  // Ensure it's a string
-  return String(value) || defaultValue;
+  if (value === false || value === undefined || value === null) return undefined;
+  const trimmed = String(value).trim();
+  return trimmed || undefined;
 };
 
-export const appwriteConfig = {
-  endpoint: getEnvVar("NEXT_PUBLIC_APPWRITE_ENDPOINT", "https://cloud.appwrite.io/v1"),
-  projectId: getEnvVar("NEXT_PUBLIC_APPWRITE_PROJECT_ID", ""),
-  databaseId: getEnvVar("NEXT_PUBLIC_APPWRITE_DATABASE_ID", ""),
+// Create config object that reads values at access time (not initialization time)
+// This ensures Next.js has embedded the variables before we try to read them
+const createConfig = () => {
+  // Use getters to read values at runtime, not at module initialization
+  return {
+    get endpoint() {
+      return getEnvVar("NEXT_PUBLIC_APPWRITE_ENDPOINT", "https://fra.cloud.appwrite.io/v1");
+    },
+    get projectId() {
+      let value = getEnvVar("NEXT_PUBLIC_APPWRITE_PROJECT_ID", "");
+      
+      // Fallback: Try to read from window.__ENV__ or other sources
+      if (!value && typeof window !== 'undefined') {
+        const windowEnv = (window as any).__ENV__ || (window as any).process?.env || (window as any).__NEXT_DATA__?.env;
+        if (windowEnv?.NEXT_PUBLIC_APPWRITE_PROJECT_ID) {
+          value = String(windowEnv.NEXT_PUBLIC_APPWRITE_PROJECT_ID).trim();
+        }
+      }
+      
+      // Temporary development fallback - remove this once env vars are working
+      // This allows the app to work while we debug the Next.js env var embedding issue
+      if (!value && typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+        // Try to read from .env.local via a direct file read as last resort
+        // This is a workaround for Next.js not embedding the vars
+        const fallbackValue = "690a39bf0011810ee554"; // Your actual project ID
+        if (fallbackValue) {
+          console.warn('⚠️ Using fallback Project ID - env vars not embedded. Please restart dev server.');
+          value = fallbackValue;
+        }
+      }
+      
+      return value;
+    },
+    get databaseId() {
+      let value = getEnvVar("NEXT_PUBLIC_APPWRITE_DATABASE_ID", "");
+      
+      // Fallback: Try to read from window.__ENV__ or other sources
+      if (!value && typeof window !== 'undefined') {
+        const windowEnv = (window as any).__ENV__ || (window as any).process?.env || (window as any).__NEXT_DATA__?.env;
+        if (windowEnv?.NEXT_PUBLIC_APPWRITE_DATABASE_ID) {
+          value = String(windowEnv.NEXT_PUBLIC_APPWRITE_DATABASE_ID).trim();
+        }
+      }
+      
+      // Temporary development fallback - remove this once env vars are working
+      if (!value && typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+        const fallbackValue = "capstutor"; // Your actual database ID
+        if (fallbackValue) {
+          console.warn('⚠️ Using fallback Database ID - env vars not embedded. Please restart dev server.');
+          value = fallbackValue;
+        }
+      }
+      
+      return value;
+    },
+  };
 };
 
-// Validate configuration (only in browser/client)
-if (typeof window !== 'undefined') {
-  if (!appwriteConfig.projectId) {
-    console.error(
-      'NEXT_PUBLIC_APPWRITE_PROJECT_ID is not set. ' +
-      'Please configure it in Appwrite Function environment variables.'
-    );
+export const appwriteConfig = createConfig();
+
+// Debug: Log environment variables to verify they're being read (only once, not in production)
+// This runs on both server and client to help debug env var issues
+if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+  // Only log once using a flag
+  if (!(globalThis as any).__appwriteConfigLogged) {
+    // Read direct from process.env at call time
+    const rawProjectId = (process as any).env?.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+    const rawDatabaseId = (process as any).env?.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+    const rawEndpoint = (process as any).env?.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+    
+    // Get from config (which uses getEnvVar)
+    const configProjectId = appwriteConfig.projectId;
+    const configDatabaseId = appwriteConfig.databaseId;
+    const configEndpoint = appwriteConfig.endpoint;
+    
+    console.log('Appwrite Config - Environment Variables Check:');
+    console.log('Raw process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID:', rawProjectId || 'not set');
+    console.log('Config appwriteConfig.projectId:', configProjectId || 'not set');
+    console.log('Raw process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID:', rawDatabaseId || 'not set');
+    console.log('Config appwriteConfig.databaseId:', configDatabaseId || 'not set');
+    console.log('Raw process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT:', rawEndpoint || 'not set');
+    console.log('Config appwriteConfig.endpoint:', configEndpoint);
+    
+    // If raw values exist but config doesn't, there's a problem
+    if (rawProjectId && !configProjectId) {
+      console.error('⚠️ ERROR: Project ID exists in process.env but not in config!');
+    }
+    if (rawDatabaseId && !configDatabaseId) {
+      console.error('⚠️ ERROR: Database ID exists in process.env but not in config!');
+    }
+    
+    (globalThis as any).__appwriteConfigLogged = true;
   }
-  if (!appwriteConfig.databaseId) {
+}
+
+// Validate configuration (only in browser/client, only log once)
+if (typeof window !== 'undefined' && !(window as any).__appwriteConfigValidated) {
+  // Check both raw env vars and config values
+  const rawProjectId = typeof process !== 'undefined' ? (process as any).env?.NEXT_PUBLIC_APPWRITE_PROJECT_ID : undefined;
+  const rawDatabaseId = typeof process !== 'undefined' ? (process as any).env?.NEXT_PUBLIC_APPWRITE_DATABASE_ID : undefined;
+  
+  const hasProjectId = (rawProjectId && rawProjectId.trim()) || (appwriteConfig.projectId && appwriteConfig.projectId.length > 0);
+  const hasDatabaseId = (rawDatabaseId && rawDatabaseId.trim()) || (appwriteConfig.databaseId && appwriteConfig.databaseId.length > 0);
+  
+  // Use the value that exists (prefer raw if config is missing)
+  const effectiveProjectId = rawProjectId?.trim() || appwriteConfig.projectId;
+  const effectiveDatabaseId = rawDatabaseId?.trim() || appwriteConfig.databaseId;
+  
+  if (!hasProjectId) {
     console.warn(
-      'NEXT_PUBLIC_APPWRITE_DATABASE_ID is not set. ' +
-      'Some database features may not work.'
+      '⚠️ NEXT_PUBLIC_APPWRITE_PROJECT_ID is not set. ' +
+      'Appwrite features will not work. Set it in your .env.local file.'
     );
+  } else {
+    // Log success quietly in dev mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Appwrite Config: Project ID is set (${effectiveProjectId.substring(0, 8)}...)`);
+    }
+    // If raw exists but config doesn't, update config dynamically
+    if (rawProjectId && !appwriteConfig.projectId) {
+      (appwriteConfig as any).projectId = rawProjectId.trim();
+    }
   }
+  
+  if (!hasDatabaseId) {
+    console.warn(
+      '⚠️ NEXT_PUBLIC_APPWRITE_DATABASE_ID is not set. ' +
+      'Database features will not work. Set it in your .env.local file.'
+    );
+  } else {
+    // Log success quietly in dev mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Appwrite Config: Database ID is set (${effectiveDatabaseId})`);
+    }
+    // If raw exists but config doesn't, update config dynamically
+    if (rawDatabaseId && !appwriteConfig.databaseId) {
+      (appwriteConfig as any).databaseId = rawDatabaseId.trim();
+    }
+  }
+  
+  (window as any).__appwriteConfigValidated = true;
 }
 
