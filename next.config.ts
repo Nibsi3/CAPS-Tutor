@@ -98,25 +98,29 @@ const nextConfig: NextConfig = {
     }
   },
   // Externalize packages to reduce bundle size (moved from experimental in Next.js 15)
+  // CRITICAL: Only externalize if packages are guaranteed to be in Appwrite Cloud runtime
+  // If Appwrite Cloud doesn't have these packages pre-installed, they MUST be bundled
+  // Commenting out to ensure packages are bundled in standalone build
   serverExternalPackages: [
     // Firebase removed - migrating to Appwrite
-    'appwrite',
-    'node-appwrite',
+    // 'appwrite', // MUST be bundled - Appwrite Cloud may not have this
+    // 'node-appwrite', // MUST be bundled - Appwrite Cloud may not have this
   ],
   // Optimize build performance and reduce memory usage
+  // CRITICAL: Be very careful with exclusions - they can break the build
+  // The 6.3 MB build size suggests too many files are being excluded
   outputFileTracingExcludes: {
     '*': [
-      // Exclude large files from serverless function tracing
+      // Exclude large Next.js internal files (these are handled by Next.js itself)
       '**/node_modules/@swc/core*/**',
       '**/node_modules/@next/swc*/**',
       '**/node_modules/next/dist/compiled/**',
       '**/node_modules/next/dist/server/**',
-      // Exclude large source files that might be causing issues
-      '**/src/lib/questions.ts',
+      // Exclude large data files (not needed in runtime - these are in gitignore anyway)
       '**/past papers/**',
       '**/extracted_papers/**',
       '**/*.pdf',
-      '**/*.json',
+      // Exclude development-only files
       '**/scripts/**',
       '**/docs/**',
       '**/*.md',
@@ -124,6 +128,8 @@ const nextConfig: NextConfig = {
       '**/*.ps1',
       '**/*.bat',
       '**/*.sh',
+      // REMOVED: '**/*.json' - TOO BROAD! This excludes package.json, tsconfig.json, and other required files
+      // REMOVED: '**/src/lib/questions.ts' - May be needed at runtime if imported
     ],
   },
   // Optimized webpack config for faster builds
