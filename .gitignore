@@ -86,3 +86,9 @@ ENV/
 
 # Large source files that may be generated
 # (Keep questions.ts for now as it's source code, but consider moving to database)
+
+# Old deployment directories (not needed for Appwrite Sites)
+appwrite-deploy/
+appwrite-source-deploy/
+appwrite-deploy.rar
+appwrite-deploy.*
