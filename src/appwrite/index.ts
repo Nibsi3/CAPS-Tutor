@@ -49,6 +49,15 @@ export function getClient(): Client | null {
     }
     
     try {
+      // Validate endpoint format per Appwrite documentation
+      if (!endpoint.endsWith('/v1')) {
+        console.warn(
+          '⚠️ Appwrite endpoint should end with /v1. ' +
+          `Current: ${endpoint}. ` +
+          'Expected format: https://[hostname]/v1'
+        );
+      }
+      
       clientInstance = new Client()
         .setEndpoint(endpoint)
         .setProject(projectId);
@@ -57,6 +66,17 @@ export function getClient(): Client | null {
         endpoint,
         projectId: projectId.substring(0, 8) + '...', // Log partial ID for security
       });
+      
+      // Log platform configuration reminder in development
+      if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+        const currentOrigin = window.location.origin;
+        console.log(
+          `ℹ️ Appwrite Client initialized. ` +
+          `Ensure "${currentOrigin}" is added as a platform in Appwrite Console ` +
+          `(Settings → Platforms) to prevent CORS errors. ` +
+          `See docs/APPWRITE_BEST_PRACTICES.md for details.`
+        );
+      }
     } catch (error) {
       console.error('❌ Failed to initialize Appwrite Client:', error);
       appwriteLogger.error('general', 'Failed to initialize Appwrite Client', error);

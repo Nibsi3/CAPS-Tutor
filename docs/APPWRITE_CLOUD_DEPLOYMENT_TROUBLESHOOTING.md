@@ -1,5 +1,7 @@
 # Appwrite Cloud Deployment Troubleshooting Guide
 
+> **📚 For comprehensive setup instructions, see [APPWRITE_BEST_PRACTICES.md](./APPWRITE_BEST_PRACTICES.md)**
+
 ## Common Issues and Solutions
 
 ### Issue 1: 400 Error on App Load
@@ -57,7 +59,22 @@ To find your correct endpoint:
    - ❌ Missing environment variables
    - ❌ Build errors
 
-#### Step 4: Verify OAuth Callback URLs
+#### Step 4: Verify Platform Configuration (CRITICAL for CORS)
+
+**This is the most common cause of CORS errors!**
+
+1. Go to **Appwrite Console** → **Settings** → **Platforms**
+2. Click **Add Platform** → Select **Web**
+3. Add your domains:
+   - Production: `https://gearshift.co.za`
+   - Development: `http://localhost:3000`
+4. Click **Create**
+
+**Why this matters:** Appwrite requires your domain to be registered as a platform to allow CORS requests. Without this, all API requests will fail with CORS errors.
+
+**See:** [APPWRITE_BEST_PRACTICES.md](./APPWRITE_BEST_PRACTICES.md#1-platform-configuration-required-for-cors) for detailed instructions.
+
+#### Step 5: Verify OAuth Callback URLs
 
 If you're getting 400 errors during OAuth authentication:
 
@@ -74,15 +91,21 @@ If you're getting 400 errors during OAuth authentication:
      `${window.location.origin}/login`,
    );
    ```
+4. **Also verify in Google OAuth Console** that the same URLs are added
 
-#### Step 5: Check Error Handling
+**See:** [APPWRITE_BEST_PRACTICES.md](./APPWRITE_BEST_PRACTICES.md#2-oauth-provider-configuration) for detailed instructions.
+
+#### Step 6: Check Error Handling
 
 The application now includes improved error handling for 400 errors:
 - OAuth callback errors are caught and handled gracefully
 - Users are redirected to login with clear error messages
 - Session cleanup is performed automatically on errors
+- Error messages now include links to documentation and specific fix steps
 
-Check browser console for specific error messages that can help diagnose the issue.
+Check browser console for specific error messages that can help diagnose the issue. The error messages will guide you to the exact configuration step needed.
+
+**See:** [APPWRITE_BEST_PRACTICES.md](./APPWRITE_BEST_PRACTICES.md#5-error-handling) for error handling patterns.
 
 ### Issue 2: CORS Font Errors
 
@@ -300,7 +323,11 @@ NEXT_PUBLIC_APPWRITE_DATABASE_ID=capstutor
 
 ## Additional Resources
 
+- **[APPWRITE_BEST_PRACTICES.md](./APPWRITE_BEST_PRACTICES.md)** - Comprehensive guide based on official Appwrite documentation
 - [Appwrite Cloud Documentation](https://appwrite.io/docs/products/cloud)
+- [Appwrite Official Documentation](https://appwrite.io/docs)
 - [Next.js Environment Variables](https://nextjs.org/docs/basic-features/environment-variables)
 - [Appwrite Client SDK](https://appwrite.io/docs/getting-started-for-web)
+- [Appwrite Platforms Documentation](https://appwrite.io/docs/getting-started-for-web)
+- [Appwrite OAuth Documentation](https://appwrite.io/docs/products/auth/oauth)
 
