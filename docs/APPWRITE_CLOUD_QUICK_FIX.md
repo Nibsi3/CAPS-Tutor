@@ -47,6 +47,26 @@ Your app is deployed on Appwrite Cloud but showing:
    - You should see: `✅ Appwrite Client initialized`
    - You should NOT see: `❌ Appwrite Client: Missing environment variables!`
 
+## Getting 400 Error?
+
+If you're seeing a 400 error, the server might not be starting correctly. Try these:
+
+1. **Test Health Endpoint:**
+   - Visit: `https://your-app-url.appwrite.network/api/health`
+   - If this works, the server is running (issue is with root page)
+   - If this also returns 400, the server isn't starting
+
+2. **Check Build Logs:**
+   - Go to Appwrite Console → Your Deployment → Logs
+   - Look for build errors or server startup errors
+
+3. **Try Standard Next.js Output:**
+   - In `next.config.ts`, comment out: `output: 'standalone'`
+   - Change output directory to: `./.next`
+   - Redeploy
+
+See `docs/APPWRITE_400_ERROR_FIX.md` for detailed troubleshooting.
+
 ## Still Not Working?
 
 ### Check These:

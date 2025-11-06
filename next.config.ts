@@ -62,7 +62,8 @@ const nextConfig: NextConfig = {
   compress: true,
   // Standalone output for Appwrite deployment
   // This creates a minimal server bundle in .next/standalone
-  output: 'standalone',
+  // Temporarily disabled - Appwrite Cloud Sites might not support standalone mode
+  // output: 'standalone',
   // Fix standalone path issue on Windows by setting the root explicitly
   // This prevents Next.js from creating nested paths with spaces
   outputFileTracingRoot: path.resolve(process.cwd()),
