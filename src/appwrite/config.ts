@@ -167,10 +167,8 @@ if (typeof window !== 'undefined' && !(window as any).__appwriteConfigValidated)
     if (process.env.NODE_ENV === 'development') {
       console.log(`✅ Appwrite Config: Project ID is set (${effectiveProjectId.substring(0, 8)}...)`);
     }
-    // If raw exists but config doesn't, update config dynamically
-    if (rawProjectId && !appwriteConfig.projectId) {
-      (appwriteConfig as any).projectId = rawProjectId.trim();
-    }
+    // Note: Cannot set properties on config object with getters
+    // The getter will read from process.env at runtime, so no need to set it
   }
   
   if (!hasDatabaseId) {
@@ -183,10 +181,8 @@ if (typeof window !== 'undefined' && !(window as any).__appwriteConfigValidated)
     if (process.env.NODE_ENV === 'development') {
       console.log(`✅ Appwrite Config: Database ID is set (${effectiveDatabaseId})`);
     }
-    // If raw exists but config doesn't, update config dynamically
-    if (rawDatabaseId && !appwriteConfig.databaseId) {
-      (appwriteConfig as any).databaseId = rawDatabaseId.trim();
-    }
+    // Note: Cannot set properties on config object with getters
+    // The getter will read from process.env at runtime, so no need to set it
   }
   
   (window as any).__appwriteConfigValidated = true;
