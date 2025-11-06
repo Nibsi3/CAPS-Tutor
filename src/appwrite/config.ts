@@ -185,10 +185,7 @@ if (typeof window !== 'undefined' && !(window as any).__appwriteConfigValidated)
     if (process.env.NODE_ENV === 'development') {
       console.log(`✅ Appwrite Config: Project ID is set (${effectiveProjectId.substring(0, 8)}...)`);
     }
-    // If raw exists but config doesn't, update config dynamically
-    if (rawProjectId && !appwriteConfig.projectId) {
-      (appwriteConfig as any).projectId = rawProjectId.trim();
-    }
+    // Note: We don't need to set projectId - the getter already reads from multiple sources
   }
   
   if (!hasDatabaseId) {
@@ -201,10 +198,7 @@ if (typeof window !== 'undefined' && !(window as any).__appwriteConfigValidated)
     if (process.env.NODE_ENV === 'development') {
       console.log(`✅ Appwrite Config: Database ID is set (${effectiveDatabaseId})`);
     }
-    // If raw exists but config doesn't, update config dynamically
-    if (rawDatabaseId && !appwriteConfig.databaseId) {
-      (appwriteConfig as any).databaseId = rawDatabaseId.trim();
-    }
+    // Note: We don't need to set databaseId - the getter already reads from multiple sources
   }
   
   (window as any).__appwriteConfigValidated = true;
