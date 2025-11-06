@@ -37,13 +37,25 @@ const getEnvVarDirect = (key: string): string | undefined => {
   return trimmed || undefined;
 };
 
+// Helper to detect if we're running on Appwrite Cloud
+const isAppwriteCloud = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location.hostname;
+  return hostname.includes('appwrite.network') || hostname.includes('appwrite.cloud');
+};
+
 // Create config object that reads values at access time (not initialization time)
 // This ensures Next.js has embedded the variables before we try to read them
 const createConfig = () => {
   // Use getters to read values at runtime, not at module initialization
   return {
     get endpoint() {
-      return getEnvVar("NEXT_PUBLIC_APPWRITE_ENDPOINT", "https://fra.cloud.appwrite.io/v1");
+      // For Appwrite Cloud, default to fra.cloud.appwrite.io/v1
+      // Users can override with environment variable
+      const defaultEndpoint = isAppwriteCloud() 
+        ? "https://fra.cloud.appwrite.io/v1"
+        : "https://fra.cloud.appwrite.io/v1";
+      return getEnvVar("NEXT_PUBLIC_APPWRITE_ENDPOINT", defaultEndpoint);
     },
     get projectId() {
       let value = getEnvVar("NEXT_PUBLIC_APPWRITE_PROJECT_ID", "");

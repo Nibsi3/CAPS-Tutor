@@ -22,11 +22,25 @@ export function getClient(): Client | null {
     if (!endpoint || !projectId) {
       // Only warn once
       if (!(window as any).__appwriteClientWarned) {
-        console.warn(
-          '⚠️ Appwrite Client: Missing environment variables. ' +
-          `Endpoint: ${endpoint ? 'set' : 'missing'}, ` +
-          `Project ID: ${projectId ? 'set' : 'missing'}. ` +
-          'Client will not be initialized. Please set NEXT_PUBLIC_APPWRITE_PROJECT_ID (and NEXT_PUBLIC_APPWRITE_ENDPOINT if needed).'
+        const isAppwriteCloud = window.location.hostname.includes('appwrite.network') || 
+                                window.location.hostname.includes('appwrite.cloud');
+        
+        console.error(
+          '❌ Appwrite Client: Missing environment variables!\n' +
+          `   Endpoint: ${endpoint ? '✅ set' : '❌ missing'}\n` +
+          `   Project ID: ${projectId ? '✅ set' : '❌ missing'}\n\n` +
+          (isAppwriteCloud 
+            ? '🔧 Appwrite Cloud Deployment Detected!\n' +
+              '   Please set environment variables in Appwrite Console:\n' +
+              '   1. Go to Appwrite Console → Your Deployment → Settings\n' +
+              '   2. Add Environment Variables:\n' +
+              '      - NEXT_PUBLIC_APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1\n' +
+              '      - NEXT_PUBLIC_APPWRITE_PROJECT_ID=690a39bf0011810ee554\n' +
+              '      - NEXT_PUBLIC_APPWRITE_DATABASE_ID=(your database ID)\n' +
+              '   3. Redeploy your application\n'
+            : '   Please set NEXT_PUBLIC_APPWRITE_PROJECT_ID in your .env.local file.\n' +
+              '   See docs/APPWRITE_ENVIRONMENT_VARIABLES.md for details.\n'
+          )
         );
         (window as any).__appwriteClientWarned = true;
       }
@@ -34,14 +48,20 @@ export function getClient(): Client | null {
       return null;
     }
     
-    clientInstance = new Client()
-      .setEndpoint(endpoint)
-      .setProject(projectId);
-    
-    appwriteLogger.info('general', 'Appwrite Client initialized', {
-      endpoint,
-      projectId: projectId.substring(0, 8) + '...', // Log partial ID for security
-    });
+    try {
+      clientInstance = new Client()
+        .setEndpoint(endpoint)
+        .setProject(projectId);
+      
+      appwriteLogger.info('general', 'Appwrite Client initialized', {
+        endpoint,
+        projectId: projectId.substring(0, 8) + '...', // Log partial ID for security
+      });
+    } catch (error) {
+      console.error('❌ Failed to initialize Appwrite Client:', error);
+      appwriteLogger.error('general', 'Failed to initialize Appwrite Client', error);
+      return null;
+    }
   }
   return clientInstance;
 }
