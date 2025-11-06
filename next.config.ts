@@ -9,7 +9,10 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true, // Disabled to prevent build failures and memory issues
   },
-  // Add headers for better CORS and security
+  // Add headers for better security
+  // Note: CORS headers for external fonts (assets.appwrite.io) cannot be set here
+  // as those fonts are hosted on Appwrite's CDN, not our server.
+  // Font CORS errors are harmless and are suppressed in src/app/layout.tsx
   async headers() {
     return [
       {

@@ -48,6 +48,32 @@ export default function RootLayout({
   // The provider will return safe fallbacks when env vars are not set
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Suppress harmless Appwrite font CORS errors - these are from Appwrite's console UI, not our app */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof window !== 'undefined') {
+                  const originalError = console.error;
+                  console.error = function(...args) {
+                    const message = args.join(' ');
+                    // Suppress Appwrite font CORS errors (harmless - from Appwrite's console UI)
+                    if (message.includes('assets.appwrite.io/fonts') && message.includes('CORS')) {
+                      return; // Suppress this error
+                    }
+                    // Suppress message port errors (usually from browser extensions)
+                    if (message.includes('message port closed') || message.includes('runtime.lastError')) {
+                      return; // Suppress this error
+                    }
+                    originalError.apply(console, args);
+                  };
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
       >

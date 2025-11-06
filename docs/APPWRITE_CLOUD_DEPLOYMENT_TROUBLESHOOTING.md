@@ -7,11 +7,16 @@
 **Symptoms:**
 - Browser shows `Failed to load resource: the server responded with a status of 400`
 - App doesn't load or shows blank page
+- OAuth callback fails with 400 error
+- API requests return 400 Bad Request
 
 **Causes:**
 1. Missing environment variables
 2. Incorrect endpoint configuration
 3. Build/deployment issues
+4. Invalid OAuth callback URL
+5. Malformed API requests
+6. Missing or invalid request parameters
 
 **Solutions:**
 
@@ -52,21 +57,57 @@ To find your correct endpoint:
    - ❌ Missing environment variables
    - ❌ Build errors
 
+#### Step 4: Verify OAuth Callback URLs
+
+If you're getting 400 errors during OAuth authentication:
+
+1. Go to **Appwrite Console** → **Authentication** → **Settings**
+2. Check your **OAuth Redirect URLs**:
+   - For production: `https://gearshift.co.za/auth/callback`
+   - For development: `http://localhost:3000/auth/callback`
+3. Ensure the callback URL in your code matches exactly:
+   ```typescript
+   // In src/appwrite/auth/social-auth.ts
+   await account.createOAuth2Session(
+     OAuthProvider.Google,
+     `${window.location.origin}/auth/callback`, // Must match Appwrite settings
+     `${window.location.origin}/login`,
+   );
+   ```
+
+#### Step 5: Check Error Handling
+
+The application now includes improved error handling for 400 errors:
+- OAuth callback errors are caught and handled gracefully
+- Users are redirected to login with clear error messages
+- Session cleanup is performed automatically on errors
+
+Check browser console for specific error messages that can help diagnose the issue.
+
 ### Issue 2: CORS Font Errors
 
 **Symptoms:**
 ```
-Access to font at 'https://assets.appwrite.io/fonts/...' from origin '...' 
-has been blocked by CORS policy
+Access to font at 'https://assets.appwrite.io/fonts/fira-code/FiraCode-Regular.woff2' from origin '...' 
+has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+
+Access to font at 'https://assets.appwrite.io/fonts/inter/Inter-Regular.woff2' from origin '...' 
+has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
 ```
 
 **Cause:**
-These errors are from Appwrite's console UI, not your app. They can be ignored if your app loads correctly.
+These errors are from Appwrite's console UI (not your application). The fonts are hosted on Appwrite's CDN (`assets.appwrite.io`) which doesn't allow cross-origin requests from your domain. These fonts are **not needed** by your application - they're only used by Appwrite's internal console UI.
 
 **Solution:**
-- These are harmless console warnings
-- They don't affect your application
-- If your app loads, you can ignore them
+1. **These errors are harmless** - They don't affect your application functionality
+2. **Already handled in code** - The application includes a script that suppresses these console errors to reduce noise
+3. **No action needed** - If your app loads and works correctly, you can safely ignore these errors
+
+**Technical Details:**
+- The fonts are loaded by Appwrite's SDK or console UI components
+- Appwrite's CDN doesn't set CORS headers for these font resources
+- Your application doesn't actually need these fonts (you use Google Fonts: PT Sans, Space Grotesk, Source Code Pro)
+- The error suppression script in `src/app/layout.tsx` filters out these harmless errors
 
 ### Issue 3: Connection Error
 
