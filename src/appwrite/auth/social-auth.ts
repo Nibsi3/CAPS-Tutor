@@ -164,10 +164,14 @@ export async function ensureUserProfile(databases: Databases, userId: string, em
 
 /**
  * Log out the current user
+ * Uses deleteSessions() to delete all sessions from the user account
+ * This is the recommended approach per Appwrite documentation
  */
 export async function logOut(account: Account): Promise<void> {
   try {
-    await account.deleteSession({ sessionId: 'current' });
+    // Use deleteSessions() which deletes all sessions and removes session cookies
+    // This is more reliable than deleteSession('current') which has validation issues
+    await account.deleteSessions();
   } catch (error) {
     console.error("Error signing out: ", error);
     throw error;
