@@ -1,0 +1,34 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero",
+      "description": "A focused student studying with a laptop.",
+      "imageUrl": "https://images.unsplash.com/photo-1584697964328-b1e7f63dca95?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxzdHVkZW50JTIwbGVhcm5pbmd8ZW58MHx8fHwxNzYxNTU2NTcyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "student learning"
+    },
+    {
+      "id": "feature1",
+      "description": "A close-up of a student's hands typing on a laptop.",
+      "imageUrl": "https://images.unsplash.com/photo-1632095617103-f3631b64d9ad?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx0eXBpbmclMjBjb21wdXRlcnxlbnwwfHx8fDE3NjE0Nzg1ODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "typing computer"
+    },
+    {
+      "id": "feature2",
+      "description": "An abstract representation of data and charts.",
+      "imageUrl": "https://images.unsplash.com/photo-1579226905180-636b76d96082?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxkYXRhJTIwY2hhcnRzfGVufDB8fHx8MTc2MTQ2Njg2Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "data charts"
+    },
+    {
+      "id": "feature3",
+      "description": "A collection of books and learning materials.",
+      "imageUrl": "https://images.unsplash.com/photo-1603530657796-cf3b12aa9e5c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Ym9va3MlMjBlZHVjYXRpb258ZW58MHx8fHwxNzYxNTY1MjAxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "books education"
+    },
+    {
+      "id": "user-avatar",
+      "description": "Avatar for a user.",
+      "imageUrl": "https://images.unsplash.com/photo-1535643302794-19c3804b874b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjE1NDUzOTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    }
+  ]
+}

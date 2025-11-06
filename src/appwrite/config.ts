@@ -6,22 +6,11 @@ const getEnvVar = (key: string, defaultValue: string = ""): string => {
   let value: any = undefined;
   
   // Method 1: Standard process.env (works in Node.js and browser if embedded)
-  // In Next.js, process.env is available in both server and client contexts
-  if (typeof process !== 'undefined') {
-    // Try direct access first
-    value = (process as any).env?.[key];
-    
-    // If that doesn't work, try accessing via process.env directly (some Next.js setups)
-    if ((value === undefined || value === null || value === '') && (process as any).env) {
-      try {
-        value = (process as any).env[key];
-      } catch (e) {
-        // Ignore errors
-      }
-    }
+  if (typeof process !== 'undefined' && (process as any).env) {
+    value = (process as any).env[key];
   }
   
-  // Method 2: Check window.__ENV__ or window.process.env (some Next.js setups)
+  // Method 2: Check window.__ENV__ (some Next.js setups)
   if ((value === undefined || value === null || value === '') && typeof window !== 'undefined') {
     const windowEnv = (window as any).__ENV__ || (window as any).process?.env || (window as any).__NEXT_DATA__?.env;
     if (windowEnv && windowEnv[key]) {
@@ -79,17 +68,15 @@ const createConfig = () => {
         }
       }
       
-      // Development fallback - use hardcoded value if env var not found
-      // This ensures the app works even if Next.js hasn't embedded the vars yet
-      if (!value) {
-        const isDev = (typeof process !== 'undefined' && (process as any).env?.NODE_ENV === 'development') ||
-                     (typeof window !== 'undefined' && window.location.hostname === 'localhost');
-        if (isDev) {
-          const fallbackValue = "690a39bf0011810ee554"; // Your actual project ID
-          if (fallbackValue) {
-            console.warn('⚠️ Using fallback Project ID - env vars not embedded. Please restart dev server.');
-            value = fallbackValue;
-          }
+      // Temporary development fallback - remove this once env vars are working
+      // This allows the app to work while we debug the Next.js env var embedding issue
+      if (!value && typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+        // Try to read from .env.local via a direct file read as last resort
+        // This is a workaround for Next.js not embedding the vars
+        const fallbackValue = "690a39bf0011810ee554"; // Your actual project ID
+        if (fallbackValue) {
+          console.warn('⚠️ Using fallback Project ID - env vars not embedded. Please restart dev server.');
+          value = fallbackValue;
         }
       }
       
@@ -106,17 +93,12 @@ const createConfig = () => {
         }
       }
       
-      // Development fallback - use hardcoded value if env var not found
-      // This ensures the app works even if Next.js hasn't embedded the vars yet
-      if (!value) {
-        const isDev = (typeof process !== 'undefined' && (process as any).env?.NODE_ENV === 'development') ||
-                     (typeof window !== 'undefined' && window.location.hostname === 'localhost');
-        if (isDev) {
-          const fallbackValue = "capstutor"; // Your actual database ID
-          if (fallbackValue) {
-            console.warn('⚠️ Using fallback Database ID - env vars not embedded. Please restart dev server.');
-            value = fallbackValue;
-          }
+      // Temporary development fallback - remove this once env vars are working
+      if (!value && typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+        const fallbackValue = "capstutor"; // Your actual database ID
+        if (fallbackValue) {
+          console.warn('⚠️ Using fallback Database ID - env vars not embedded. Please restart dev server.');
+          value = fallbackValue;
         }
       }
       
@@ -188,7 +170,7 @@ if (typeof window !== 'undefined' && !(window as any).__appwriteConfigValidated)
     // Note: Cannot set properties on config object with getters
     // The getter will read from process.env at runtime, so no need to set it
   }
-
+  
   if (!hasDatabaseId) {
     console.warn(
       '⚠️ NEXT_PUBLIC_APPWRITE_DATABASE_ID is not set. ' +

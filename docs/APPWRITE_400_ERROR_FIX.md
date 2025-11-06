@@ -1,100 +1,219 @@
-# Appwrite 400 Error Fix
+# Fixing 400 Error on Appwrite Cloud Deployment
 
-## Root Cause
+## The Problem
 
-The 400 error on page load is caused by `account.get()` being called in `AppwriteProvider` before the Appwrite client is properly configured. This happens when:
+Your app shows a 400 error when trying to load, which means the Next.js server isn't starting correctly.
 
-1. Environment variables are missing or not loaded
-2. Platform is not added in Appwrite Console
-3. Client is initialized but endpoint/projectId are invalid
+## Diagnostic Steps
 
-## Solution Implemented
+### Step 1: Check Build Logs
 
-### 1. Pre-flight Validation
+1. Go to **Appwrite Console** → **Your Deployment** → **Logs**
+2. Look for:
+   - ✅ Build completed successfully
+   - ✅ Server starting on port 3000
+   - ❌ Build errors
+   - ❌ Server startup errors
+   - ❌ Missing files errors
 
-Added validation in `src/appwrite/provider.tsx` to check if the client is properly configured before making API calls:
+### Step 2: Test Health Endpoint
 
-```typescript
-// Check if client is properly configured before making requests
-const endpoint = (client as any)?._config?.endpoint;
-const projectId = (client as any)?._config?.project;
+Try accessing: `https://caps-tutor-personal-projects.appwrite.network/api/health`
 
-if (!endpoint || !projectId) {
-  appwriteLogger.warn('auth', 'Appwrite client not properly configured - skipping auth check');
-  setUserAuthState({ user: null, isUserLoading: false, userError: null });
-  return;
+**Expected Response:**
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-...",
+  "environment": "production",
+  "appwriteConfigured": {
+    "endpoint": true,
+    "projectId": true,
+    "databaseId": true
+  }
 }
 ```
 
-### 2. 400 Error Handling
+**If health endpoint works:**
+- Server is running ✅
+- Issue is with the root page (likely SSR/rendering issue)
 
-Added specific handling for 400 errors to prevent them from showing in console:
+**If health endpoint also returns 400:**
+- Server isn't starting correctly ❌
+- Check build logs and configuration
+
+### Step 3: Verify Build Output
+
+Check if the build created the standalone output:
+
+1. **In Appwrite Console** → **Your Deployment** → **Logs**
+2. Look for messages about `.next/standalone` directory
+3. Or check if you can see build artifacts
+
+**Expected files after build:**
+- `.next/standalone/server.js` (entry point)
+- `.next/standalone/package.json`
+- `.next/static/` (static assets)
+- `public/` (public assets)
+
+## Common Causes and Fixes
+
+### Issue 1: Output Directory Mismatch
+
+**Problem:** Appwrite might not be using the standalone output correctly.
+
+**Fix Options:**
+
+#### Option A: Try Standard Next.js Mode (Not Standalone)
+
+1. **Temporarily remove standalone mode:**
+   - In `next.config.ts`, comment out: `output: 'standalone'`
+   - Change output directory to: `./.next`
+   - Redeploy
+
+2. **If this works:**
+   - Appwrite might not fully support standalone mode
+   - Consider using standard Next.js output
+
+#### Option B: Configure Entry Point
+
+If Appwrite supports custom entry points:
+
+1. **Set Output Directory:** `./.next/standalone`
+2. **Set Entry Point:** `node server.js`
+3. **Set Working Directory:** `./.next/standalone`
+
+**Note:** Appwrite Cloud Sites might not support custom entry points. Check Appwrite documentation.
+
+### Issue 2: Server-Side Rendering Error
+
+**Problem:** The root page (`/`) might be failing during SSR.
+
+**Fix:** Add error boundary to catch SSR errors:
+
+1. Check browser console for specific error messages
+2. Look for React hydration errors
+3. Check for missing environment variables during SSR
+
+### Issue 3: Port Configuration
+
+**Problem:** Server might not be listening on the correct port.
+
+**Fix:** Ensure environment variables are set:
+- `PORT=3000` (or whatever port Appwrite assigns)
+- `HOSTNAME=0.0.0.0` (to listen on all interfaces)
+
+### Issue 4: Build Didn't Complete
+
+**Problem:** Build might have failed or timed out.
+
+**Fix:**
+1. Check build logs for errors
+2. Verify build completed successfully
+3. If build times out, see `docs/APPWRITE_DEPLOYMENT.md` for solutions
+
+## Quick Fix: Try Standard Next.js Output
+
+If standalone mode isn't working, try standard Next.js output:
+
+### Step 1: Update next.config.ts
 
 ```typescript
-// Handle 400 errors - usually means client/platform not configured
-if (errorCode === 400) {
-  appwriteLogger.warn('auth', '400 error during auth check - client may not be properly configured');
-  // Don't set error - just treat as not logged in
-  setUserAuthState({ user: null, isUserLoading: false, userError: null });
-  return;
-}
+const nextConfig: NextConfig = {
+  // ... other config ...
+  // Comment out or remove this line:
+  // output: 'standalone',
+  
+  // Keep everything else the same
+};
 ```
 
-### 3. Font Request Blocking
+### Step 2: Update Appwrite Settings
 
-Added network-level blocking of Appwrite font requests in `src/app/layout.tsx`:
+1. **Output Directory:** `./.next`
+2. **Build Command:** `npm run build`
+3. **No custom entry point needed** (Appwrite will use `next start`)
 
-- Intercepts `fetch()` calls to block font requests
-- Intercepts `XMLHttpRequest` for older code
-- Suppresses console errors for blocked requests
+### Step 3: Redeploy
 
-## Required Configuration
+1. Commit and push changes
+2. Redeploy in Appwrite Console
+3. Check if the app loads
 
-To prevent 400 errors, ensure:
+## Alternative: Use Static Export (If No SSR Needed)
 
-1. **Platform is added in Appwrite Console:**
-   - Go to Appwrite Console → Settings → Platforms
-   - Add your domain: `https://gearshift.co.za`
-   - Add development domain: `http://localhost:3000`
+If you don't need server-side rendering:
 
-2. **Environment variables are set:**
-   - `NEXT_PUBLIC_APPWRITE_ENDPOINT`
-   - `NEXT_PUBLIC_APPWRITE_PROJECT_ID`
-   - `NEXT_PUBLIC_APPWRITE_DATABASE_ID`
+### Step 1: Update next.config.ts
 
-3. **OAuth callback URLs match:**
-   - Appwrite Console → Authentication → Settings
-   - Google OAuth Console → Authorized redirect URIs
+```typescript
+const nextConfig: NextConfig = {
+  // ... other config ...
+  output: 'export', // Static export
+  // Remove output: 'standalone'
+};
+```
 
-## Build Size Issue
+### Step 2: Update Appwrite Settings
 
-If build size dropped significantly (e.g., from 216MB to 6.24MB), check:
+1. **Rendering Options:** Select "Static site"
+2. **Output Directory:** `./out`
+3. **Build Command:** `npm run build`
 
-1. **Verify build output:**
-   ```bash
-   npm run build
-   ls -lh .next/standalone
-   ```
+**Note:** This won't work if you have:
+- API routes (`/api/*`)
+- Server components that need runtime data
+- Dynamic routes that need SSR
 
-2. **Check if files are being excluded:**
-   - Review `next.config.ts` → `outputFileTracingExcludes`
-   - Ensure important files aren't being excluded
+## Verification Checklist
 
-3. **Verify deployment:**
-   - Check Appwrite Cloud deployment logs
-   - Ensure all required files are included in deployment
+After making changes:
 
-## Testing
+- [ ] Build completes successfully (check logs)
+- [ ] Health endpoint works: `/api/health`
+- [ ] Root page loads: `/`
+- [ ] No 400 errors in browser console
+- [ ] Environment variables are set correctly
+- [ ] Server logs show successful startup
 
-After implementing these fixes:
+## Still Not Working?
 
-1. Clear browser cache
-2. Check browser console - should see no 400 errors
-3. Check Network tab - font requests should be blocked
-4. Verify authentication still works when properly configured
+1. **Check Appwrite Documentation:**
+   - [Appwrite Sites Docs](https://appwrite.io/docs/products/sites)
+   - Look for Next.js-specific deployment guides
 
-## References
+2. **Contact Appwrite Support:**
+   - Ask about Next.js standalone mode support
+   - Request help with 400 error on deployment
+   - Share your build logs
 
-- [Appwrite Platforms Documentation](https://appwrite.io/docs/getting-started-for-web)
-- [Appwrite Error Codes](https://appwrite.io/docs/advanced/platform/response-codes)
-- [APPWRITE_BEST_PRACTICES.md](./APPWRITE_BEST_PRACTICES.md)
+3. **Try Alternative Deployment:**
+   - Vercel (native Next.js support)
+   - Railway (Docker-based)
+   - Render (good Next.js support)
+
+## Debugging Commands
+
+If you have SSH access to the deployment:
+
+```bash
+# Check if server.js exists
+ls -la .next/standalone/server.js
+
+# Check if static files exist
+ls -la .next/static
+
+# Check environment variables
+env | grep NEXT_PUBLIC
+
+# Try starting server manually
+cd .next/standalone
+node server.js
+```
+
+## Next Steps
+
+1. **First:** Test the health endpoint to see if server is running
+2. **Then:** Check build logs for specific errors
+3. **Finally:** Try standard Next.js output if standalone isn't working
+

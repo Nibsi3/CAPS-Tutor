@@ -9,10 +9,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true, // Disabled to prevent build failures and memory issues
   },
-  // Add headers for better security
-  // Note: CORS headers for external fonts (assets.appwrite.io) cannot be set here
-  // as those fonts are hosted on Appwrite's CDN, not our server.
-  // Font CORS errors are harmless and are suppressed in src/app/layout.tsx
+  // Add headers for better CORS and security
   async headers() {
     return [
       {
@@ -65,7 +62,8 @@ const nextConfig: NextConfig = {
   compress: true,
   // Standalone output for Appwrite deployment
   // This creates a minimal server bundle in .next/standalone
-  output: 'standalone',
+  // Temporarily disabled - Appwrite Cloud Sites might not support standalone mode
+  // output: 'standalone',
   // Fix standalone path issue on Windows by setting the root explicitly
   // This prevents Next.js from creating nested paths with spaces
   outputFileTracingRoot: path.resolve(process.cwd()),
@@ -98,29 +96,25 @@ const nextConfig: NextConfig = {
     }
   },
   // Externalize packages to reduce bundle size (moved from experimental in Next.js 15)
-  // CRITICAL: Only externalize if packages are guaranteed to be in Appwrite Cloud runtime
-  // If Appwrite Cloud doesn't have these packages pre-installed, they MUST be bundled
-  // Commenting out to ensure packages are bundled in standalone build
   serverExternalPackages: [
     // Firebase removed - migrating to Appwrite
-    // 'appwrite', // MUST be bundled - Appwrite Cloud may not have this
-    // 'node-appwrite', // MUST be bundled - Appwrite Cloud may not have this
+    'appwrite',
+    'node-appwrite',
   ],
   // Optimize build performance and reduce memory usage
-  // CRITICAL: Be very careful with exclusions - they can break the build
-  // The 6.3 MB build size suggests too many files are being excluded
   outputFileTracingExcludes: {
     '*': [
-      // Exclude large Next.js internal files (these are handled by Next.js itself)
+      // Exclude large files from serverless function tracing
       '**/node_modules/@swc/core*/**',
       '**/node_modules/@next/swc*/**',
       '**/node_modules/next/dist/compiled/**',
       '**/node_modules/next/dist/server/**',
-      // Exclude large data files (not needed in runtime - these are in gitignore anyway)
+      // Exclude large source files that might be causing issues
+      '**/src/lib/questions.ts',
       '**/past papers/**',
       '**/extracted_papers/**',
       '**/*.pdf',
-      // Exclude development-only files
+      '**/*.json',
       '**/scripts/**',
       '**/docs/**',
       '**/*.md',
@@ -128,8 +122,6 @@ const nextConfig: NextConfig = {
       '**/*.ps1',
       '**/*.bat',
       '**/*.sh',
-      // REMOVED: '**/*.json' - TOO BROAD! This excludes package.json, tsconfig.json, and other required files
-      // REMOVED: '**/src/lib/questions.ts' - May be needed at runtime if imported
     ],
   },
   // Optimized webpack config for faster builds
