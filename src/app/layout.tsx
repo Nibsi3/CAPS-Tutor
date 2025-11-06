@@ -49,24 +49,57 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Suppress harmless Appwrite font CORS errors - these are from Appwrite's console UI, not our app */}
+        {/* Prevent Appwrite font loading and suppress network errors */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 if (typeof window !== 'undefined') {
+                  // Intercept and block font requests from assets.appwrite.io
+                  const originalFetch = window.fetch;
+                  window.fetch = function(...args) {
+                    const url = args[0];
+                    if (typeof url === 'string' && url.includes('assets.appwrite.io/fonts')) {
+                      // Block font requests - return a rejected promise
+                      return Promise.reject(new Error('Blocked: Appwrite font request'));
+                    }
+                    return originalFetch.apply(this, args);
+                  };
+                  
+                  // Suppress console errors for blocked requests
                   const originalError = console.error;
                   console.error = function(...args) {
                     const message = args.join(' ');
-                    // Suppress Appwrite font CORS errors (harmless - from Appwrite's console UI)
-                    if (message.includes('assets.appwrite.io/fonts') && message.includes('CORS')) {
+                    // Suppress Appwrite font CORS errors
+                    if (message.includes('assets.appwrite.io/fonts') || 
+                        message.includes('Blocked: Appwrite font')) {
                       return; // Suppress this error
                     }
                     // Suppress message port errors (usually from browser extensions)
-                    if (message.includes('message port closed') || message.includes('runtime.lastError')) {
-                      return; // Suppress this error
+                    if (message.includes('message port closed') || 
+                        message.includes('runtime.lastError') ||
+                        message.includes('Failed to load resource')) {
+                      // Only suppress if it's a font or message port error
+                      const isFontError = message.includes('fonts') || 
+                                         message.includes('woff2') ||
+                                         message.includes('woff');
+                      const isMessagePortError = message.includes('message port') ||
+                                                message.includes('runtime.lastError');
+                      if (isFontError || isMessagePortError) {
+                        return; // Suppress this error
+                      }
                     }
                     originalError.apply(console, args);
+                  };
+                  
+                  // Also intercept XMLHttpRequest for older code
+                  const originalXHROpen = XMLHttpRequest.prototype.open;
+                  XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+                    if (typeof url === 'string' && url.includes('assets.appwrite.io/fonts')) {
+                      // Block font requests
+                      return;
+                    }
+                    return originalXHROpen.apply(this, [method, url, ...rest]);
                   };
                 }
               })();

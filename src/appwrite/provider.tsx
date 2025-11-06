@@ -69,6 +69,25 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
       return;
     }
 
+    // Validate account has required methods before making API calls
+    // This prevents 400 errors when client isn't properly configured
+    if (typeof account.get !== 'function') {
+      appwriteLogger.warn('auth', 'Account instance is invalid - missing get() method');
+      setUserAuthState({ user: null, isUserLoading: false, userError: null });
+      return;
+    }
+
+    // Check if client is properly configured before making requests
+    // If endpoint or projectId is missing, account.get() will return 400
+    const endpoint = (client as any)?._config?.endpoint;
+    const projectId = (client as any)?._config?.project;
+    
+    if (!endpoint || !projectId) {
+      appwriteLogger.warn('auth', 'Appwrite client not properly configured - skipping auth check');
+      setUserAuthState({ user: null, isUserLoading: false, userError: null });
+      return;
+    }
+
     setUserAuthState({ user: null, isUserLoading: true, userError: null });
 
     const startTime = Date.now();
@@ -109,8 +128,25 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
       })
       .catch((error) => {
         clearTimeout(timeout);
+        const errorCode = (error as any)?.code;
+        const errorType = (error as any)?.type;
+        const errorMessage = (error as any)?.message || '';
+        
+        // Handle 400 errors - usually means client/platform not configured
+        if (errorCode === 400) {
+          appwriteLogger.warn('auth', '400 error during auth check - client may not be properly configured', {
+            endpoint,
+            hasProjectId: !!projectId,
+            errorMessage
+          });
+          // Don't set error - just treat as not logged in
+          // This prevents 400 errors from showing in console
+          setUserAuthState({ user: null, isUserLoading: false, userError: null });
+          return;
+        }
+        
         // If no session exists, that's fine - user is just not logged in
-        if (error.code === 401 || error.type === 'general_unauthorized_scope' || error.message === 'Timeout') {
+        if (errorCode === 401 || errorType === 'general_unauthorized_scope' || errorMessage === 'Timeout') {
           appwriteLogger.debug('auth', 'No active session found (user not logged in)');
           setUserAuthState({ user: null, isUserLoading: false, userError: null });
         } else {
@@ -126,7 +162,7 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
           setUserAuthState({ user: null, isUserLoading: false, userError: error });
         }
       });
-  }, [account]);
+  }, [account, client]);
 
   const contextValue = useMemo((): AppwriteContextState => {
     const servicesAvailable = !!(client && account && databases);
