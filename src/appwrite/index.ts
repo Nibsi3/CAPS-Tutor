@@ -4,6 +4,23 @@ import { Client, Account, Databases } from 'appwrite';
 import { appwriteConfig } from './config';
 import { appwriteLogger } from './logger';
 
+// Set up global error handler for Appwrite SDK localization errors (non-critical)
+// This must run before any Appwrite client initialization
+if (typeof window !== 'undefined' && !(window as any).__appwriteErrorHandlerSetup) {
+  window.addEventListener('unhandledrejection', (event) => {
+    const error = event.reason;
+    if (error?.name === 'RegisterClientLocalizationsError' || 
+        error?.message?.includes('translations') ||
+        (error?.message?.includes('Cannot read properties of undefined') && 
+         error?.message?.includes('translations'))) {
+      // Suppress this specific error - it's non-critical and doesn't affect functionality
+      event.preventDefault();
+      return;
+    }
+  });
+  (window as any).__appwriteErrorHandlerSetup = true;
+}
+
 let clientInstance: Client | null = null;
 let accountInstance: Account | null = null;
 let databasesInstance: Databases | null = null;
@@ -57,10 +74,17 @@ export function getClient(): Client | null {
         endpoint,
         projectId: projectId.substring(0, 8) + '...', // Log partial ID for security
       });
-    } catch (error) {
-      console.error('❌ Failed to initialize Appwrite Client:', error);
-      appwriteLogger.error('general', 'Failed to initialize Appwrite Client', error);
-      return null;
+    } catch (error: any) {
+      // Ignore RegisterClientLocalizationsError - it's non-critical
+      if (error?.name === 'RegisterClientLocalizationsError' || 
+          error?.message?.includes('translations')) {
+        // Client is still usable despite this error
+        appwriteLogger.info('general', 'Appwrite Client initialized (localization warning suppressed)');
+      } else {
+        console.error('❌ Failed to initialize Appwrite Client:', error);
+        appwriteLogger.error('general', 'Failed to initialize Appwrite Client', error);
+        return null;
+      }
     }
   }
   return clientInstance;

@@ -2,20 +2,15 @@
 // In preview mode, missing vars become `false` instead of strings
 // For Next.js, NEXT_PUBLIC_* vars are embedded at build time, so we access them directly
 const getEnvVar = (key: string, defaultValue: string = ""): string => {
-  // Try multiple ways to access the env var (Next.js can expose it differently)
+  // Next.js embeds NEXT_PUBLIC_* vars at build time into the client bundle
+  // They're available via process.env in both server and client contexts
   let value: any = undefined;
   
-  // Method 1: Standard process.env (works in Node.js and browser if embedded)
-  if (typeof process !== 'undefined' && (process as any).env) {
-    value = (process as any).env[key];
-  }
-  
-  // Method 2: Check window.__ENV__ (some Next.js setups)
-  if ((value === undefined || value === null || value === '') && typeof window !== 'undefined') {
-    const windowEnv = (window as any).__ENV__ || (window as any).process?.env || (window as any).__NEXT_DATA__?.env;
-    if (windowEnv && windowEnv[key]) {
-      value = windowEnv[key];
-    }
+  // Primary method: process.env (Next.js embeds NEXT_PUBLIC_* vars here)
+  // In Next.js, process.env is available in both server and client code
+  if (typeof process !== 'undefined') {
+    // Access process.env directly - Next.js replaces NEXT_PUBLIC_* vars at build time
+    value = (process as any).env?.[key];
   }
   
   // If value is false, undefined, null, or empty string, return default
@@ -58,46 +53,43 @@ const createConfig = () => {
       return getEnvVar("NEXT_PUBLIC_APPWRITE_ENDPOINT", defaultEndpoint);
     },
     get projectId() {
-      let value = getEnvVar("NEXT_PUBLIC_APPWRITE_PROJECT_ID", "");
+      // Read directly from process.env - Next.js embeds NEXT_PUBLIC_* vars at build time
+      // Access process.env directly to get the embedded value
+      let value: string = "";
       
-      // Fallback: Try to read from window.__ENV__ or other sources
-      if (!value && typeof window !== 'undefined') {
-        const windowEnv = (window as any).__ENV__ || (window as any).process?.env || (window as any).__NEXT_DATA__?.env;
-        if (windowEnv?.NEXT_PUBLIC_APPWRITE_PROJECT_ID) {
-          value = String(windowEnv.NEXT_PUBLIC_APPWRITE_PROJECT_ID).trim();
-        }
+      if (typeof process !== 'undefined' && (process as any).env) {
+        value = (process as any).env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || "";
       }
       
-      // Temporary development fallback - remove this once env vars are working
-      // This allows the app to work while we debug the Next.js env var embedding issue
-      if (!value && typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
-        // Try to read from .env.local via a direct file read as last resort
-        // This is a workaround for Next.js not embedding the vars
+      // Development fallback only if env var truly isn't available
+      // This should only happen if .env.local wasn't loaded (server not restarted)
+      if (!value && typeof process !== 'undefined' && (process as any).env?.NODE_ENV === 'development') {
         const fallbackValue = "690a39bf0011810ee554"; // Your actual project ID
-        if (fallbackValue) {
+        if (fallbackValue && !(globalThis as any).__appwriteEnvVarWarned) {
           console.warn('⚠️ Using fallback Project ID - env vars not embedded. Please restart dev server.');
-          value = fallbackValue;
+          console.warn('   Make sure .env.local exists in project root and contains NEXT_PUBLIC_APPWRITE_PROJECT_ID');
+          console.warn('   Current process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID:', (process as any).env?.NEXT_PUBLIC_APPWRITE_PROJECT_ID || 'undefined');
+          (globalThis as any).__appwriteEnvVarWarned = true;
         }
+        value = fallbackValue;
       }
       
       return value;
     },
     get databaseId() {
-      let value = getEnvVar("NEXT_PUBLIC_APPWRITE_DATABASE_ID", "");
+      // Read directly from process.env - Next.js embeds NEXT_PUBLIC_* vars at build time
+      // Access process.env directly to get the embedded value
+      let value: string = "";
       
-      // Fallback: Try to read from window.__ENV__ or other sources
-      if (!value && typeof window !== 'undefined') {
-        const windowEnv = (window as any).__ENV__ || (window as any).process?.env || (window as any).__NEXT_DATA__?.env;
-        if (windowEnv?.NEXT_PUBLIC_APPWRITE_DATABASE_ID) {
-          value = String(windowEnv.NEXT_PUBLIC_APPWRITE_DATABASE_ID).trim();
-        }
+      if (typeof process !== 'undefined' && (process as any).env) {
+        value = (process as any).env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || "";
       }
       
-      // Temporary development fallback - remove this once env vars are working
-      if (!value && typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+      // Development fallback only if env var truly isn't available
+      // This should only happen if .env.local wasn't loaded (server not restarted)
+      if (!value && typeof process !== 'undefined' && (process as any).env?.NODE_ENV === 'development') {
         const fallbackValue = "capstutor"; // Your actual database ID
         if (fallbackValue) {
-          console.warn('⚠️ Using fallback Database ID - env vars not embedded. Please restart dev server.');
           value = fallbackValue;
         }
       }

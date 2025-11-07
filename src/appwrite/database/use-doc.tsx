@@ -67,12 +67,16 @@ export function useDoc<T = any>(
         const errorMessage = (err as any).message?.toLowerCase() || '';
         const errorType = (err as any).type;
         
-        // Check if collection doesn't exist (404 with "Collection" in message)
+        // Check if collection doesn't exist - must specifically mention collection
+        // A document 404 will say "Document with the requested ID could not be found"
+        // A collection 404 will say something like "Collection not found" or "Collection does not exist"
         const isCollectionNotFound = 
           errorCode === 404 && 
-          (errorMessage.includes('collection') || 
-           errorMessage.includes('could not be found') ||
-           (errorType === 'document_not_found' && errorMessage.includes('collection')));
+          (errorMessage.includes('collection') && 
+           (errorMessage.includes('not found') || 
+            errorMessage.includes('does not exist') ||
+            errorMessage.includes('could not be found'))) &&
+          !errorMessage.includes('document');
         
         if (isCollectionNotFound) {
           const helpfulError = new Error(
@@ -107,7 +111,16 @@ export function useDoc<T = any>(
           setError(helpfulError);
           setData(null);
         } else if (errorCode === 404) {
-          // Document doesn't exist (but collection does) - this is fine
+          // Document doesn't exist (but collection does) - this is normal, not an error
+          // Log for debugging but don't set error state
+          if (process.env.NODE_ENV === 'development') {
+            console.log('ℹ️ Document not found (404):', {
+              collectionId,
+              databaseId,
+              documentId,
+              message: 'This is normal if the document does not exist yet.',
+            });
+          }
           setData(null);
           setError(null);
         } else {

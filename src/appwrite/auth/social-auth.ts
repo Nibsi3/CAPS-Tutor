@@ -83,7 +83,7 @@ Please ensure:
     try {
       await account.createOAuth2Session(
       OAuthProvider.Google,
-      `${window.location.origin}/dashboard`,
+      `${window.location.origin}/auth/callback`,
       `${window.location.origin}/login`,
     );
     } catch (oauthError: any) {

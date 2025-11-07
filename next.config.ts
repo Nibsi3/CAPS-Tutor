@@ -3,6 +3,8 @@ import path from 'path';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // Note: Next.js 15+ supports src/app/ directory natively
+  // .env.local is loaded from project root automatically
   typescript: {
     ignoreBuildErrors: true, // Temporarily disabled to prevent memory errors during build
   },
