@@ -109,8 +109,35 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
       })
       .catch((error) => {
         clearTimeout(timeout);
+        const errorCode = (error as any)?.code;
+        const errorType = (error as any)?.type;
+        const errorMessage = (error as any)?.message || '';
+        
+        // Handle invalid sessionId errors - clear invalid session cookies
+        if (errorMessage.includes('Invalid `sessionId` param') || 
+            errorMessage.includes('UID must contain at most 36 chars')) {
+          appwriteLogger.warn('auth', 'Invalid session ID detected - clearing cookies', {
+            errorMessage
+          });
+          
+          // Clear invalid session cookies
+          if (typeof document !== 'undefined') {
+            document.cookie.split(";").forEach((c) => {
+              const cookieName = c.split("=")[0].trim();
+              if (cookieName.includes('appwrite') || cookieName.includes('session')) {
+                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+              }
+            });
+          }
+          
+          // Treat as no session (user not logged in)
+          setUserAuthState({ user: null, isUserLoading: false, userError: null });
+          return;
+        }
+        
         // If no session exists, that's fine - user is just not logged in
-        if (error.code === 401 || error.type === 'general_unauthorized_scope' || error.message === 'Timeout') {
+        if (errorCode === 401 || errorType === 'general_unauthorized_scope' || errorMessage === 'Timeout') {
           appwriteLogger.debug('auth', 'No active session found (user not logged in)');
           setUserAuthState({ user: null, isUserLoading: false, userError: null });
         } else {
