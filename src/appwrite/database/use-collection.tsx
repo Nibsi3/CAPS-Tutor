@@ -42,10 +42,41 @@ export function useCollection<T = any>(
       return;
     }
 
+    const { databaseId, collectionId, queries } = memoizedCollectionRef;
+
+    // Validate that all required IDs are present
+    if (!databaseId || !collectionId) {
+      const missingFields = [];
+      if (!databaseId) missingFields.push('databaseId');
+      if (!collectionId) missingFields.push('collectionId');
+      
+      // Check if it's a configuration issue (databaseId from config is missing)
+      const isConfigIssue = !databaseId && !appwriteConfig.databaseId;
+      
+      const errorMsg = isConfigIssue
+        ? `Appwrite database ID is not configured. Please set NEXT_PUBLIC_APPWRITE_DATABASE_ID in your environment variables. ` +
+          `See docs/APPWRITE_ENVIRONMENT_VARIABLES.md for setup instructions.`
+        : `Missing required fields for useCollection: ${missingFields.join(', ')}. ` +
+          `databaseId: ${databaseId || 'MISSING'}, ` +
+          `collectionId: ${collectionId || 'MISSING'}`;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ useCollection: Skipping fetch due to missing IDs:', {
+          databaseId: databaseId || 'MISSING',
+          collectionId: collectionId || 'MISSING',
+          configDatabaseId: appwriteConfig.databaseId || 'MISSING',
+          configProjectId: appwriteConfig.projectId || 'MISSING',
+        });
+      }
+      
+      setData(null);
+      setIsLoading(false);
+      setError(new Error(errorMsg));
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
-
-    const { databaseId, collectionId, queries } = memoizedCollectionRef;
 
     // Build query array
     const queryArray = queries || [];
