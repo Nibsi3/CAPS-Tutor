@@ -29,7 +29,6 @@ function getShimmerColor(rarity: Achievement['rarity']): string {
       return 'from-transparent via-white/10 to-transparent';
   }
 }
-import { AchievementUnlockNotification } from '@/components/achievements/AchievementUnlockNotification';
 import { GlobalLeaderboard } from '@/components/achievements/GlobalLeaderboard';
 import { Award, Trophy, Clock, Target, BookOpen, Zap, Sparkles, Loader, Star, Flame, Calendar, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,7 +39,6 @@ export default function AchievementsPage() {
   const { user } = useUser();
   const databases = useDatabases();
   const [unlockedAchievements, setUnlockedAchievements] = useState<Set<string>>(new Set());
-  const [newUnlockedAchievement, setNewUnlockedAchievement] = useState<Achievement | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,12 +88,8 @@ export default function AchievementsPage() {
       const newUnlockedSet = new Set([...unlockedAchievements, ...newlyUnlocked.map(a => a.id)]);
       setUnlockedAchievements(newUnlockedSet);
       
-      // Show notification for first newly unlocked achievement
-      if (newlyUnlocked[0]) {
-        setNewUnlockedAchievement(newlyUnlocked[0]);
-      }
-      
       // Update user profile with unlocked achievements
+      // Note: Notifications are handled globally by GlobalAchievementChecker
       if (newlyUnlocked.length > 0 && user && databases) {
         const allUnlocked = Array.from(newUnlockedSet);
         updateUnlockedAchievements(databases, user.$id, allUnlocked);
@@ -112,7 +106,7 @@ export default function AchievementsPage() {
     }
   }, [userProfile]);
 
-  // Filter achievements by category and sort by rarity then points
+  // Filter achievements by category and sort by unlocked status, then rarity, then points
   const filteredAchievements = useMemo(() => {
     let achievements = selectedCategory === 'all' 
       ? [...ALL_ACHIEVEMENTS] 
@@ -126,13 +120,24 @@ export default function AchievementsPage() {
       'legendary': 4
     };
     
-    // Sort by rarity first, then by points (ascending - lowest to highest)
+    // Sort by unlocked status first (unlocked at top), then by rarity, then by points
     return achievements.sort((a, b) => {
+      const aUnlocked = unlockedAchievements.has(a.id);
+      const bUnlocked = unlockedAchievements.has(b.id);
+      
+      // Unlocked achievements come first
+      if (aUnlocked !== bUnlocked) {
+        return aUnlocked ? -1 : 1;
+      }
+      
+      // Then sort by rarity
       const rarityDiff = rarityOrder[a.rarity] - rarityOrder[b.rarity];
       if (rarityDiff !== 0) return rarityDiff;
+      
+      // Finally sort by points (ascending - lowest to highest)
       return a.points - b.points;
     });
-  }, [selectedCategory]);
+  }, [selectedCategory, unlockedAchievements]);
 
   // Calculate stats
   const totalAchievements = ALL_ACHIEVEMENTS.length;
@@ -164,11 +169,6 @@ export default function AchievementsPage() {
 
   return (
     <>
-      <AchievementUnlockNotification
-        achievement={newUnlockedAchievement}
-        onClose={() => setNewUnlockedAchievement(null)}
-      />
-
       <div className="flex-1 space-y-6 overflow-y-auto">
         {/* View Toggle */}
         <div className="flex items-center justify-between">

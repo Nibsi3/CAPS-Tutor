@@ -33,6 +33,12 @@ export default function RegisterPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Ensure consistent rendering between server and client
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -117,9 +123,51 @@ export default function RegisterPage() {
     }
   };
 
-  if (isUserLoading) {
+  // Show loading state only after mount to prevent hydration mismatch
+  if (!isMounted || isUserLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="relative isolate overflow-hidden min-h-screen flex items-center justify-center">
+        {/* Top-center decorative element */}
+        <div
+          className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80"
+          aria-hidden="true"
+        >
+          <div
+            className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-blue-400 via-purple-500 to-pink-500 opacity-25 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
+            style={{
+              clipPath:
+                'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
+            }}
+          />
+        </div>
+
+        {/* Center-right decorative element */}
+        <div
+          className="absolute right-0 top-1/2 -z-10 transform-gpu overflow-hidden blur-3xl -translate-y-1/2"
+          aria-hidden="true"
+        >
+          <div
+            className="aspect-[1155/678] w-[72.1875rem] translate-x-1/3 bg-gradient-to-l from-cyan-400 via-blue-500 to-purple-600 opacity-20"
+            style={{
+              clipPath:
+                'polygon(30% 20%, 50% 0%, 70% 20%, 90% 30%, 100% 50%, 90% 70%, 70% 80%, 50% 100%, 30% 80%, 10% 70%, 0% 50%, 10% 30%)',
+            }}
+          />
+        </div>
+
+        {/* Bottom-left decorative element */}
+        <div
+          className="absolute bottom-0 left-0 -z-10 transform-gpu overflow-hidden blur-3xl"
+          aria-hidden="true"
+        >
+          <div
+            className="aspect-[1155/678] w-[72.1875rem] -translate-x-1/3 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-25"
+            style={{
+              clipPath:
+                'polygon(0% 0%, 30% 0%, 50% 20%, 70% 0%, 100% 0%, 100% 50%, 80% 70%, 50% 100%, 20% 70%, 0% 50%)',
+            }}
+          />
+        </div>
         <Loader className="h-12 w-12 animate-spin" />
       </div>
     );
@@ -127,7 +175,48 @@ export default function RegisterPage() {
 
   if (showVerificationMessage) {
     return (
-       <div className="flex min-h-screen flex-col items-center justify-center bg-muted/50 p-4">
+       <div className="relative isolate overflow-hidden min-h-screen flex flex-col items-center justify-center p-4">
+         {/* Top-center decorative element */}
+         <div
+           className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80"
+           aria-hidden="true"
+         >
+           <div
+             className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-blue-400 via-purple-500 to-pink-500 opacity-25 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
+             style={{
+               clipPath:
+                 'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
+             }}
+           />
+         </div>
+
+         {/* Center-right decorative element */}
+         <div
+           className="absolute right-0 top-1/2 -z-10 transform-gpu overflow-hidden blur-3xl -translate-y-1/2"
+           aria-hidden="true"
+         >
+           <div
+             className="aspect-[1155/678] w-[72.1875rem] translate-x-1/3 bg-gradient-to-l from-cyan-400 via-blue-500 to-purple-600 opacity-20"
+             style={{
+               clipPath:
+                 'polygon(30% 20%, 50% 0%, 70% 20%, 90% 30%, 100% 50%, 90% 70%, 70% 80%, 50% 100%, 30% 80%, 10% 70%, 0% 50%, 10% 30%)',
+             }}
+           />
+         </div>
+
+         {/* Bottom-left decorative element */}
+         <div
+           className="absolute bottom-0 left-0 -z-10 transform-gpu overflow-hidden blur-3xl"
+           aria-hidden="true"
+         >
+           <div
+             className="aspect-[1155/678] w-[72.1875rem] -translate-x-1/3 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-25"
+             style={{
+               clipPath:
+                 'polygon(0% 0%, 30% 0%, 50% 20%, 70% 0%, 100% 0%, 100% 50%, 80% 70%, 50% 100%, 20% 70%, 0% 50%)',
+             }}
+           />
+         </div>
          <Card className="w-full max-w-md text-center">
           <CardHeader>
             <CardTitle className="font-headline text-2xl">Verify your Email</CardTitle>
@@ -148,7 +237,49 @@ export default function RegisterPage() {
 
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/50 p-4">
+    <div className="relative isolate overflow-hidden min-h-screen flex flex-col items-center justify-center p-4">
+      {/* Top-center decorative element */}
+      <div
+        className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80"
+        aria-hidden="true"
+      >
+        <div
+          className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-blue-400 via-purple-500 to-pink-500 opacity-25 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"
+          style={{
+            clipPath:
+              'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
+          }}
+        />
+      </div>
+
+      {/* Center-right decorative element */}
+      <div
+        className="absolute right-0 top-1/2 -z-10 transform-gpu overflow-hidden blur-3xl -translate-y-1/2"
+        aria-hidden="true"
+      >
+        <div
+          className="aspect-[1155/678] w-[72.1875rem] translate-x-1/3 bg-gradient-to-l from-cyan-400 via-blue-500 to-purple-600 opacity-20"
+          style={{
+            clipPath:
+              'polygon(30% 20%, 50% 0%, 70% 20%, 90% 30%, 100% 50%, 90% 70%, 70% 80%, 50% 100%, 30% 80%, 10% 70%, 0% 50%, 10% 30%)',
+          }}
+        />
+      </div>
+
+      {/* Bottom-left decorative element */}
+      <div
+        className="absolute bottom-0 left-0 -z-10 transform-gpu overflow-hidden blur-3xl"
+        aria-hidden="true"
+      >
+        <div
+          className="aspect-[1155/678] w-[72.1875rem] -translate-x-1/3 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-25"
+          style={{
+            clipPath:
+              'polygon(0% 0%, 30% 0%, 50% 20%, 70% 0%, 100% 0%, 100% 50%, 80% 70%, 50% 100%, 20% 70%, 0% 50%)',
+          }}
+        />
+      </div>
+
       <div className="absolute top-4 left-4">
           <Link href="/" className="flex items-center gap-2">
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">

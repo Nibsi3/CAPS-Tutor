@@ -7,6 +7,7 @@ import { PT_Sans, Space_Grotesk, Source_Code_Pro } from 'next/font/google';
 import { LanguageProvider } from '@/components/language-provider';
 import { ConditionalPublicLayout } from '@/components/layout/ConditionalPublicLayout';
 import { ErrorSuppressor } from '@/components/ErrorSuppressor';
+import { GlobalAchievementChecker } from '@/components/achievements/GlobalAchievementChecker';
 
 const ptSans = PT_Sans({
   subsets: ['latin'],
@@ -61,6 +62,7 @@ export default function RootLayout({
         >
           <AppwriteClientProvider>
             <LanguageProvider>
+              <GlobalAchievementChecker />
               <div className="min-h-screen flex flex-col">
                 {/* Public header and footer only on public routes */}
                 <ConditionalPublicLayout>

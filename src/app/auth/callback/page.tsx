@@ -59,50 +59,71 @@ export default function AuthCallbackPage() {
             return;
           }
           
-          // User doesn't exist in database
+          // User doesn't exist in database (404) - this is expected for new OAuth users
           if (error.code === 404) {
-            // Check if this is a new OAuth user (has email but no database record)
-            // For OAuth users, we want to create their profile and send to onboarding
-            if (user.email) {
-              try {
-                // Create user profile with basic info from OAuth
-                await ensureUserProfile(databases, user.$id, user.email, user.name || undefined);
-                
-                // After creating profile, redirect to onboarding
-                router.push('/onboarding');
-                return;
-              } catch (createError: any) {
-                console.error('Error creating user profile:', createError);
-                
-                // Handle 400 errors during profile creation
-                if (createError.code === 400) {
-                  toast({
-                    variant: 'destructive',
-                    title: 'Profile Creation Error',
-                    description: 'Invalid data provided. Please contact support if this persists.',
-                  });
-                } else {
+            // For new OAuth users, always try to create their profile
+            // Even if email is missing, we should still try to create the profile
+            const userEmail = user.email || `user-${user.$id}@oauth.local`;
+            const userName = user.name || 'New User';
+            
+            try {
+              // Create user profile with basic info from OAuth
+              await ensureUserProfile(databases, user.$id, userEmail, userName);
+              
+              // After creating profile, redirect to onboarding
+              router.push('/onboarding');
+              return;
+            } catch (createError: any) {
+              console.error('Error creating user profile:', createError);
+              
+              // Handle specific errors during profile creation
+              if (createError.code === 400) {
+                toast({
+                  variant: 'destructive',
+                  title: 'Profile Creation Error',
+                  description: 'Invalid data provided. Please contact support if this persists.',
+                });
+              } else if (createError.code === 409) {
+                // Profile already exists (race condition), try to fetch it
+                try {
+                  userProfile = await databases.getDocument(
+                    appwriteConfig.databaseId,
+                    'user',
+                    user.$id
+                  );
+                  // Continue with existing profile flow below
+                } catch (fetchError: any) {
+                  console.error('Error fetching existing profile:', fetchError);
                   toast({
                     variant: 'destructive',
                     title: 'Error',
-                    description: 'Failed to create your profile. Please try signing up again.',
+                    description: 'Failed to set up your account. Please try signing up again.',
                   });
+                  try {
+                    await account.deleteSessions();
+                  } catch (sessionError) {
+                    console.error('Error clearing sessions:', sessionError);
+                  }
+                  router.push('/register');
+                  setIsChecking(false);
+                  return;
                 }
+              } else {
+                toast({
+                  variant: 'destructive',
+                  title: 'Error',
+                  description: 'Failed to create your profile. Please try signing up again.',
+                });
                 // Log out and redirect to signup
                 try {
                   await account.deleteSessions();
                 } catch (sessionError) {
                   console.error('Error clearing sessions:', sessionError);
                 }
-                setNeedsSignup(true);
+                router.push('/register');
                 setIsChecking(false);
                 return;
               }
-            } else {
-              // User doesn't have email (shouldn't happen with OAuth, but handle it)
-              setNeedsSignup(true);
-              setIsChecking(false);
-              return;
             }
           } else {
             throw error;

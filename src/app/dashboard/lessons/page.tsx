@@ -10,6 +10,7 @@ import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator
 import { cn } from '@/lib/utils';
 import { useDoc, useUser, useDatabases, useMemoAppwrite } from '@/appwrite';
 import { appwriteConfig } from '@/appwrite/config';
+import { getSubjectsForGrade } from '@/components/home/AllSubjectsSection';
 import {
   Dialog,
   DialogContent,
@@ -27,9 +28,8 @@ import {
 import { useLanguage } from '@/components/language-provider';
 import { translations } from '@/lib/translations';
 
-// Create a unique list of subjects from the available lessons
+  // Create a unique list of subjects from the available lessons
 const allLessons = [...lessons, ...placeholderLessons];
-const availableSubjects = [...new Set(allLessons.map(l => l.subject))].map(s => ({ value: s, label: s}));
 
 const subjectIcons: Record<string, React.ElementType> = {
   "Mathematics": Calculator,
@@ -82,16 +82,39 @@ export default function LessonsPage() {
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
 
+  // Determine the effective grade to use for filtering
+  const effectiveGrade = selectedGrade || (userProfile?.gradeLevel ? userProfile.gradeLevel.toString() : null);
+  
+  // Get available subjects for the effective grade
+  const availableSubjectsForGrade = effectiveGrade 
+    ? getSubjectsForGrade(effectiveGrade).map(s => ({ value: s, label: s }))
+    : [...new Set(allLessons.map(l => l.subject))].map(s => ({ value: s, label: s }));
+
   // Determine if profile filters should be used (only if no manual filters are active)
   const hasManualFilters = selectedGrade !== null || selectedSubject !== null;
-  const useProfileFilters = !hasManualFilters && userProfile && userProfile.gradeLevel && userProfile.subjects && userProfile.subjects.length > 0;
+  const isSeniorGrade = userProfile?.gradeLevel ? userProfile.gradeLevel >= 10 : false;
+  
+  // Use profile filters if:
+  // 1. No manual filters are active
+  // 2. User has a grade level
+  // 3. For grades 10-12: must have subjects selected
+  // 4. For grades 1-9: grade level is enough (subjects are auto-set)
+  const useProfileFilters = !hasManualFilters && userProfile && userProfile.gradeLevel && 
+    (isSeniorGrade ? (userProfile.subjects && userProfile.subjects.length > 0) : true);
 
   const filteredLessons = allLessons.filter(lesson => {
     if (useProfileFilters) {
       // Filter based on user profile settings
       const gradeMatch = lesson.gradeLevel === userProfile.gradeLevel.toString();
-      const subjectMatch = userProfile.subjects.includes(lesson.subject);
-      return gradeMatch && subjectMatch;
+      
+      if (isSeniorGrade) {
+        // For grades 10-12: filter by both grade and selected subjects
+        const subjectMatch = userProfile.subjects && userProfile.subjects.includes(lesson.subject);
+        return gradeMatch && subjectMatch;
+      } else {
+        // For grades 1-9: filter by grade only (all subjects for that grade are available)
+        return gradeMatch;
+      }
     } else {
       // Filter based on manual dropdowns
       const gradeMatch = !selectedGrade || lesson.gradeLevel === selectedGrade;
@@ -125,7 +148,11 @@ export default function LessonsPage() {
                 <UserCheck className="h-6 w-6 text-primary" />
                 <div>
                   <p className="font-semibold">{t.showingLessonsFor.replace('{gradeLevel}', userProfile.gradeLevel.toString())}</p>
-                  <p className="text-sm text-muted-foreground">{t.yourSubjectsAre.replace('{subjects}', userProfile.subjects.join(', '))}</p>
+                  {isSeniorGrade && userProfile.subjects && userProfile.subjects.length > 0 ? (
+                    <p className="text-sm text-muted-foreground">{t.yourSubjectsAre.replace('{subjects}', userProfile.subjects.join(', '))}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Showing all subjects available for Grade {userProfile.gradeLevel}</p>
+                  )}
                 </div>
               </div>
               <Button variant="outline" size="sm" asChild>
@@ -136,7 +163,11 @@ export default function LessonsPage() {
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
-              <Select onValueChange={setSelectedGrade} value={selectedGrade || ''}>
+              <Select onValueChange={(value) => {
+                setSelectedGrade(value);
+                // Clear subject when grade changes to ensure dropdown shows correct subjects
+                setSelectedSubject(null);
+              }} value={selectedGrade || ''}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder={t.filterByGrade} />
                 </SelectTrigger>
@@ -151,7 +182,7 @@ export default function LessonsPage() {
                   <SelectValue placeholder={t.filterBySubject} />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableSubjects.map(subject => (
+                  {availableSubjectsForGrade.map(subject => (
                     <SelectItem key={subject.value} value={subject.value}>{subject.label}</SelectItem>
                   ))}
                 </SelectContent>

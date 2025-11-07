@@ -54,7 +54,7 @@ const subjectDescriptions: Record<string, string> = {
  * Maps subjects to grades based on CAPS curriculum
  * This is a comprehensive mapping of all subjects available per grade
  */
-function getSubjectsForGrade(grade: string): string[] {
+export function getSubjectsForGrade(grade: string): string[] {
   const gradeNum = parseInt(grade);
   
   // Foundation Phase (Grades 1-3)

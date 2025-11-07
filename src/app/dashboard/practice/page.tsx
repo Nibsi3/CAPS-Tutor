@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,11 +16,12 @@ import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import { TypingText } from '@/components/ui/typing-text';
 import { Progress } from '@/components/ui/progress';
-import { useUser, useDatabases, useDoc, useMemoAppwrite } from '@/appwrite';
+import { useUser, useDatabases, useDoc, useCollection, useMemoAppwrite } from '@/appwrite';
 import { appwriteConfig } from '@/appwrite/config';
-import { ID } from 'appwrite';
+import { ID, Query } from 'appwrite';
 import { filterQuestionsByLiterature, UserLiteratureSelection } from '@/lib/literature-filter';
 import { useAdminMode } from '@/hooks/use-admin-mode';
+import { getSubjectsForGrade } from '@/components/home/AllSubjectsSection';
 
 interface QuestionWithFeedback extends Question {
   studentAnswer?: string;
@@ -33,13 +34,18 @@ interface Message {
   content: string;
 }
 
-const strugglingTopics = [
-    { name: "Algebraic expressions", subject: "Mathematics", grade: "10", mastery: 45 },
-    { name: "Euclidean geometry", subject: "Mathematics", grade: "10", mastery: 52 },
-    { name: "Chemical equilibrium", subject: "Physical Sciences", grade: "12", mastery: 60 },
-];
-
 const ADMIN_EMAIL = 'cameronfalck03@gmail.com';
+
+interface StudentProgress {
+  learningObjectiveId: string;
+  masteryLevel: number;
+  completed: boolean;
+  lastAccessed?: string;
+  topic?: string;
+  subject?: string;
+  gradeLevel?: number;
+  type?: string;
+}
 
 interface UserProfile {
   gradeLevel: number;
@@ -85,19 +91,136 @@ export default function PracticePage() {
   }, [user]);
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
+  // Query user progress to find struggling topics
+  const progressQuery = useMemoAppwrite(() => {
+    if (!user || !userProfile?.gradeLevel) return null;
+    
+    const queries = [
+      Query.equal('userID', user.$id),
+      Query.equal('gradeLevel', userProfile.gradeLevel),
+      Query.lessThan('masteryLevel', 70), // Only topics with mastery < 70%
+      Query.orderAsc('masteryLevel'), // Sort by lowest mastery first
+      Query.limit(10), // Get top 10 struggling topics
+    ];
+    
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'userprogress',
+      queries,
+    };
+  }, [user, userProfile?.gradeLevel]);
+
+  const { data: progressData, isLoading: isProgressLoading } = useCollection<StudentProgress>(progressQuery);
+
+  // Process progress data to get struggling topics
+  const strugglingTopics = useMemo(() => {
+    if (!progressData || progressData.length === 0) return [];
+    if (!userProfile?.gradeLevel) return [];
+
+    const isSeniorGrade = userProfile.gradeLevel >= 10;
+    const availableSubjects = isSeniorGrade 
+      ? (userProfile.subjects || [])
+      : getSubjectsForGrade(userProfile.gradeLevel.toString());
+
+    // Group by topic and calculate average mastery
+    const topicMap = new Map<string, { mastery: number; subject: string; count: number }>();
+    
+    progressData.forEach(item => {
+      if (!item.topic || !item.subject) return;
+      
+      // Filter by available subjects
+      if (!availableSubjects.includes(item.subject)) return;
+      
+      const topic = item.topic;
+      if (topicMap.has(topic)) {
+        const existing = topicMap.get(topic)!;
+        existing.mastery = (existing.mastery * existing.count + item.masteryLevel) / (existing.count + 1);
+        existing.count += 1;
+      } else {
+        topicMap.set(topic, {
+          mastery: item.masteryLevel,
+          subject: item.subject,
+          count: 1,
+        });
+      }
+    });
+
+    // Convert to array, sort by mastery (lowest first), and limit to top 5
+    return Array.from(topicMap.entries())
+      .map(([name, data]) => ({
+        name,
+        subject: data.subject,
+        grade: userProfile.gradeLevel.toString(),
+        mastery: Math.round(data.mastery),
+      }))
+      .sort((a, b) => a.mastery - b.mastery)
+      .slice(0, 5);
+  }, [progressData, userProfile]);
+
   const loadQuestions = useCallback((currentTopic: string, currentGrade: string, currentSubject: string) => {
     setIsLoading(true);
     setExam(null);
     setCurrentQuestionIndex(0);
     setScore(0);
     
+    // Use user profile grade as primary source, fallback to URL param
+    const effectiveGrade = userProfile?.gradeLevel ? userProfile.gradeLevel.toString() : currentGrade;
+    const effectiveGradeNum = parseInt(effectiveGrade);
+    
+    // Validate that the subject is available for the user's grade
+    if (userProfile?.gradeLevel) {
+      const availableSubjects = getSubjectsForGrade(effectiveGrade);
+      const isSeniorGrade = userProfile.gradeLevel >= 10;
+      
+      // For grades 10-12: subject must be in user's selected subjects
+      // For grades 1-9: subject must be available for that grade
+      if (isSeniorGrade) {
+        if (!userProfile.subjects || !userProfile.subjects.includes(currentSubject)) {
+          toast({ 
+            variant: "destructive", 
+            title: "Subject Not Available", 
+            description: `This subject is not in your selected subjects for Grade ${userProfile.gradeLevel}. Please update your settings.` 
+          });
+          setExam({ examQuestions: [] });
+          setIsLoading(false);
+          setIsInitialLoading(false);
+          return;
+        }
+      } else {
+        if (!availableSubjects.includes(currentSubject)) {
+          toast({ 
+            variant: "destructive", 
+            title: "Subject Not Available", 
+            description: `This subject is not available for Grade ${userProfile.gradeLevel}.` 
+          });
+          setExam({ examQuestions: [] });
+          setIsLoading(false);
+          setIsInitialLoading(false);
+          return;
+        }
+      }
+      
+      // Also validate that the grade matches
+      if (currentGrade && parseInt(currentGrade) !== userProfile.gradeLevel) {
+        toast({ 
+          variant: "destructive", 
+          title: "Grade Mismatch", 
+          description: `This practice is for Grade ${currentGrade}, but your profile is set to Grade ${userProfile.gradeLevel}.` 
+        });
+        setExam({ examQuestions: [] });
+        setIsLoading(false);
+        setIsInitialLoading(false);
+        return;
+      }
+    }
+    
     // Set up the tutor's initial message
-    const tutorGradeLevel = userProfile?.gradeLevel || (currentGrade ? parseInt(currentGrade) : null);
+    const tutorGradeLevel = effectiveGradeNum;
     const gradeText = tutorGradeLevel ? ` (Grade ${tutorGradeLevel})` : '';
     setTutorMessages([{ role: 'assistant', content: `Hi there! I'm your Grade ${tutorGradeLevel || currentGrade} AI tutor. I'm ready to help you with any questions you have about **${currentTopic}**${gradeText}. Ask me anything!` }]);
     
-    // Get preloaded questions for the subject, then filter by topic
-    let subjectQuestions = getQuestionsForSubject(currentSubject, parseInt(currentGrade));
+    // Get preloaded questions for the subject, using the effective grade
+    let subjectQuestions = getQuestionsForSubject(currentSubject, effectiveGradeNum);
     
     // Filter by topic - use flexible matching (exact match or contains)
     const normalizedTopic = currentTopic.toLowerCase().trim();
@@ -134,7 +257,7 @@ export default function PracticePage() {
     
     setIsLoading(false);
     setIsInitialLoading(false);
-  }, [toast, userProfile?.gradeLevel, userProfile?.literature]);
+  }, [toast, userProfile?.gradeLevel, userProfile?.subjects, userProfile?.literature]);
 
 
   useEffect(() => {
@@ -180,11 +303,14 @@ export default function PracticePage() {
     question.isChecking = true;
     setExam({ examQuestions: newQuestions });
 
+    // Use user profile grade as primary source, fallback to URL param
+    const effectiveGrade = userProfile?.gradeLevel || parseInt(grade);
+
     try {
       const feedbackResult = await getInteractiveFeedback({
         question: question.question,
         studentAnswer: question.studentAnswer,
-        gradeLevel: parseInt(grade),
+        gradeLevel: effectiveGrade,
         subject: subject,
       });
 
@@ -214,6 +340,9 @@ export default function PracticePage() {
       const questionsCount = exam.examQuestions.length;
       const percentageScore = questionsCount > 0 ? Math.round((score / questionsCount) * 100) : 0;
 
+      // Use user profile grade as primary source, fallback to URL param
+      const effectiveGrade = userProfile?.gradeLevel || parseInt(grade);
+
       // Save progress to Firestore
       const progressData = {
         learningObjectiveId: `topic-${encodeURIComponent(topic)}`,
@@ -222,7 +351,7 @@ export default function PracticePage() {
         lastAccessed: new Date().toISOString(),
         topic: topic,
         subject: subject,
-        gradeLevel: parseInt(grade),
+        gradeLevel: effectiveGrade,
         type: 'practice',
       };
 
@@ -315,6 +444,9 @@ export default function PracticePage() {
     );
   }
 
+  // strugglingTopics is now dynamically generated from progress data
+  // No need to filter further as it's already filtered by grade and subjects
+
   if (!topic) {
     return (
       <Card>
@@ -328,34 +460,75 @@ export default function PracticePage() {
             <div className='space-y-4'>
                 <h3 className="text-2xl font-bold font-headline flex items-center gap-3"><BrainCircuit className="w-8 h-8 text-primary"/> Recommended For You</h3>
                 <p className="text-muted-foreground max-w-2xl">
-                    Based on your recent activity, here are a few topics where some extra practice could be beneficial. Mastering these will boost your overall progress.
+                    {userProfile?.gradeLevel 
+                      ? `Based on your Grade ${userProfile.gradeLevel} profile, here are recommended topics for extra practice.`
+                      : 'Based on your recent activity, here are a few topics where some extra practice could be beneficial. Mastering these will boost your overall progress.'}
                 </p>
             </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {strugglingTopics.map(topic => (
-                    <Link 
-                        key={topic.name} 
-                        href={`/dashboard/practice?topic=${encodeURIComponent(topic.name)}&grade=${topic.grade}&subject=${topic.subject}`}
-                        className="block"
-                    >
-                        <Card className="h-full hover:border-primary hover:shadow-lg transition-all">
-                            <CardHeader>
-                                <CardTitle>{topic.name}</CardTitle>
-                                <CardDescription>{topic.subject} - Grade {topic.grade}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className='space-y-2'>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="font-medium text-muted-foreground">Current Mastery</span>
-                                        <span className="font-bold text-primary">{topic.mastery}%</span>
-                                    </div>
-                                    <Progress value={topic.mastery} />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </Link>
+            {isProgressLoading ? (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="h-full">
+                    <CardHeader>
+                      <CardTitle className="h-6 bg-muted animate-pulse rounded" />
+                      <CardDescription className="h-4 bg-muted animate-pulse rounded mt-2" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="h-4 w-24 bg-muted animate-pulse rounded" />
+                          <span className="h-4 w-12 bg-muted animate-pulse rounded" />
+                        </div>
+                        <div className="h-2 bg-muted animate-pulse rounded" />
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
-            </div>
+              </div>
+            ) : strugglingTopics.length > 0 ? (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {strugglingTopics.map(topic => (
+                      <Link 
+                          key={topic.name} 
+                          href={`/dashboard/practice?topic=${encodeURIComponent(topic.name)}&grade=${topic.grade}&subject=${topic.subject}`}
+                          className="block"
+                      >
+                          <Card className="h-full hover:border-primary hover:shadow-lg transition-all">
+                              <CardHeader>
+                                  <CardTitle>{topic.name}</CardTitle>
+                                  <CardDescription>{topic.subject} - Grade {topic.grade}</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                  <div className='space-y-2'>
+                                      <div className="flex justify-between items-center text-sm">
+                                          <span className="font-medium text-muted-foreground">Current Mastery</span>
+                                          <span className="font-bold text-primary">{topic.mastery}%</span>
+                                      </div>
+                                      <Progress value={topic.mastery} />
+                                  </div>
+                              </CardContent>
+                          </Card>
+                      </Link>
+                  ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                <p className="text-muted-foreground mb-4">
+                  {userProfile?.gradeLevel 
+                    ? `Complete some practice questions to see your struggling topics here. We'll recommend topics where you need more practice based on your performance.`
+                    : 'Please set your grade level in settings to see personalized recommendations.'}
+                </p>
+                {!userProfile?.gradeLevel ? (
+                  <Button asChild>
+                    <Link href="/dashboard/settings">Go to Settings</Link>
+                  </Button>
+                ) : (
+                  <Button asChild>
+                    <Link href="/dashboard/lessons">Browse Lessons to Start Practicing</Link>
+                  </Button>
+                )}
+              </div>
+            )}
              <div className="text-center py-6 bg-muted rounded-lg">
                 <h4 className="text-xl font-bold font-headline mb-2">Or, Choose Your Own Topic</h4>
                 <p className="text-muted-foreground mb-4 max-w-md mx-auto">

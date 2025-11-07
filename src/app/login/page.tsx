@@ -146,7 +146,48 @@ export default function LoginPage() {
 
   if (!isMounted || isUserLoading || (user && isProfileLoading)) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-muted/50 p-4">
+      <div className="relative isolate overflow-hidden min-h-screen flex flex-col items-center justify-center p-4">
+        {/* Top decorative element */}
+        <div
+          className="absolute left-[calc(50%-4rem)] top-10 -z-10 transform-gpu blur-3xl sm:left-[calc(50%-18rem)] lg:left-48 lg:top-[calc(50%-30rem)] xl:left-[calc(50%-24rem)]"
+          aria-hidden="true"
+        >
+          <div
+            className="aspect-[1108/632] w-[72.125rem] bg-gradient-to-r from-primary to-purple-500 opacity-20"
+            style={{
+              clipPath:
+                'polygon(73.6% 51.7%, 91.7% 11.8%, 100% 46.4%, 97.4% 82.2%, 92.5% 84.9%, 75.7% 64.3%, 55.3% 47.5%, 46.5% 49.4%, 45% 62.9%, 50.3% 87.2%, 21.3% 64.1%, 0.1% 100%, 5.4% 51.1%, 21.4% 63.9%, 58.9% 0.2%, 73.6% 51.7%)',
+            }}
+          />
+        </div>
+
+        {/* Bottom-left decorative element */}
+        <div
+          className="absolute bottom-0 left-0 -z-10 transform-gpu overflow-hidden blur-3xl"
+          aria-hidden="true"
+        >
+          <div
+            className="aspect-[1155/678] w-[72.1875rem] -translate-x-1/2 bg-gradient-to-tr from-[#1e40af] to-[#9333ea] opacity-30"
+            style={{
+              clipPath:
+                'polygon(20% 65%, 0% 50%, 10% 20%, 40% 0%, 70% 20%, 90% 50%, 100% 65%, 80% 85%, 50% 100%, 30% 85%)',
+            }}
+          />
+        </div>
+
+        {/* Bottom-right decorative element */}
+        <div
+          className="absolute bottom-0 right-0 -z-10 transform-gpu overflow-hidden blur-3xl"
+          aria-hidden="true"
+        >
+          <div
+            className="aspect-[1155/678] w-[72.1875rem] translate-x-1/2 bg-gradient-to-tl from-[#1e40af] to-[#9333ea] opacity-30"
+            style={{
+              clipPath:
+                'polygon(80% 65%, 100% 50%, 90% 20%, 60% 0%, 30% 20%, 10% 50%, 0% 65%, 20% 85%, 50% 100%, 70% 85%)',
+            }}
+          />
+        </div>
         <Loader className="h-12 w-12 animate-spin" />
         <p className="mt-4 text-lg">Loading...</p>
       </div>
@@ -173,7 +214,49 @@ export default function LoginPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="flex min-h-screen flex-col items-center justify-center bg-muted/50 p-4">
+      <div className="relative isolate overflow-hidden min-h-screen flex flex-col items-center justify-center p-4">
+        {/* Top decorative element */}
+        <div
+          className="absolute left-[calc(50%-4rem)] top-10 -z-10 transform-gpu blur-3xl sm:left-[calc(50%-18rem)] lg:left-48 lg:top-[calc(50%-30rem)] xl:left-[calc(50%-24rem)]"
+          aria-hidden="true"
+        >
+          <div
+            className="aspect-[1108/632] w-[72.125rem] bg-gradient-to-r from-primary to-purple-500 opacity-20"
+            style={{
+              clipPath:
+                'polygon(73.6% 51.7%, 91.7% 11.8%, 100% 46.4%, 97.4% 82.2%, 92.5% 84.9%, 75.7% 64.3%, 55.3% 47.5%, 46.5% 49.4%, 45% 62.9%, 50.3% 87.2%, 21.3% 64.1%, 0.1% 100%, 5.4% 51.1%, 21.4% 63.9%, 58.9% 0.2%, 73.6% 51.7%)',
+            }}
+          />
+        </div>
+
+        {/* Bottom-left decorative element */}
+        <div
+          className="absolute bottom-0 left-0 -z-10 transform-gpu overflow-hidden blur-3xl"
+          aria-hidden="true"
+        >
+          <div
+            className="aspect-[1155/678] w-[72.1875rem] -translate-x-1/2 bg-gradient-to-tr from-[#1e40af] to-[#9333ea] opacity-30"
+            style={{
+              clipPath:
+                'polygon(20% 65%, 0% 50%, 10% 20%, 40% 0%, 70% 20%, 90% 50%, 100% 65%, 80% 85%, 50% 100%, 30% 85%)',
+            }}
+          />
+        </div>
+
+        {/* Bottom-right decorative element */}
+        <div
+          className="absolute bottom-0 right-0 -z-10 transform-gpu overflow-hidden blur-3xl"
+          aria-hidden="true"
+        >
+          <div
+            className="aspect-[1155/678] w-[72.1875rem] translate-x-1/2 bg-gradient-to-tl from-[#1e40af] to-[#9333ea] opacity-30"
+            style={{
+              clipPath:
+                'polygon(80% 65%, 100% 50%, 90% 20%, 60% 0%, 30% 20%, 10% 50%, 0% 65%, 20% 85%, 50% 100%, 70% 85%)',
+            }}
+          />
+        </div>
+
         <div className="absolute top-4 left-4">
             <Link href="/" className="flex items-center gap-2">
               <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
