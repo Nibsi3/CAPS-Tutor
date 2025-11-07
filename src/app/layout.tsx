@@ -6,6 +6,7 @@ import { AppwriteClientProvider } from '@/appwrite/client-provider';
 import { PT_Sans, Space_Grotesk, Source_Code_Pro } from 'next/font/google';
 import { LanguageProvider } from '@/components/language-provider';
 import { ConditionalPublicLayout } from '@/components/layout/ConditionalPublicLayout';
+import { ErrorSuppressor } from '@/components/ErrorSuppressor';
 
 const ptSans = PT_Sans({
   subsets: ['latin'],
@@ -51,6 +52,7 @@ export default function RootLayout({
       <body
         className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
       >
+        <ErrorSuppressor />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
