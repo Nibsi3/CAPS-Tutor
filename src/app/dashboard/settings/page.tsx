@@ -161,34 +161,47 @@ export default function SettingsPage() {
     // 1. userProfile exists
     // 2. Form is not dirty (user hasn't made changes)
     // 3. Form is not currently submitting
+    // 4. We haven't just saved (prevent resetting with stale data after save)
     // This prevents overwriting user's unsaved changes or resetting during save
-    if (userProfile && !formState.isDirty && !formState.isSubmitting) {
+    const timeSinceLastSave = Date.now() - lastSavedTimestamp;
+    const justSaved = timeSinceLastSave < 2000; // Don't reset if we saved in the last 2 seconds
+    
+    if (userProfile && !formState.isDirty && !formState.isSubmitting && !justSaved) {
       const allUserSubjects = userProfile.subjects || [];
       const englishSelection = allUserSubjects.find(s => s.startsWith('English')) || 'none';
       const afrikaansSelection = allUserSubjects.find(s => s.startsWith('Afrikaans')) || 'none';
       const contentSelection = allUserSubjects.filter(s => !s.startsWith('English') && !s.startsWith('Afrikaans'));
 
-      reset({
-        ...userProfile,
-        firstName: userProfile.firstName || '',
-        lastName: userProfile.lastName || '',
-        language: userProfile.language || 'en',
-        gradeLevel: userProfile.gradeLevel ? userProfile.gradeLevel.toString() : '',
-        english: englishSelection,
-        afrikaans: afrikaansSelection,
-        contentSubjects: contentSelection,
-        literature: userProfile.literature || {
-            'english-hl': { novel: '', drama: '', poems: [] },
-            'english-fal': { novel: '', drama: '', poems: [] },
-            'afrikaans-ht': { novel: '', drama: '', poems: [] },
-            'afrikaans-eat': { novel: '', drama: '', poems: [] },
-        },
-      });
-       if (userProfile.language) {
-        setLanguage(userProfile.language as keyof typeof translations);
+      // Only reset if the form values are different from userProfile to avoid unnecessary resets
+      const currentGrade = form.getValues('gradeLevel');
+      const profileGrade = userProfile.gradeLevel ? userProfile.gradeLevel.toString() : '';
+      
+      // Check if we actually need to reset (values are different)
+      if (currentGrade !== profileGrade || 
+          form.getValues('firstName') !== (userProfile.firstName || '') ||
+          form.getValues('lastName') !== (userProfile.lastName || '')) {
+        reset({
+          ...userProfile,
+          firstName: userProfile.firstName || '',
+          lastName: userProfile.lastName || '',
+          language: userProfile.language || 'en',
+          gradeLevel: profileGrade,
+          english: englishSelection,
+          afrikaans: afrikaansSelection,
+          contentSubjects: contentSelection,
+          literature: userProfile.literature || {
+              'english-hl': { novel: '', drama: '', poems: [] },
+              'english-fal': { novel: '', drama: '', poems: [] },
+              'afrikaans-ht': { novel: '', drama: '', poems: [] },
+              'afrikaans-eat': { novel: '', drama: '', poems: [] },
+          },
+        });
+        if (userProfile.language) {
+          setLanguage(userProfile.language as keyof typeof translations);
+        }
+        // Set the previous grade reference
+        prevGradeRef.current = profileGrade;
       }
-      // Set the previous grade reference
-      prevGradeRef.current = userProfile.gradeLevel ? userProfile.gradeLevel.toString() : '';
     } else if (user && !userProfile && !isProfileLoading) {
       // Set defaults from user object if no profile exists
       reset({
@@ -201,7 +214,7 @@ export default function SettingsPage() {
         afrikaans: 'none',
       });
     }
-  }, [user, userProfile, isProfileLoading, reset, formState.isDirty, setLanguage]);
+  }, [user, userProfile, isProfileLoading, reset, formState.isDirty, formState.isSubmitting, form, setLanguage, lastSavedTimestamp]);
 
   // Auto-select compulsory subjects when grade is selected (Grades 1-9) - only when grade changes
   useEffect(() => {
@@ -321,11 +334,15 @@ export default function SettingsPage() {
           };
           
           form.reset(formData, { keepValues: false }); // Reset form with fresh server data
-          setLastSavedTimestamp(Date.now()); // Trigger useEffect to update from userProfile
+          // Update prevGradeRef to match the saved grade
+          prevGradeRef.current = formData.gradeLevel;
+          setLastSavedTimestamp(Date.now()); // Prevent useEffect from resetting with stale data
         } catch (refetchError) {
           console.error('Error refetching document:', refetchError);
           // If refetch fails, just reset with form data
           form.reset(data, { keepValues: false });
+          prevGradeRef.current = data.gradeLevel;
+          setLastSavedTimestamp(Date.now());
         }
         
         if (data.language) {

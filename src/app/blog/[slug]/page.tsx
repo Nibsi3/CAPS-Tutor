@@ -63,6 +63,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                   width={1200}
                   height={600}
                   className="aspect-video w-full rounded-2xl bg-muted object-cover"
+                  unoptimized={post.imageUrl.includes('pexels.com')}
                 />
                 <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-foreground/10" />
               </div>

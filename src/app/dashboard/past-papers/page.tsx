@@ -393,7 +393,7 @@ export default function PastPapersPage() {
             }
         });
         
-        // Third filter: Apply search and subject filters
+        // Third filter: Apply search, subject, and grade level filters
         return uniquePapers.filter(paper => {
             const baseSubject = getBaseSubject(paper.subject);
             const searchTermMatch = paper.subject.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -402,9 +402,13 @@ export default function PastPapersPage() {
             // Filter by selected subjects - if any are selected, match any of them
             const subjectMatch = selectedSubjects.length === 0 || 
                 selectedSubjects.some(selected => baseSubject.toLowerCase().includes(selected.toLowerCase()));
-            return searchTermMatch && subjectMatch;
+            // Filter by grade level - only show papers matching user's grade level
+            const paperGrade = paper.gradeLevel || 12; // Default to 12 if not specified
+            const userGrade = userProfile?.gradeLevel;
+            const gradeMatch = !userGrade || paperGrade === userGrade;
+            return searchTermMatch && subjectMatch && gradeMatch;
         });
-    }, [processedPapers, searchTerm, selectedSubjects]);
+    }, [processedPapers, searchTerm, selectedSubjects, userProfile?.gradeLevel]);
 
     const handleClearFilters = () => {
         setSearchTerm('');

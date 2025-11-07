@@ -185,13 +185,14 @@ export default function BlogIndexPage() {
                             </div>
                           </div>
                           {/* Image */}
-                          <div className="relative w-full aspect-[16/9] overflow-hidden grayscale">
+                          <div className="relative w-full aspect-[16/9] overflow-hidden grayscale bg-muted">
                             <Image
                               src={post.imageUrl}
                               alt={post.title}
                               width={320}
                               height={180}
                               className="w-full h-full object-cover"
+                              unoptimized={post.imageUrl.includes('pexels.com')}
                             />
                             <div className="absolute inset-0 ring-1 ring-inset ring-foreground/10" />
                           </div>
@@ -242,13 +243,14 @@ export default function BlogIndexPage() {
                         />
                         
                         {/* Image */}
-                        <div className="relative w-full aspect-[16/9] overflow-hidden">
+                        <div className="relative w-full aspect-[16/9] overflow-hidden bg-muted">
                           <Image
                             src={post.imageUrl}
                             alt={post.title}
                             width={800}
                             height={450}
                             className="w-full h-full object-cover"
+                            unoptimized={post.imageUrl.includes('pexels.com')}
                           />
                           <div className="absolute inset-0 ring-1 ring-inset ring-foreground/10" />
                         </div>

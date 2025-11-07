@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bot, Target, MessageSquare, TrendingUp, GraduationCap, Brain } from "lucide-react";
-import Image from "next/image";
+import { SafeImage } from "@/components/ui/safe-image";
 import Link from "next/link";
 
 const steps = [
@@ -10,7 +10,7 @@ const steps = [
     title: "Intelligent Content Generation",
     description: "Our AI analyzes the CAPS curriculum to generate personalized practice questions tailored to your grade and subject. Every question is carefully crafted to match the exact requirements and difficulty level of your syllabus.",
     icon: Brain,
-    imageUrl: "https://images.pexels.com/photos/3760866/pexels-photo-3760866.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
+    imageUrl: "https://images.pexels.com/photos/3760868/pexels-photo-3760868.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "AI-generated educational content"
   },
   {
@@ -18,7 +18,7 @@ const steps = [
     title: "Adaptive Learning",
     description: "The system learns from your performance and adjusts the difficulty and topics accordingly. Weak areas get more practice, while mastered topics are reviewed less frequently—optimizing your study time.",
     icon: Target,
-    imageUrl: "https://images.pexels.com/photos/3760865/pexels-photo-3760865.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
+    imageUrl: "https://images.pexels.com/photos/3760826/pexels-photo-3760826.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "Adaptive learning visualization"
   },
   {
@@ -84,8 +84,8 @@ export function HowItWorks() {
                 >
                   <div className={`flex flex-col ${isEven ? '' : 'lg:flex-row-reverse'}`}>
                     {/* Image */}
-                    <div className="relative w-full lg:w-1/2 aspect-[16/10] lg:aspect-[4/3] lg:min-h-[400px]">
-                      <Image
+                    <div className="relative w-full lg:w-1/2 aspect-[16/10] lg:aspect-[4/3] lg:min-h-[400px] bg-muted">
+                      <SafeImage
                         src={step.imageUrl}
                         alt={step.imageAlt}
                         fill

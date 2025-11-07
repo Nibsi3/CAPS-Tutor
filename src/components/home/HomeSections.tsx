@@ -137,13 +137,21 @@ export function BlogSection() {
             {recentPosts.map((post) => (
               <Card key={post.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
                 <Link href={`/blog/${post.slug}`} className="block">
-                  <div className="relative h-48 overflow-hidden">
+                  <div className="relative h-48 overflow-hidden bg-muted">
                     <Image
                       src={post.imageUrl}
                       alt={post.title}
                       fill
                       sizes="(max-width: 1024px) 100vw, 33vw"
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      unoptimized={post.imageUrl.includes('pexels.com')}
+                      onError={(e) => {
+                        // Fallback to a default Pexels image if loading fails
+                        const target = e.target as HTMLImageElement;
+                        if (!target.src.includes('3760851')) {
+                          target.src = 'https://images.pexels.com/photos/3760851/pexels-photo-3760851.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2';
+                        }
+                      }}
                     />
                   </div>
                   <CardHeader>

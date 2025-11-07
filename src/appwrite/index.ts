@@ -189,5 +189,6 @@ export * from './database/use-collection';
 export * from './auth/use-user';
 export * from './auth/social-auth';
 export * from './auth/email-auth';
+export * from './storage';
 export * from './logger';
 

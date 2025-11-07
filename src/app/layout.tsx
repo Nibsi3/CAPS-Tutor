@@ -8,6 +8,7 @@ import { LanguageProvider } from '@/components/language-provider';
 import { ConditionalPublicLayout } from '@/components/layout/ConditionalPublicLayout';
 import { ErrorSuppressor } from '@/components/ErrorSuppressor';
 import { FontRequestBlocker } from '@/components/FontRequestBlocker';
+import { FontLoader } from '@/components/FontLoader';
 import { GlobalAchievementChecker } from '@/components/achievements/GlobalAchievementChecker';
 
 const ptSans = PT_Sans({
@@ -55,6 +56,7 @@ export default function RootLayout({
         className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
       >
         <FontRequestBlocker />
+        <FontLoader />
         <ErrorSuppressor />
         <ThemeProvider
           attribute="class"

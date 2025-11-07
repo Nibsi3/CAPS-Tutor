@@ -15,11 +15,16 @@ import { useEffect } from 'react';
 
 const appwriteFontPatterns = [
   'assets.appwrite.io/fonts',
+  'fonts/inter/',
+  'fonts/fira-code/',
   'Inter-Regular.woff2',
   'FiraCode-Regular.woff2',
+  'Inter-',
+  'FiraCode-',
 ];
 
 const isAppwriteFontRequest = (url: string): boolean => {
+  if (!url || typeof url !== 'string') return false;
   return appwriteFontPatterns.some(pattern => url.includes(pattern));
 };
 
@@ -28,7 +33,14 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
   // Intercept fetch requests
   const originalFetch = window.fetch;
   window.fetch = async function(...args) {
-    const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+    let url = '';
+    if (typeof args[0] === 'string') {
+      url = args[0];
+    } else if (args[0] instanceof Request) {
+      url = args[0].url;
+    } else if (args[0] instanceof URL) {
+      url = args[0].toString();
+    }
     
     if (isAppwriteFontRequest(url)) {
       // Block the request by returning a rejected promise
@@ -40,7 +52,7 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
 
   // Intercept XMLHttpRequest
   const originalXHROpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method: string, url: string | URL, ...rest: any[]) {
+  XMLHttpRequest.prototype.open = function(method: string, url: string | URL, async?: boolean, username?: string | null, password?: string | null) {
     const urlString = typeof url === 'string' ? url : url.toString();
     
     if (isAppwriteFontRequest(urlString)) {
@@ -48,7 +60,52 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
       throw new Error('Blocked Appwrite font request');
     }
     
-    return originalXHROpen.apply(this, [method, url, ...rest]);
+    return originalXHROpen.call(this, method, url, async ?? true, username, password);
+  };
+
+  // Intercept createElement to prevent font link/style tags from being created
+  const originalCreateElement = Document.prototype.createElement;
+  Document.prototype.createElement = function(tagName: string, options?: ElementCreationOptions): HTMLElement {
+    const element = originalCreateElement.call(this, tagName, options);
+    
+    // If it's a link or style tag, intercept attribute setting
+    if (element instanceof HTMLLinkElement || element instanceof HTMLStyleElement) {
+      const originalSetAttribute = element.setAttribute.bind(element);
+      element.setAttribute = function(name: string, value: string) {
+        if ((name === 'href' || name === 'rel') && isAppwriteFontRequest(value)) {
+          // Block setting the attribute
+          return;
+        }
+        return originalSetAttribute(name, value);
+      };
+      
+      // Also intercept href property directly for link elements
+      if (element instanceof HTMLLinkElement) {
+        const originalHrefDescriptor = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href');
+        if (originalHrefDescriptor) {
+          Object.defineProperty(element, 'href', {
+            set: function(value: string) {
+              if (isAppwriteFontRequest(value)) {
+                return;
+              }
+              if (originalHrefDescriptor.set) {
+                originalHrefDescriptor.set.call(this, value);
+              }
+            },
+            get: function() {
+              if (originalHrefDescriptor.get) {
+                return originalHrefDescriptor.get.call(this);
+              }
+              return this.getAttribute('href') || '';
+            },
+            configurable: true,
+            enumerable: true,
+          });
+        }
+      }
+    }
+    
+    return element;
   };
 
   // Intercept link tag insertions
@@ -61,7 +118,14 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
         return child;
       }
     }
-    return originalAppendChild.call(this, child);
+    if (child instanceof HTMLStyleElement) {
+      const textContent = child.textContent || child.innerHTML || '';
+      if (isAppwriteFontRequest(textContent)) {
+        // Return the child without actually appending it
+        return child;
+      }
+    }
+    return originalAppendChild.call(this, child) as T;
   };
 
   // Intercept insertBefore
@@ -74,7 +138,14 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
         return newNode;
       }
     }
-    return originalInsertBefore.call(this, newNode, referenceNode);
+    if (newNode instanceof HTMLStyleElement) {
+      const textContent = newNode.textContent || newNode.innerHTML || '';
+      if (isAppwriteFontRequest(textContent)) {
+        // Return the node without actually inserting it
+        return newNode;
+      }
+    }
+    return originalInsertBefore.call(this, newNode, referenceNode) as T;
   };
 
   // Intercept style tag insertions that might contain @font-face rules
@@ -104,10 +175,27 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
     });
   }
 
+  // Also intercept style element textContent and innerHTML
+  const originalStyleTextContent = Object.getOwnPropertyDescriptor(HTMLStyleElement.prototype, 'textContent')?.set;
+  if (originalStyleTextContent) {
+    Object.defineProperty(HTMLStyleElement.prototype, 'textContent', {
+      set: function(value: string | null) {
+        if (typeof value === 'string' && isAppwriteFontRequest(value)) {
+          return;
+        }
+        originalStyleTextContent.call(this, value);
+      },
+      get: Object.getOwnPropertyDescriptor(HTMLStyleElement.prototype, 'textContent')?.get,
+      configurable: true,
+      enumerable: true,
+    });
+  }
+
   (window as any).__fontBlockerSetup = true;
   (window as any).__fontBlockerOriginals = {
     originalFetch,
     originalXHROpen,
+    originalCreateElement,
     originalAppendChild,
     originalInsertBefore,
     originalInsertAdjacentHTML,

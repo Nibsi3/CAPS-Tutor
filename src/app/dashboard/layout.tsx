@@ -77,8 +77,8 @@ export default function DashboardLayout({
   }
   const userGrade = userProfile?.gradeLevel || 0;
   
-  // Only show past papers for grades 10-12
-  const showPastPapers = userGrade >= 10;
+  // Only show past papers for Grade 12
+  const showPastPapers = userGrade === 12;
   // Only show games for grades 1-3
   const showGames = userGrade >= 1 && userGrade <= 3;
 
