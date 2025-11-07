@@ -164,26 +164,12 @@ export async function ensureUserProfile(databases: Databases, userId: string, em
 
 /**
  * Log out the current user
- * Uses deleteSessions() to delete all sessions from the user account
- * This is more reliable than deleteSession('current') which can fail with invalid session IDs
  */
 export async function logOut(account: Account): Promise<void> {
   try {
-    // Use deleteSessions() which deletes all sessions and removes session cookies
-    // This is more reliable than deleteSession({ sessionId: 'current' }) which has validation issues
-    await account.deleteSessions();
+    await account.deleteSession("current");
   } catch (error) {
     console.error("Error signing out: ", error);
-    // If deleteSessions fails, try to clear cookies manually
-    if (typeof document !== 'undefined') {
-      // Clear all Appwrite-related cookies
-      document.cookie.split(";").forEach((c) => {
-        const cookieName = c.split("=")[0].trim();
-        if (cookieName.includes('appwrite') || cookieName.includes('session')) {
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-        }
-      });
-    }
     throw error;
   }
 }

@@ -30,10 +30,8 @@ export function GlobalLeaderboard() {
   // Get user profile for current user's stats
   const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
-    const databaseId = appwriteConfig.databaseId;
-    if (!databaseId || databaseId.trim() === '') return null;
     return {
-      databaseId,
+      databaseId: appwriteConfig.databaseId,
       collectionId: 'user',
       documentId: user.$id,
     };

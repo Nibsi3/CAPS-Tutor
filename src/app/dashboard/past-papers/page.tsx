@@ -225,10 +225,8 @@ export default function PastPapersPage() {
     // Get user profile to access grade from settings
     const userProfileRef = useMemoAppwrite(() => {
         if (isAuthLoading || !user) return null;
-        const databaseId = appwriteConfig.databaseId;
-        if (!databaseId || databaseId.trim() === '') return null;
         return {
-            databaseId,
+            databaseId: appwriteConfig.databaseId,
             collectionId: 'user',
             documentId: user.$id,
         };
@@ -239,11 +237,9 @@ export default function PastPapersPage() {
     // Query for user's past paper progress
     const pastPaperProgressQuery = useMemoAppwrite(() => {
         if (isAuthLoading || !user) return null;
-        const databaseId = appwriteConfig.databaseId;
-        if (!databaseId || databaseId.trim() === '') return null;
         
         return {
-            databaseId,
+            databaseId: appwriteConfig.databaseId,
             collectionId: 'pastPaperProgress',
             queries: [
                 Query.equal('userId', user.$id),
@@ -309,11 +305,9 @@ export default function PastPapersPage() {
     // to ensure Firestore is fully ready before making queries
     const pastPapersQuery = useMemoAppwrite(() => {
         if (isAuthLoading) return null;
-        const databaseId = appwriteConfig.databaseId;
-        if (!databaseId || databaseId.trim() === '') return null;
         // Query for all papers regardless of status, we'll filter out "Unknown" in the client
         return {
-            databaseId,
+            databaseId: appwriteConfig.databaseId,
             collectionId: 'pastPapers',
         };
     }, [isAuthLoading]);

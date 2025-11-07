@@ -109,35 +109,8 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
       })
       .catch((error) => {
         clearTimeout(timeout);
-        const errorCode = (error as any)?.code;
-        const errorType = (error as any)?.type;
-        const errorMessage = (error as any)?.message || '';
-        
-        // Handle invalid sessionId errors - clear invalid session cookies
-        if (errorMessage.includes('Invalid `sessionId` param') || 
-            errorMessage.includes('UID must contain at most 36 chars')) {
-          appwriteLogger.warn('auth', 'Invalid session ID detected - clearing cookies', {
-            errorMessage
-          });
-          
-          // Clear invalid session cookies
-          if (typeof document !== 'undefined') {
-            document.cookie.split(";").forEach((c) => {
-              const cookieName = c.split("=")[0].trim();
-              if (cookieName.includes('appwrite') || cookieName.includes('session')) {
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-              }
-            });
-          }
-          
-          // Treat as no session (user not logged in)
-          setUserAuthState({ user: null, isUserLoading: false, userError: null });
-          return;
-        }
-        
         // If no session exists, that's fine - user is just not logged in
-        if (errorCode === 401 || errorType === 'general_unauthorized_scope' || errorMessage === 'Timeout') {
+        if (error.code === 401 || error.type === 'general_unauthorized_scope' || error.message === 'Timeout') {
           appwriteLogger.debug('auth', 'No active session found (user not logged in)');
           setUserAuthState({ user: null, isUserLoading: false, userError: null });
         } else {
@@ -284,22 +257,6 @@ export function useMemoAppwrite<T>(factory: () => T, deps: DependencyList): T | 
   const memoized = useMemo(factory, deps);
   
   if (typeof memoized !== 'object' || memoized === null) return memoized;
-  
-  // Validate DocRef or CollectionRef objects to ensure databaseId is not empty
-  if ('databaseId' in memoized && 'collectionId' in memoized) {
-    const dbId = (memoized as any).databaseId;
-    const collId = (memoized as any).collectionId;
-    
-    // If databaseId or collectionId is empty/undefined, return null to prevent invalid API calls
-    // Check if they're strings and if so, ensure they're not empty after trimming
-    const isDbIdEmpty = !dbId || (typeof dbId === 'string' && dbId.trim() === '');
-    const isCollIdEmpty = !collId || (typeof collId === 'string' && collId.trim() === '');
-    
-    if (isDbIdEmpty || isCollIdEmpty) {
-      return null as T;
-    }
-  }
-  
   (memoized as MemoAppwrite<T>).__memo = true;
   
   return memoized;

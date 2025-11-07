@@ -122,10 +122,8 @@ export default function PastPaperPracticePage() {
     // Check both old structure (pastPapers) and new structure (pastpapers)
     const paperRefOld = useMemoAppwrite(() => {
         if (!paperId) return null;
-        const databaseId = appwriteConfig.databaseId;
-        if (!databaseId || databaseId.trim() === '') return null;
         return {
-            databaseId,
+            databaseId: appwriteConfig.databaseId,
             collectionId: 'pastPapers',
             documentId: paperId as string,
         };
@@ -133,10 +131,8 @@ export default function PastPaperPracticePage() {
 
     const paperRefNew = useMemoAppwrite(() => {
         if (!paperId) return null;
-        const databaseId = appwriteConfig.databaseId;
-        if (!databaseId || databaseId.trim() === '') return null;
         return {
-            databaseId,
+            databaseId: appwriteConfig.databaseId,
             collectionId: 'pastpapers',
             documentId: paperId as string,
         };
@@ -158,10 +154,8 @@ export default function PastPaperPracticePage() {
     }
     const userProfileRef = useMemoAppwrite(() => {
         if (!user) return null;
-        const databaseId = appwriteConfig.databaseId;
-        if (!databaseId || databaseId.trim() === '') return null;
         return {
-            databaseId,
+            databaseId: appwriteConfig.databaseId,
             collectionId: 'user',
             documentId: user.$id,
         };
