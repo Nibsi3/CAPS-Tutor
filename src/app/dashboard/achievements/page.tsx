@@ -49,8 +49,10 @@ export default function AchievementsPage() {
   // Get user profile
   const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
+    const databaseId = appwriteConfig.databaseId;
+    if (!databaseId || databaseId.trim() === '') return null;
     return {
-      databaseId: appwriteConfig.databaseId,
+      databaseId,
       collectionId: 'user',
       documentId: user.$id,
     };
@@ -61,8 +63,10 @@ export default function AchievementsPage() {
   // Get student progress for score calculations
   const progressQuery = useMemoAppwrite(() => {
     if (!user) return null;
+    const databaseId = appwriteConfig.databaseId;
+    if (!databaseId || databaseId.trim() === '') return null;
     return {
-      databaseId: appwriteConfig.databaseId,
+      databaseId,
       collectionId: 'userprogress',
       queries: [
         Query.equal('userID', user.$id),

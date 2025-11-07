@@ -58,8 +58,11 @@ export default function DashboardLayout({
   
   const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
+    // Validate that databaseId is set (not empty string or undefined)
+    const databaseId = appwriteConfig.databaseId;
+    if (!databaseId || databaseId.trim() === '') return null;
     return {
-      databaseId: appwriteConfig.databaseId,
+      databaseId,
       collectionId: 'user',
       documentId: user.$id,
     };

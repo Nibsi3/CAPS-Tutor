@@ -284,6 +284,18 @@ export function useMemoAppwrite<T>(factory: () => T, deps: DependencyList): T | 
   const memoized = useMemo(factory, deps);
   
   if (typeof memoized !== 'object' || memoized === null) return memoized;
+  
+  // Validate DocRef or CollectionRef objects to ensure databaseId is not empty
+  if ('databaseId' in memoized && 'collectionId' in memoized) {
+    const dbId = (memoized as any).databaseId;
+    const collId = (memoized as any).collectionId;
+    
+    // If databaseId or collectionId is empty/undefined, return null to prevent invalid API calls
+    if (!dbId || dbId.trim() === '' || !collId || collId.trim() === '') {
+      return null as T;
+    }
+  }
+  
   (memoized as MemoAppwrite<T>).__memo = true;
   
   return memoized;
