@@ -291,7 +291,11 @@ export function useMemoAppwrite<T>(factory: () => T, deps: DependencyList): T | 
     const collId = (memoized as any).collectionId;
     
     // If databaseId or collectionId is empty/undefined, return null to prevent invalid API calls
-    if (!dbId || dbId.trim() === '' || !collId || collId.trim() === '') {
+    // Check if they're strings and if so, ensure they're not empty after trimming
+    const isDbIdEmpty = !dbId || (typeof dbId === 'string' && dbId.trim() === '');
+    const isCollIdEmpty = !collId || (typeof collId === 'string' && collId.trim() === '');
+    
+    if (isDbIdEmpty || isCollIdEmpty) {
       return null as T;
     }
   }
