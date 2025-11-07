@@ -10,7 +10,7 @@ const steps = [
     title: "Intelligent Content Generation",
     description: "Our AI analyzes the CAPS curriculum to generate personalized practice questions tailored to your grade and subject. Every question is carefully crafted to match the exact requirements and difficulty level of your syllabus.",
     icon: Brain,
-    imageUrl: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMnx8YWklMjBtYWNoaW5lfGVufDB8fHx8MTc2MTUwODk3MHww&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760866/pexels-photo-3760866.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "AI-generated educational content"
   },
   {
@@ -18,7 +18,7 @@ const steps = [
     title: "Adaptive Learning",
     description: "The system learns from your performance and adjusts the difficulty and topics accordingly. Weak areas get more practice, while mastered topics are reviewed less frequently—optimizing your study time.",
     icon: Target,
-    imageUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHx0ZWNobm9sb2d5fGVufDB8fHx8MTc2MTQ4NjQ5NXww&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760865/pexels-photo-3760865.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "Adaptive learning visualization"
   },
   {
@@ -26,7 +26,7 @@ const steps = [
     title: "Instant AI Feedback",
     description: "Get immediate, detailed explanations for every answer you submit. Our AI doesn't just tell you if you're right or wrong—it provides step-by-step solutions and helps you understand the concepts behind each problem.",
     icon: MessageSquare,
-    imageUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxlZHVjYXRpb258ZW58MHx8fHwxNzYxNDg3MTc2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760864/pexels-photo-3760864.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "Interactive feedback and explanations"
   },
   {
@@ -34,7 +34,7 @@ const steps = [
     title: "Progress Tracking",
     description: "Visualize your learning journey with detailed analytics. Track topic mastery, time spent studying, and improvement over time. See exactly where you excel and where you need more practice.",
     icon: TrendingUp,
-    imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxhbmFseXRpY3N8ZW58MHx8fHwxNzYxNDg3MTc2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760863/pexels-photo-3760863.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "Progress tracking and analytics"
   },
   {
@@ -42,7 +42,7 @@ const steps = [
     title: "CAPS Alignment",
     description: "Every lesson, practice question, and assessment is meticulously aligned with the South African CAPS curriculum. Our AI understands the specific requirements, terminology, and assessment standards used in South African schools.",
     icon: GraduationCap,
-    imageUrl: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMnx8ZWR1Y2F0aW9uJTIwc291dGglMjBhZnJpY2F8ZW58MHx8fHwxNzYxNDg3MTc2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760852/pexels-photo-3760852.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "CAPS curriculum alignment"
   },
   {
@@ -50,7 +50,7 @@ const steps = [
     title: "Interactive Tutoring",
     description: "Have a conversation with our AI tutor whenever you're stuck. Ask questions, request examples, or get help breaking down complex problems into manageable steps—just like having a personal tutor available 24/7.",
     icon: Bot,
-    imageUrl: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjb2xsYWJvcmF0aW9ufGVufDB8fHx8MTc2MTQ4NzE3Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760861/pexels-photo-3760861.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "Interactive AI tutoring"
   }
 ];
@@ -84,11 +84,12 @@ export function HowItWorks() {
                 >
                   <div className={`flex flex-col ${isEven ? '' : 'lg:flex-row-reverse'}`}>
                     {/* Image */}
-                    <div className="relative w-full lg:w-1/2 aspect-[16/10] lg:aspect-auto">
+                    <div className="relative w-full lg:w-1/2 aspect-[16/10] lg:aspect-[4/3] lg:min-h-[400px]">
                       <Image
                         src={step.imageUrl}
                         alt={step.imageAlt}
                         fill
+                        sizes="(max-width: 1024px) 100vw, 50vw"
                         className="object-cover"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/40 to-transparent lg:from-transparent lg:via-transparent lg:bg-gradient-to-r lg:from-background/80 lg:to-transparent" />

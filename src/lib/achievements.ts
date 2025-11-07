@@ -202,46 +202,6 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
     requirement: { type: 'daily_login', value: 100 }
   },
   {
-    id: 'early_bird',
-    title: 'Early Bird',
-    description: 'Logged in before 9 AM.',
-    icon: Sun,
-    category: 'login',
-    rarity: 'common',
-    points: 15,
-    requirement: { type: 'daily_login', value: 1 }
-  },
-  {
-    id: 'night_owl',
-    title: 'Night Owl',
-    description: 'Logged in after 9 PM.',
-    icon: Moon,
-    category: 'login',
-    rarity: 'common',
-    points: 15,
-    requirement: { type: 'daily_login', value: 1 }
-  },
-  {
-    id: 'sunrise_scholar',
-    title: 'Sunrise Scholar',
-    description: 'Logged in before 7 AM.',
-    icon: Sun,
-    category: 'login',
-    rarity: 'rare',
-    points: 30,
-    requirement: { type: 'daily_login', value: 1 }
-  },
-  {
-    id: 'midnight_studier',
-    title: 'Midnight Studier',
-    description: 'Logged in after midnight.',
-    icon: Moon,
-    category: 'login',
-    rarity: 'rare',
-    points: 30,
-    requirement: { type: 'daily_login', value: 1 }
-  },
-  {
     id: 'weekend_warrior',
     title: 'Weekend Warrior',
     description: 'Logged in on both weekend days.',
@@ -292,23 +252,13 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
     requirement: { type: 'daily_login', value: 7 }
   },
   {
-    id: 'alarm_clock',
-    title: 'Human Alarm Clock',
-    description: 'Logged in at the same time 10 days in a row.',
-    icon: Timer,
-    category: 'login',
-    rarity: 'epic',
-    points: 175,
-    requirement: { type: 'daily_login', value: 10 }
-  },
-  {
     id: 'login_legend',
     title: 'Login Legend',
     description: '365 days of logging in.',
     icon: Infinity,
     category: 'login',
     rarity: 'legendary',
-    points: 2500,
+    points: 2600,
     requirement: { type: 'daily_login', value: 365 }
   },
 
@@ -430,7 +380,7 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
     icon: Crown,
     category: 'time',
     rarity: 'legendary',
-    points: 10000,
+    points: 10180,
     requirement: { type: 'total_time', value: 60000 }
   },
   {
@@ -462,16 +412,6 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
     rarity: 'epic',
     points: 600,
     requirement: { type: 'total_time', value: 3000 }
-  },
-  {
-    id: 'time_traveler',
-    title: 'Time Traveler',
-    description: 'Studied across different times of day.',
-    icon: Clock,
-    category: 'time',
-    rarity: 'rare',
-    points: 100,
-    requirement: { type: 'total_time', value: 180 }
   },
   {
     id: 'hourglass_master',
@@ -1016,7 +956,7 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
     icon: Crown,
     category: 'streak',
     rarity: 'legendary',
-    points: 5000,
+    points: 5100,
     requirement: { type: 'streak', value: 365 }
   },
 
@@ -1124,36 +1064,6 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
 
   // ADDITIONAL LOGIN ACHIEVEMENTS (101-115)
   {
-    id: 'dawn_breaker',
-    title: 'Dawn Breaker',
-    description: 'Logged in before 6 AM.',
-    icon: Sun,
-    category: 'login',
-    rarity: 'epic',
-    points: 100,
-    requirement: { type: 'daily_login', value: 1 }
-  },
-  {
-    id: 'afternoon_achiever',
-    title: 'Afternoon Achiever',
-    description: 'Logged in during lunch break.',
-    icon: Clock,
-    category: 'login',
-    rarity: 'common',
-    points: 20,
-    requirement: { type: 'daily_login', value: 1 }
-  },
-  {
-    id: 'evening_enthusiast',
-    title: 'Evening Enthusiast',
-    description: 'Logged in during evening hours.',
-    icon: Moon,
-    category: 'login',
-    rarity: 'common',
-    points: 20,
-    requirement: { type: 'daily_login', value: 1 }
-  },
-  {
     id: 'quarter_century_login',
     title: 'Quarter Century',
     description: 'Logged in 25 days in a row.',
@@ -1231,36 +1141,6 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
     category: 'login',
     rarity: 'epic',
     points: 200,
-    requirement: { type: 'daily_login', value: 5 }
-  },
-  {
-    id: 'birthday_studier',
-    title: 'Birthday Studier',
-    description: 'Studied on your birthday too!',
-    icon: PartyPopper,
-    category: 'login',
-    rarity: 'rare',
-    points: 100,
-    requirement: { type: 'daily_login', value: 1 }
-  },
-  {
-    id: 'consistency_king',
-    title: 'Consistency King',
-    description: 'Same login time for 20 days.',
-    icon: Timer,
-    category: 'login',
-    rarity: 'epic',
-    points: 250,
-    requirement: { type: 'daily_login', value: 20 }
-  },
-  {
-    id: 'flexible_learner',
-    title: 'Flexible Learner',
-    description: 'Logged in at different times throughout the day.',
-    icon: Clock,
-    category: 'login',
-    rarity: 'common',
-    points: 30,
     requirement: { type: 'daily_login', value: 5 }
   },
   {
@@ -1404,26 +1284,6 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
     rarity: 'legendary',
     points: 600,
     requirement: { type: 'total_time', value: 900 }
-  },
-  {
-    id: 'after_school_studier',
-    title: 'After School Studier',
-    description: 'Studied during after-school hours.',
-    icon: School,
-    category: 'time',
-    rarity: 'common',
-    points: 25,
-    requirement: { type: 'total_time', value: 60 }
-  },
-  {
-    id: 'early_morning_studier',
-    title: 'Early Morning Studier',
-    description: 'Studied in early morning hours.',
-    icon: Sun,
-    category: 'time',
-    rarity: 'rare',
-    points: 50,
-    requirement: { type: 'total_time', value: 120 }
   },
 
   // ADDITIONAL SCORE ACHIEVEMENTS (131-145)
@@ -1688,7 +1548,7 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
     icon: Crown,
     category: 'special',
     rarity: 'legendary',
-    points: 2500,
+    points: 2800,
     requirement: { type: 'daily_login', value: 100 }
   },
   {
@@ -1698,7 +1558,7 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
     icon: Sparkles,
     category: 'special',
     rarity: 'legendary',
-    points: 2320,
+    points: 2600,
     requirement: { type: 'subject_count', value: 10 }
   },
 ];

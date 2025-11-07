@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useUser, useDoc, useMemoAppwrite } from '@/appwrite';
+import { useState, useEffect } from 'react';
+import { useUser, useDoc, useCollection, useMemoAppwrite } from '@/appwrite';
 import { appwriteConfig } from '@/appwrite/config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -39,135 +39,54 @@ export function GlobalLeaderboard() {
 
   const { data: userProfile } = useDoc(userProfileRef);
 
-  // Mock leaderboard data (for demo purposes)
-  useEffect(() => {
-    setIsLoading(true);
-    
-    // Get current user's actual achievements
-    let userTotalPoints = 0;
-    let userUnlockedCount = 0;
-    let userDisplayName = 'You';
-    
-    if (user && userProfile?.unlockedAchievements) {
-      const unlockedAchievements = userProfile.unlockedAchievements || [];
-      userTotalPoints = ALL_ACHIEVEMENTS
-        .filter(a => unlockedAchievements.includes(a.id))
-        .reduce((sum, a) => sum + a.points, 0);
-      userUnlockedCount = unlockedAchievements.length;
-      userDisplayName = userProfile.firstName && userProfile.lastName 
-        ? `${userProfile.firstName} ${userProfile.lastName}`
-        : userProfile.displayName || user.email?.split('@')[0] || 'You';
-    }
-    
-    // Generate mock leaderboard data
-    const mockLeaderboard: LeaderboardEntry[] = [
-      {
-        userId: '1',
-        displayName: 'Alex Thompson',
-        email: null,
-        photoURL: null,
-        totalPoints: 45230,
-        unlockedCount: 87,
-        rank: 1,
-      },
-      {
-        userId: '2',
-        displayName: 'Sarah Johnson',
-        email: null,
-        photoURL: null,
-        totalPoints: 38950,
-        unlockedCount: 72,
-        rank: 2,
-      },
-      {
-        userId: '3',
-        displayName: 'Michael Chen',
-        email: null,
-        photoURL: null,
-        totalPoints: 34210,
-        unlockedCount: 65,
-        rank: 3,
-      },
-      {
-        userId: '4',
-        displayName: 'Emma Wilson',
-        email: null,
-        photoURL: null,
-        totalPoints: 29840,
-        unlockedCount: 58,
-        rank: 4,
-      },
-      {
-        userId: '5',
-        displayName: 'James Anderson',
-        email: null,
-        photoURL: null,
-        totalPoints: 26750,
-        unlockedCount: 51,
-        rank: 5,
-      },
-      {
-        userId: '6',
-        displayName: 'Olivia Brown',
-        email: null,
-        photoURL: null,
-        totalPoints: 23420,
-        unlockedCount: 45,
-        rank: 6,
-      },
-      {
-        userId: '7',
-        displayName: 'Daniel Martinez',
-        email: null,
-        photoURL: null,
-        totalPoints: 19830,
-        unlockedCount: 38,
-        rank: 7,
-      },
-      {
-        userId: '8',
-        displayName: 'Sophia Davis',
-        email: null,
-        photoURL: null,
-        totalPoints: 16540,
-        unlockedCount: 32,
-        rank: 8,
-      },
-      {
-        userId: '9',
-        displayName: 'William Taylor',
-        email: null,
-        photoURL: null,
-        totalPoints: 14250,
-        unlockedCount: 28,
-        rank: 9,
-      },
-      {
-        userId: '10',
-        displayName: 'Isabella Garcia',
-        email: null,
-        photoURL: null,
-        totalPoints: 12180,
-        unlockedCount: 24,
-        rank: 10,
-      },
-    ];
+  // Fetch all users from the database
+  const allUsersCollectionRef = useMemoAppwrite(() => {
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'user',
+    };
+  }, []);
 
-    // Add current user if they have achievements
-    if (user && userTotalPoints > 0) {
-      mockLeaderboard.push({
-        userId: user.$id,
-        displayName: userDisplayName,
-        email: user.email || null,
-        photoURL: userProfile?.photoURL || null,
-        totalPoints: userTotalPoints,
-        unlockedCount: userUnlockedCount,
-        rank: 0, // Will be set after sorting
-      });
+  const { data: allUsers, isLoading: isLoadingUsers } = useCollection(allUsersCollectionRef);
+
+  // Process leaderboard data from real users
+  useEffect(() => {
+    if (isLoadingUsers || !allUsers) {
+      setIsLoading(true);
+      return;
     }
+
+    setIsLoading(true);
+
+    // Process each user's achievements and calculate points
+    const leaderboardEntries: LeaderboardEntry[] = allUsers
+      .map((userDoc: any) => {
+        const unlockedAchievements = userDoc.unlockedAchievements || [];
+        
+        // Calculate total points from unlocked achievements
+        const totalPoints = ALL_ACHIEVEMENTS
+          .filter(a => unlockedAchievements.includes(a.id))
+          .reduce((sum, a) => sum + a.points, 0);
+
+        // Get display name (first name only)
+        const displayName = userDoc.firstName 
+          ? userDoc.firstName
+          : userDoc.displayName || userDoc.email?.split('@')[0] || 'Anonymous';
+
+        return {
+          userId: userDoc.id,
+          displayName,
+          email: userDoc.email || null,
+          photoURL: userDoc.photoURL || null,
+          totalPoints,
+          unlockedCount: unlockedAchievements.length,
+          rank: 0, // Will be set after sorting
+        };
+      })
+      .filter((entry: LeaderboardEntry) => entry.totalPoints > 0); // Only include users with achievements
 
     // Sort by points (descending), then by unlocked count
-    mockLeaderboard.sort((a, b) => {
+    leaderboardEntries.sort((a, b) => {
       if (b.totalPoints !== a.totalPoints) {
         return b.totalPoints - a.totalPoints;
       }
@@ -175,20 +94,22 @@ export function GlobalLeaderboard() {
     });
 
     // Assign ranks
-    mockLeaderboard.forEach((entry, index) => {
+    leaderboardEntries.forEach((entry, index) => {
       entry.rank = index + 1;
     });
 
-    setLeaderboard(mockLeaderboard);
+    setLeaderboard(leaderboardEntries);
 
     // Find current user's rank
     if (user) {
-      const userRankIndex = mockLeaderboard.findIndex(entry => entry.userId === user.$id);
+      const userRankIndex = leaderboardEntries.findIndex(entry => entry.userId === user.$id);
       setCurrentUserRank(userRankIndex >= 0 ? userRankIndex + 1 : null);
+    } else {
+      setCurrentUserRank(null);
     }
 
     setIsLoading(false);
-  }, [user, userProfile]);
+  }, [allUsers, isLoadingUsers, user]);
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="h-6 w-6 text-yellow-500" />;

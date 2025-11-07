@@ -16,7 +16,7 @@ const steps = [
       "Matches the style and format of official exams"
     ],
     icon: Brain,
-    imageUrl: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMnx8YWklMjBtYWNoaW5lfGVufDB8fHx8MTc2MTUwODk3MHww&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760866/pexels-photo-3760866.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "AI-generated educational content"
   },
   {
@@ -30,7 +30,7 @@ const steps = [
       "Adapts in real-time as you learn"
     ],
     icon: Target,
-    imageUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHx0ZWNobm9sb2d5fGVufDB8fHx8MTc2MTQ4NjQ5NXww&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760865/pexels-photo-3760865.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "Adaptive learning visualization"
   },
   {
@@ -44,7 +44,7 @@ const steps = [
       "Celebrates your successes along the way"
     ],
     icon: MessageSquare,
-    imageUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxlZHVjYXRpb258ZW58MHx8fHwxNzYxNDg3MTc2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760864/pexels-photo-3760864.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "Interactive feedback and explanations"
   },
   {
@@ -58,7 +58,7 @@ const steps = [
       "Study time analytics and insights"
     ],
     icon: TrendingUp,
-    imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxhbmFseXRpY3N8ZW58MHx8fHwxNzYxNDg3MTc2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760863/pexels-photo-3760863.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "Progress tracking and analytics"
   },
   {
@@ -72,7 +72,7 @@ const steps = [
       "Grade-specific content for Grades 8-12"
     ],
     icon: GraduationCap,
-    imageUrl: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMnx8ZWR1Y2F0aW9uJTIwc291dGglMjBhZnJpY2F8ZW58MHx8fHwxNzYxNDg3MTc2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760852/pexels-photo-3760852.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "CAPS curriculum alignment"
   },
   {
@@ -86,7 +86,7 @@ const steps = [
       "Guided problem-solving assistance"
     ],
     icon: Bot,
-    imageUrl: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjb2xsYWJvcmF0aW9ufGVufDB8fHx8MTc2MTQ4NzE3Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+    imageUrl: "https://images.pexels.com/photos/3760861/pexels-photo-3760861.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
     imageAlt: "Interactive AI tutoring"
   }
 ];
@@ -129,11 +129,12 @@ export default function HowItWorksPage() {
                     <Card className="overflow-hidden border-2 hover:shadow-xl transition-all duration-300">
                       <div className={`flex flex-col ${isEven ? '' : 'lg:flex-row-reverse'}`}>
                         {/* Image */}
-                        <div className="relative w-full lg:w-1/2 aspect-[16/10] lg:aspect-auto">
+                        <div className="relative w-full lg:w-1/2 aspect-[16/10] lg:aspect-[4/3] lg:min-h-[400px]">
                           <Image
                             src={step.imageUrl}
                             alt={step.imageAlt}
                             fill
+                            sizes="(max-width: 1024px) 100vw, 50vw"
                             className="object-cover"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/40 to-transparent lg:from-transparent lg:via-transparent lg:bg-gradient-to-r lg:from-background/80 lg:to-transparent" />

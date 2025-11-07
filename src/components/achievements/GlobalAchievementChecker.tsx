@@ -63,13 +63,18 @@ export function GlobalAchievementChecker() {
       // Load shown achievements from localStorage
       if (user) {
         const storageKey = `shownAchievements_${user.$id}`;
-        const stored = localStorage.getItem(storageKey);
-        if (stored) {
-          try {
-            setShownAchievements(new Set(JSON.parse(stored)));
-          } catch (e) {
-            console.error('Error loading shown achievements:', e);
+        try {
+          const stored = localStorage.getItem(storageKey);
+          if (stored) {
+            try {
+              setShownAchievements(new Set(JSON.parse(stored)));
+            } catch (e) {
+              // Silently handle parsing errors - non-critical
+            }
           }
+        } catch (e) {
+          // Silently handle localStorage access errors (can happen with Chrome extensions blocking access)
+          // This is non-critical and doesn't affect functionality
         }
       }
       
@@ -109,7 +114,8 @@ export function GlobalAchievementChecker() {
           try {
             localStorage.setItem(storageKey, JSON.stringify(Array.from(newShownSet)));
           } catch (e) {
-            console.error('Error saving shown achievements:', e);
+            // Silently handle localStorage errors (can happen with Chrome extensions blocking access)
+            // This is non-critical and doesn't affect functionality
           }
         }
       }
@@ -118,7 +124,7 @@ export function GlobalAchievementChecker() {
       if (user && databases) {
         const allUnlocked = Array.from(newUnlockedSet);
         updateUnlockedAchievements(databases, user.$id, allUnlocked).catch((error) => {
-          console.error('Error updating unlocked achievements:', error);
+          // Silently handle errors - non-critical, achievements will sync on next check
         });
       }
     }

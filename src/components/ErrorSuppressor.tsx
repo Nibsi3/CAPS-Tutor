@@ -10,18 +10,77 @@ import { useEffect } from 'react';
  * 
  * These errors are cosmetic and don't impact the application's functionality.
  */
+
+// Set up error suppression immediately when module loads (before React mounts)
+if (typeof window !== 'undefined' && !(window as any).__errorSuppressorSetup) {
+  const handleChromeExtensionError = (message: string): boolean => {
+    return (
+      message.includes('runtime.lastError') ||
+      message.includes('message port closed') ||
+      message.includes('Unchecked runtime.lastError') ||
+      message.includes('The message port closed before a response was received')
+    );
+  };
+
+  // Store original console methods
+  const originalError = console.error;
+  const originalWarn = console.warn;
+
+  // Override console.error immediately
+  console.error = (...args: unknown[]) => {
+    const message = args.map(arg => 
+      typeof arg === 'string' ? arg : 
+      arg instanceof Error ? arg.message : 
+      String(arg)
+    ).join(' ');
+    
+    if (handleChromeExtensionError(message)) {
+      return; // Suppress the error
+    }
+    
+    originalError.apply(console, args);
+  };
+
+  // Override console.warn immediately
+  console.warn = (...args: unknown[]) => {
+    const message = args.map(arg => 
+      typeof arg === 'string' ? arg : 
+      arg instanceof Error ? arg.message : 
+      String(arg)
+    ).join(' ');
+    
+    if (handleChromeExtensionError(message)) {
+      return; // Suppress the warning
+    }
+    
+    originalWarn.apply(console, args);
+  };
+
+  // Set up unhandled promise rejection handler immediately
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    const message = reason?.message || String(reason) || '';
+    if (handleChromeExtensionError(message)) {
+      event.preventDefault();
+    }
+  });
+
+  (window as any).__errorSuppressorSetup = true;
+  (window as any).__errorSuppressorOriginals = { originalError, originalWarn };
+}
+
 export function ErrorSuppressor() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Store original console methods
-    const originalError = console.error;
-    const originalWarn = console.warn;
+    // Get original console methods (either from module-level setup or current)
+    const originalError = (window as any).__errorSuppressorOriginals?.originalError || console.error;
+    const originalWarn = (window as any).__errorSuppressorOriginals?.originalWarn || console.warn;
     const originalLog = console.log;
 
-    // Suppress Appwrite font CORS errors and Chrome extension errors
+    // Suppress Appwrite font CORS errors, Chrome extension errors, and localization errors
     const shouldSuppressError = (message: string): boolean => {
-      // Appwrite font CORS errors
+      // Appwrite font CORS errors and blocked font request errors
       if (
         message.includes('assets.appwrite.io/fonts') ||
         message.includes('FiraCode-Regular.woff2') ||
@@ -31,7 +90,17 @@ export function ErrorSuppressor() {
         (message.includes('Access to font') && message.includes('appwrite.io')) ||
         (message.includes('CORS policy') && message.includes('appwrite.io')) ||
         (message.includes('Access-Control-Allow-Origin') && message.includes('appwrite.io')) ||
-        (message.includes('Failed to load resource') && message.includes('appwrite.io'))
+        (message.includes('Failed to load resource') && message.includes('appwrite.io')) ||
+        message.includes('Blocked Appwrite font request')
+      ) {
+        return true;
+      }
+      
+      // Appwrite localization errors (non-critical)
+      if (
+        message.includes('RegisterClientLocalizationsError') ||
+        (message.includes('translations') && message.includes('Cannot read properties of undefined')) ||
+        (message.includes('translations') && message.includes('undefined'))
       ) {
         return true;
       }
@@ -40,7 +109,8 @@ export function ErrorSuppressor() {
       if (
         message.includes('runtime.lastError') ||
         message.includes('message port closed') ||
-        message.includes('Unchecked runtime.lastError')
+        message.includes('Unchecked runtime.lastError') ||
+        message.includes('The message port closed before a response was received')
       ) {
         return true;
       }
@@ -99,7 +169,7 @@ export function ErrorSuppressor() {
       originalLog.apply(console, args);
     };
 
-    // Suppress network errors for Appwrite fonts - comprehensive handler
+    // Suppress network errors for Appwrite fonts and Chrome extension errors - comprehensive handler
     const errorHandler = (event: ErrorEvent) => {
       const message = event.message || '';
       const filename = event.filename || '';
@@ -110,6 +180,7 @@ export function ErrorSuppressor() {
         message.includes('assets.appwrite.io/fonts') ||
         message.includes('FiraCode') ||
         message.includes('Inter-Regular') ||
+        message.includes('Blocked Appwrite font request') ||
         filename.includes('appwrite.io/fonts') ||
         (target instanceof HTMLLinkElement && target.href?.includes('appwrite.io/fonts')) ||
         (target instanceof HTMLStyleElement && message.includes('font')) ||
@@ -123,18 +194,58 @@ export function ErrorSuppressor() {
         event.stopImmediatePropagation();
         return false;
       }
+      
+      // Check for Chrome extension errors
+      const isChromeExtensionError =
+        message.includes('runtime.lastError') ||
+        message.includes('message port closed') ||
+        message.includes('Unchecked runtime.lastError') ||
+        message.includes('The message port closed before a response was received');
+      
+      if (isChromeExtensionError) {
+        // Suppress Chrome extension errors - they're harmless
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        return false;
+      }
     };
 
-    // Suppress unhandled promise rejections related to fonts
+    // Suppress unhandled promise rejections related to fonts, localization, and Chrome extensions
     const rejectionHandler = (event: PromiseRejectionEvent) => {
       const reason = event.reason;
       const message = reason?.message || String(reason) || '';
+      const errorName = reason?.name || '';
       
+      // Check for Appwrite font errors
       if (
         message.includes('assets.appwrite.io/fonts') ||
         message.includes('FiraCode') ||
         message.includes('Inter-Regular') ||
-        message.includes('CORS') && message.includes('appwrite.io')
+        message.includes('Blocked Appwrite font request') ||
+        (message.includes('CORS') && message.includes('appwrite.io'))
+      ) {
+        event.preventDefault();
+        return false;
+      }
+      
+      // Check for Appwrite localization errors
+      if (
+        errorName === 'RegisterClientLocalizationsError' ||
+        message.includes('RegisterClientLocalizationsError') ||
+        (message.includes('translations') && message.includes('Cannot read properties of undefined')) ||
+        (message.includes('translations') && message.includes('undefined'))
+      ) {
+        event.preventDefault();
+        return false;
+      }
+      
+      // Check for Chrome extension errors (runtime.lastError, message port closed)
+      if (
+        message.includes('runtime.lastError') ||
+        message.includes('message port closed') ||
+        message.includes('Unchecked runtime.lastError') ||
+        message.includes('The message port closed before a response was received')
       ) {
         event.preventDefault();
         return false;

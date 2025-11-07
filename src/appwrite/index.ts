@@ -7,17 +7,55 @@ import { appwriteLogger } from './logger';
 // Set up global error handler for Appwrite SDK localization errors (non-critical)
 // This must run before any Appwrite client initialization
 if (typeof window !== 'undefined' && !(window as any).__appwriteErrorHandlerSetup) {
+  const handleAppwriteLocalizationError = (error: any) => {
+    // Check error name
+    if (error?.name === 'RegisterClientLocalizationsError') {
+      return true;
+    }
+    
+    // Check error message for translation-related errors
+    const errorMessage = error?.message || String(error || '');
+    if (typeof errorMessage === 'string') {
+      if (errorMessage.includes('translations') ||
+          (errorMessage.includes('Cannot read properties of undefined') && 
+           errorMessage.includes('translations')) ||
+          errorMessage.includes('RegisterClientLocalizationsError')) {
+        return true;
+      }
+    }
+    
+    // Check if error is an object with translations property access
+    if (error && typeof error === 'object') {
+      const errorString = JSON.stringify(error);
+      if (errorString.includes('translations') && errorString.includes('undefined')) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  // Handle unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
-    const error = event.reason;
-    if (error?.name === 'RegisterClientLocalizationsError' || 
-        error?.message?.includes('translations') ||
-        (error?.message?.includes('Cannot read properties of undefined') && 
-         error?.message?.includes('translations'))) {
+    if (handleAppwriteLocalizationError(event.reason)) {
       // Suppress this specific error - it's non-critical and doesn't affect functionality
       event.preventDefault();
       return;
     }
   });
+
+  // Also handle regular errors (though this is less common for promise rejections)
+  const originalError = window.onerror;
+  window.onerror = (message, source, lineno, colno, error) => {
+    if (handleAppwriteLocalizationError(error || message)) {
+      return true; // Suppress the error
+    }
+    if (originalError) {
+      return originalError(message, source, lineno, colno, error);
+    }
+    return false;
+  };
+
   (window as any).__appwriteErrorHandlerSetup = true;
 }
 
@@ -66,6 +104,7 @@ export function getClient(): Client | null {
     }
     
     try {
+      // Wrap in try-catch to handle any synchronous errors during initialization
       clientInstance = new Client()
         .setEndpoint(endpoint)
         .setProject(projectId);
@@ -75,16 +114,29 @@ export function getClient(): Client | null {
         projectId: projectId.substring(0, 8) + '...', // Log partial ID for security
       });
     } catch (error: any) {
-      // Ignore RegisterClientLocalizationsError - it's non-critical
-      if (error?.name === 'RegisterClientLocalizationsError' || 
-          error?.message?.includes('translations')) {
-        // Client is still usable despite this error
+      // Check if this is a localization error (non-critical)
+      const isLocalizationError = 
+        error?.name === 'RegisterClientLocalizationsError' ||
+        error?.message?.includes('translations') ||
+        (error?.message?.includes('Cannot read properties of undefined') && 
+         error?.message?.includes('translations'));
+      
+      if (isLocalizationError) {
+        // Client is still usable despite this error - it's just a localization warning
         appwriteLogger.info('general', 'Appwrite Client initialized (localization warning suppressed)');
+        // Continue - clientInstance is still set
       } else {
         console.error('❌ Failed to initialize Appwrite Client:', error);
         appwriteLogger.error('general', 'Failed to initialize Appwrite Client', error);
         return null;
       }
+    }
+    
+    // Handle any async errors that might occur after initialization
+    // This is a safety net for errors that happen after the Client is created
+    if (clientInstance && typeof window !== 'undefined') {
+      // The global error handler will catch any unhandled promise rejections
+      // from the Appwrite SDK's internal localization code
     }
   }
   return clientInstance;

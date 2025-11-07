@@ -1,6 +1,6 @@
 "use client"
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
+import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   ChartContainer,
@@ -49,7 +49,6 @@ export function ProgressChart({ hasActivity = false }: { hasActivity?: boolean }
             } 
           },
         }} className="!aspect-auto h-full w-full flex-1 flex flex-col justify-end">
-            <ResponsiveContainer>
               <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={6} tick={{ fontSize: 12 }} />
                 <YAxis tickLine={false} axisLine={false} tickMargin={6} unit="m" tick={{ fontSize: 12 }} />
@@ -57,7 +56,6 @@ export function ProgressChart({ hasActivity = false }: { hasActivity?: boolean }
                 <Bar dataKey="Last Week" fill="var(--color-Last-Week)" radius={4} />
                 <Bar dataKey="This Week" fill="var(--color-This-Week)" radius={4} />
               </BarChart>
-            </ResponsiveContainer>
         </ChartContainer>
       </CardContent>
     </Card>

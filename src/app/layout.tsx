@@ -7,6 +7,7 @@ import { PT_Sans, Space_Grotesk, Source_Code_Pro } from 'next/font/google';
 import { LanguageProvider } from '@/components/language-provider';
 import { ConditionalPublicLayout } from '@/components/layout/ConditionalPublicLayout';
 import { ErrorSuppressor } from '@/components/ErrorSuppressor';
+import { FontRequestBlocker } from '@/components/FontRequestBlocker';
 import { GlobalAchievementChecker } from '@/components/achievements/GlobalAchievementChecker';
 
 const ptSans = PT_Sans({
@@ -53,6 +54,7 @@ export default function RootLayout({
       <body
         className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
       >
+        <FontRequestBlocker />
         <ErrorSuppressor />
         <ThemeProvider
           attribute="class"
