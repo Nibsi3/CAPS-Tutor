@@ -1,3 +1,5 @@
+'use client';
+
 import { AllSubjectsSection } from "@/components/home/AllSubjectsSection";
 
 export default function AllSubjectsPage() {

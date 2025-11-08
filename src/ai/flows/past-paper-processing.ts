@@ -15,6 +15,8 @@
 import { groqChat, extractJsonFromText } from '@/ai/groq';
 import { pdfToImages } from '@/lib/pdf-utils';
 import { z } from 'zod';
+import { ExtractedPDF } from '@/lib/past-paper-processor';
+import type { PyMuPDFExtractionResult, PageData } from '@/lib/pdf-pymupdf-extractor';
 
 const PastPaperInputSchema = z.object({
   docId: z.string().describe('The Firestore document ID of the past paper entry.'),
@@ -34,6 +36,9 @@ const PastPaperInputSchema = z.object({
   subject: z.string().describe('The subject of the past paper.'),
   grade: z.number().describe('The grade level of the past paper (e.g., 12).'),
   year: z.number().describe('The year the exam paper was administered.'),
+  // New fields for OCR processing
+  extractedPaper: z.any().optional().describe('OCR-extracted paper data from PDF.'),
+  extractedMemo: z.any().optional().describe('OCR-extracted memo data from PDF.'),
 });
 
 export type PastPaperInput = z.infer<typeof PastPaperInputSchema>;
@@ -45,6 +50,7 @@ const GeneratedQuestionSchema = z.object({
     answer: z.string().describe("A concise, correct answer based on the memo."),
     hasImage: z.boolean().optional().describe("Whether this question has an associated image."),
     imageDataUri: z.string().optional().describe("Base64 data URI of the image if hasImage is true."),
+    imageFilename: z.string().optional().describe("Filename of the associated image (from PyMuPDF extraction)."),
 });
 
 const PastPaperOutputSchema = z.object({
@@ -93,11 +99,17 @@ export async function processPastPaper(input: PastPaperInput): Promise<PastPaper
   const paperNumber = paperNumberMatch ? paperNumberMatch[1] : '';
   const baseSubject = input.subject.replace(/\s*paper\s*\d+/i, '').trim();
   
+  // If we have OCR-extracted data, use OCR-based processing
+  if (input.extractedPaper) {
+    return processPastPaperFromOCR(input, expectedCount, baseSubject, paperNumber);
+  }
+  
   // Check if we should use vision processing (for subjects with images like Dance Studies, Visual Arts, etc.)
   const shouldUseVision = input.paperDataUri && input.memoDataUri && 
     (baseSubject.toLowerCase().includes('dance studies') || 
      baseSubject.toLowerCase().includes('visual arts') ||
-     baseSubject.toLowerCase().includes('geography'));
+     baseSubject.toLowerCase().includes('geography') ||
+     baseSubject.toLowerCase().includes('life sciences'));
   
   // If vision is needed and we have PDFs, use specialized vision processing
   if (shouldUseVision) {
@@ -185,13 +197,28 @@ OUTPUT FORMAT (JSON ONLY):
 CRITICAL: Return ONLY valid JSON. Generate EXACTLY ${expectedCount} questions. Make each question authentic and match real CAPS past paper style.`;
 
   try {
-    const content = await groqChat(prompt, { temperature: 0.2 });
+    // Log prompt length for debugging
+    console.log(`   Prompt length: ${prompt.length} characters`);
+    
+    const content = await groqChat(prompt, { 
+      temperature: 0,
+      model: 'llama-3.1-8b-instant' // Small, fast, reliable for deterministic JSON outputs
+    });
     const jsonText = extractJsonFromText(content) ?? content;
-    const parsed = JSON.parse(jsonText) as PastPaperOutput;
-    if (!parsed.generatedQuestions || parsed.generatedQuestions.length === 0) {
+    const parsed = JSON.parse(jsonText) as any;
+    
+    // Extract questions using flexible key matching
+    const questions = extractQuestions(parsed);
+    if (!questions || questions.length === 0) {
+      console.warn(`⚠️ No questions found in response. Parsed keys:`, Object.keys(parsed));
       return { success: false, message: 'AI failed to generate questions.' };
     }
-    return parsed;
+    
+    return {
+      success: true,
+      message: `Extracted ${questions.length} questions`,
+      generatedQuestions: questions
+    };
   } catch (error) {
     console.error('Error during AI paper processing:', error);
     return {
@@ -336,11 +363,20 @@ CRITICAL: Return ONLY valid JSON. Generate EXACTLY ${expectedCount} questions. L
       maxTokens: 8000 // Need more tokens for vision models
     });
     const jsonText = extractJsonFromText(content) ?? content;
-    const parsed = JSON.parse(jsonText) as PastPaperOutput;
-    if (!parsed.generatedQuestions || parsed.generatedQuestions.length === 0) {
+    const parsed = JSON.parse(jsonText) as any;
+    
+    // Extract questions using flexible key matching
+    const questions = extractQuestions(parsed);
+    if (!questions || questions.length === 0) {
+      console.warn(`⚠️ No questions found in response. Parsed keys:`, Object.keys(parsed));
       return { success: false, message: 'AI failed to generate questions.' };
     }
-    return parsed;
+    
+    return {
+      success: true,
+      message: `Extracted ${questions.length} questions`,
+      generatedQuestions: questions
+    };
   } catch (error) {
     console.error('Error during AI paper processing with vision:', error);
     return {
@@ -447,4 +483,769 @@ function getSubjectSpecificInstructions(subject: string, grade: number): string 
 - Cover main topics from CAPS curriculum for ${subject} Grade ${grade}
 - Include a mix of theory and application questions
 - Use proper subject-specific terminology`;
+}
+
+/**
+ * Process past paper from OCR-extracted text
+ * This function extracts questions from OCR text maintaining exact order
+ */
+async function processPastPaperFromOCR(
+  input: PastPaperInput,
+  expectedCount: number,
+  baseSubject: string,
+  paperNumber: string
+): Promise<PastPaperOutput> {
+  const extractedPaper = input.extractedPaper as ExtractedPDF;
+  const extractedMemo = input.extractedMemo as ExtractedPDF | undefined;
+  
+  const fullText = extractedPaper.pages.map(p => p.text).join('\n\n');
+  const memoText = extractedMemo ? extractedMemo.pages.map(p => p.text).join('\n\n') : '';
+  
+  // Debug: Log OCR extraction stats
+  console.log(`📄 OCR extracted ${extractedPaper.pages.length} pages`);
+  console.log(`   Paper text: ${fullText.length} chars, Memo text: ${memoText.length} chars`);
+  console.log(`   Total images in paper: ${extractedPaper.pages.reduce((sum, p) => sum + p.images.length, 0)}`);
+  
+  // Chunked processing strategy for Groq free tier limits
+  // llama-3.1-8b-instant: 6000 token INPUT limit per request
+  // Strategy: Split paper into chunks, process separately, merge results
+  const CHUNK_SIZE = 8000; // Characters per chunk (conservative for ~2000 tokens)
+  const MEMO_SIZE = 4000;  // Memo size per chunk
+  
+  if (fullText.length <= CHUNK_SIZE) {
+    // Paper is small enough to process in one go
+    console.log(`   ✓ Paper fits in single chunk, processing normally`);
+    return await processSingleChunk(
+      fullText,
+      memoText.substring(0, MEMO_SIZE),
+      input,
+      baseSubject,
+      paperNumber,
+      extractedPaper
+    );
+  }
+  
+  // Paper needs chunking
+  const numChunks = Math.ceil(fullText.length / CHUNK_SIZE);
+  console.log(`   📑 Splitting paper into ${numChunks} chunks for processing`);
+  
+  return await processChunkedPaper(
+    fullText,
+    memoText,
+    numChunks,
+    CHUNK_SIZE,
+    MEMO_SIZE,
+    input,
+    baseSubject,
+    paperNumber,
+    extractedPaper
+  );
+}
+
+/**
+ * Process paper in chunks when it's too large for token limits
+ */
+async function processChunkedPaper(
+  fullText: string,
+  memoText: string,
+  numChunks: number,
+  chunkSize: number,
+  memoSize: number,
+  input: PastPaperInput,
+  baseSubject: string,
+  paperNumber: string,
+  extractedPaper: ExtractedPDF
+): Promise<PastPaperOutput> {
+  const allQuestions: any[] = [];
+  
+  for (let i = 0; i < numChunks; i++) {
+    const start = i * chunkSize;
+    const end = Math.min(start + chunkSize, fullText.length);
+    const chunk = fullText.substring(start, end);
+    
+    // Use proportional memo section for each chunk
+    const memoStart = Math.floor((start / fullText.length) * memoText.length);
+    const memoEnd = Math.min(memoStart + memoSize, memoText.length);
+    const memoChunk = memoText.substring(memoStart, memoEnd);
+    
+    console.log(`   Processing chunk ${i + 1}/${numChunks}: chars ${start}-${end} (${chunk.length} chars)`);
+    
+    const chunkResult = await extractQuestionsFromChunk(
+      chunk,
+      memoChunk,
+      i + 1,
+      numChunks,
+      input,
+      baseSubject,
+      paperNumber,
+      extractedPaper
+    );
+    
+    if (chunkResult.success && chunkResult.generatedQuestions) {
+      allQuestions.push(...chunkResult.generatedQuestions);
+      console.log(`      ✓ Extracted ${chunkResult.generatedQuestions.length} questions from chunk ${i + 1}`);
+    } else {
+      console.log(`      ⚠️ Chunk ${i + 1} extraction failed: ${chunkResult.message}`);
+    }
+    
+    // Small delay between chunks to respect rate limits
+    if (i < numChunks - 1) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  
+  if (allQuestions.length === 0) {
+    return { success: false, message: 'Failed to extract questions from any chunk' };
+  }
+  
+  // Sort and deduplicate questions by question number
+  const uniqueQuestions = deduplicateQuestions(allQuestions);
+  console.log(`   ✓ Total questions extracted: ${allQuestions.length}, unique: ${uniqueQuestions.length}`);
+  
+  return {
+    success: true,
+    message: `Extracted ${uniqueQuestions.length} questions from ${numChunks} chunks`,
+    generatedQuestions: uniqueQuestions
+  };
+}
+
+/**
+ * Deduplicate questions by question number
+ */
+function deduplicateQuestions(questions: any[]): any[] {
+  const seen = new Map<string, any>();
+  
+  // Sort by question number first
+  questions.sort((a, b) => compareQuestionNumbers(a.questionNumber, b.questionNumber));
+  
+  for (const q of questions) {
+    if (!seen.has(q.questionNumber)) {
+      seen.set(q.questionNumber, q);
+    } else {
+      // If duplicate, keep the one with more content (longer questionText)
+      const existing = seen.get(q.questionNumber);
+      if (q.questionText.length > existing.questionText.length) {
+        seen.set(q.questionNumber, q);
+      }
+    }
+  }
+  
+  return Array.from(seen.values());
+}
+
+/**
+ * Extract questions from a single chunk of text
+ */
+async function extractQuestionsFromChunk(
+  paperChunk: string,
+  memoChunk: string,
+  chunkNumber: number,
+  totalChunks: number,
+  input: PastPaperInput,
+  baseSubject: string,
+  paperNumber: string,
+  extractedPaper: ExtractedPDF
+): Promise<PastPaperOutput> {
+  const prompt = `You are an expert examiner analyzing a Grade ${input.grade} ${input.subject} past exam paper from ${input.year} that has been extracted using OCR.
+
+CRITICAL: This is CHUNK ${chunkNumber} of ${totalChunks} from the paper. Extract questions in the EXACT sequential order they appear. Maintain the original question numbering format exactly as it appears.
+
+EXTRACTED PAPER TEXT (Chunk ${chunkNumber}/${totalChunks}):
+${paperChunk}
+
+${memoChunk ? `MEMO/ANSWER KEY TEXT (Corresponding section):
+${memoChunk}` : ''}
+
+CRITICAL REQUIREMENTS FOR QUESTION EXTRACTION:
+
+1. EXACT ORDER: Extract in sequential order (1.1, 1.2, 1.3, 2.1, etc.). Do NOT skip or reorganize.
+
+2. EXACT NUMBERING: Use EXACT format from PDF (1.1, 1.2, 1.2.1, 2.1, 2.1.1, etc.)
+
+3. EXACT TEXT - COMPLETE EXTRACTION:
+   - Copy word-for-word from the PDF - do NOT paraphrase or summarize
+   - MULTIPLE CHOICE: Extract ALL options (A, B, C, D) with FULL TEXT
+     * WRONG: "A\nB\nC\nD" (just letters)
+     * CORRECT: "A. Option A full text here\nB. Option B full text here\nC. Option C full text here\nD. Option D full text here"
+     * You MUST include the complete text for EACH option, not just the letters
+   - INCLUDE ALL QUESTION PARTS: Don't just extract the question stem - include everything
+   - PRESERVE FORMATTING: Keep line breaks between options
+
+4. ANSWERS: ${memoChunk ? 'Extract from memo, match by question number. For MCQ, include letter AND full option text.' : 'Leave empty string if no memo.'}
+
+5. IMAGES: Set hasImage: true for questions that reference diagrams, figures, graphs.
+
+6. EXTRACT PARTIAL QUESTIONS: If a question is cut off at chunk boundary, extract what you can see. The next chunk will get the rest.
+
+${getSubjectSpecificInstructions(baseSubject, input.grade)}
+
+OUTPUT FORMAT (JSON ONLY):
+{
+  "success": true,
+  "message": "Extracted questions from chunk ${chunkNumber}",
+  "generatedQuestions": [
+    {
+      "questionNumber": "1.1.1",
+      "questionText": "Which ONE is CORRECT?\\nA. Option A text\\nB. Option B text\\nC. Option C text\\nD. Option D text",
+      "marks": 2,
+      "answer": "B. Option B text",
+      "hasImage": false
+    }
+  ]
+}
+
+CRITICAL: Return ONLY valid JSON. Extract ALL questions visible in this chunk with COMPLETE text including ALL options for MCQs.`;
+
+  try {
+    // Log prompt length for debugging
+    console.log(`   Prompt length: ${prompt.length} characters`);
+    
+    const content = await groqChat(prompt, { 
+      temperature: 0,
+      model: 'llama-3.1-8b-instant', // Small, fast, reliable for deterministic JSON outputs
+      maxTokens: 3000
+    });
+    
+    let jsonText = extractJsonFromText(content) ?? content;
+    const parsed = JSON.parse(jsonText) as any;
+    
+    // Extract questions using flexible key matching
+    const questions = extractQuestions(parsed);
+    if (!questions || questions.length === 0) {
+      console.warn(`⚠️ No questions found in response. Parsed keys:`, Object.keys(parsed));
+      return { success: false, message: `No questions extracted from chunk ${chunkNumber}` };
+    }
+    
+    return {
+      success: true,
+      message: `Extracted ${questions.length} questions from chunk ${chunkNumber}`,
+      generatedQuestions: questions
+    };
+  } catch (error) {
+    console.error(`Error processing chunk ${chunkNumber}:`, error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error in chunk processing'
+    };
+  }
+}
+
+/**
+ * Process a single chunk of text (when paper is small enough)
+ */
+async function processSingleChunk(
+  paperText: string,
+  memoText: string,
+  input: PastPaperInput,
+  baseSubject: string,
+  paperNumber: string,
+  extractedPaper: ExtractedPDF
+): Promise<PastPaperOutput> {
+  // Just use the extractQuestionsFromChunk function with a single chunk
+  return await extractQuestionsFromChunk(
+    paperText,
+    memoText,
+    1, // chunk number
+    1, // total chunks
+    input,
+    baseSubject,
+    paperNumber,
+    extractedPaper
+  );
+}
+
+/**
+ * Compare question numbers for sorting (e.g., "1.1" < "1.2" < "2.1")
+ */
+function compareQuestionNumbers(num1: string, num2: string): number {
+  const parts1 = num1.split('.').map(Number);
+  const parts2 = num2.split('.').map(Number);
+  
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const val1 = parts1[i] || 0;
+    const val2 = parts2[i] || 0;
+    if (val1 !== val2) {
+      return val1 - val2;
+    }
+  }
+  
+  return 0;
+}
+
+/**
+ * NEW: Process past paper from PyMuPDF structured extraction
+ * Uses proper text blocks and images with bounding boxes
+ * Implements chunking to handle Groq token limits
+ */
+export async function processPastPaperFromPyMuPDF(
+  paperExtraction: PyMuPDFExtractionResult,
+  memoExtraction: PyMuPDFExtractionResult | null,
+  subject: string,
+  grade: number,
+  year: number
+): Promise<PastPaperOutput> {
+  console.log(`🐍 Processing paper with PyMuPDF extraction`);
+  console.log(`   Paper: ${paperExtraction.num_pages} pages, ${paperExtraction.pages.reduce((sum, p) => sum + p.images.length, 0)} images`);
+  if (memoExtraction) {
+    console.log(`   Memo: ${memoExtraction.num_pages} pages`);
+  }
+  
+  // Extract text content from PyMuPDF (concatenate all text blocks)
+  const paperText = extractTextFromPyMuPDF(paperExtraction);
+  const memoText = memoExtraction ? extractTextFromPyMuPDF(memoExtraction) : '';
+  
+  console.log(`   📝 Extracted text: ${paperText.length} chars (paper), ${memoText.length} chars (memo)`);
+  
+  // Chunked processing strategy for Groq free tier limits
+  // llama-3.1-8b-instant supports ~8k tokens TOTAL (including JSON schema + instructions + metadata)
+  // Actual token length ≈ 3× character length, so 1500 chars ≈ 4500 tokens (safe)
+  const CHUNK_SIZE = 1500; // Characters per chunk (safe for 8k token limit)
+  const MEMO_SIZE = 1000;  // Memo size per chunk
+  
+  if (paperText.length <= CHUNK_SIZE) {
+    // Paper is small enough to process in one go
+    console.log(`   ✓ Paper fits in single chunk, processing normally`);
+    return await processPyMuPDFChunk(
+      paperText,
+      memoText.substring(0, MEMO_SIZE),
+      1,
+      1,
+      subject,
+      grade,
+      year,
+      paperExtraction
+    );
+  }
+  
+  // Paper needs chunking
+  const numChunks = Math.ceil(paperText.length / CHUNK_SIZE);
+  console.log(`   📑 Splitting paper into ${numChunks} chunks for processing`);
+  
+  return await processPyMuPDFChunked(
+    paperText,
+    memoText,
+    numChunks,
+    CHUNK_SIZE,
+    MEMO_SIZE,
+    subject,
+    grade,
+    year,
+    paperExtraction
+  );
+}
+
+/**
+ * Extract plain text from PyMuPDF extraction (for chunking)
+ */
+function extractTextFromPyMuPDF(extraction: PyMuPDFExtractionResult): string {
+  const pages: string[] = [];
+  
+  for (const page of extraction.pages) {
+    const pageText: string[] = [];
+    
+    // Sort text blocks by position (top to bottom, left to right)
+    const sortedBlocks = [...page.text_blocks].sort((a, b) => {
+      // Sort by Y position (top to bottom), then X (left to right)
+      if (Math.abs(a.bbox[1] - b.bbox[1]) > 5) {
+        return a.bbox[1] - b.bbox[1];
+      }
+      return a.bbox[0] - b.bbox[0];
+    });
+    
+    for (const block of sortedBlocks) {
+      if (block.text.trim()) {
+        pageText.push(block.text.trim());
+      }
+    }
+    
+    if (pageText.length > 0) {
+      pages.push(`--- Page ${page.page} ---\n${pageText.join('\n')}`);
+    }
+  }
+  
+  return pages.join('\n\n');
+}
+
+/**
+ * Extract wait time from Groq rate limit error message
+ * Example: "Please try again in 36s" -> 36
+ */
+function extractWaitTime(errorMessage: string): number {
+  const match = errorMessage.match(/try again in ([\d.]+)s/i);
+  if (match) {
+    const seconds = parseFloat(match[1]);
+    // Add 2 seconds buffer and round up
+    return Math.ceil(seconds + 2);
+  }
+  // Default wait time if we can't parse
+  return 15;
+}
+
+/**
+ * Extract questions array from parsed JSON
+ * Handles multiple possible key names that the LLM might use
+ */
+function extractQuestions(parsed: any): any[] | null {
+  const keys = ["generatedQuestions", "questions", "items", "output"];
+  
+  for (const key of keys) {
+    if (Array.isArray(parsed[key])) {
+      return parsed[key];
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Get images available for a specific chunk
+ * Returns images from pages that might contain the chunk's content
+ */
+function getImagesForChunk(
+  chunkNumber: number,
+  totalChunks: number,
+  paperExtraction: PyMuPDFExtractionResult
+): Array<{ filename: string; page: number; label?: string }> {
+  const images: Array<{ filename: string; page: number; label?: string }> = [];
+  
+  // Estimate which pages this chunk covers
+  const totalPages = paperExtraction.num_pages;
+  const pagesPerChunk = totalPages / totalChunks;
+  const startPage = Math.floor((chunkNumber - 1) * pagesPerChunk);
+  const endPage = Math.min(Math.ceil(chunkNumber * pagesPerChunk), totalPages);
+  
+  // Get images from pages in this range (with some overlap for context)
+  const pageRange = {
+    start: Math.max(0, startPage - 1), // Include previous page for context
+    end: Math.min(totalPages - 1, endPage + 1) // Include next page for context
+  };
+  
+  for (let pageNum = pageRange.start; pageNum <= pageRange.end; pageNum++) {
+    const page = paperExtraction.pages.find(p => p.page === pageNum);
+    if (page) {
+      for (const image of page.images) {
+        images.push({
+          filename: image.filename,
+          page: pageNum + 1, // 1-indexed for display
+          label: (image as any).label
+        });
+      }
+    }
+  }
+  
+  return images;
+}
+
+/**
+ * Process a single chunk of PyMuPDF text with retry logic for rate limits
+ */
+async function processPyMuPDFChunk(
+  paperChunk: string,
+  memoChunk: string,
+  chunkNumber: number,
+  totalChunks: number,
+  subject: string,
+  grade: number,
+  year: number,
+  paperExtraction: PyMuPDFExtractionResult,
+  retryCount: number = 0
+): Promise<PastPaperOutput> {
+  // Get available images for this chunk
+  const availableImages = getImagesForChunk(chunkNumber, totalChunks, paperExtraction);
+  
+  const imagesSection = availableImages.length > 0 
+    ? `\nAVAILABLE IMAGES FOR THIS CHUNK:
+${availableImages.map(img => `- ${img.filename} (Page ${img.page}${img.label ? `, Label: "${img.label}"` : ''})`).join('\n')}
+
+When a question references a diagram, figure, or asks to identify parts, set hasImage: true AND set imageFilename to the matching image filename from the list above. Match images to questions based on:
+- Question text mentioning diagrams/figures
+- Question asking to "identify part X"
+- Image labels that match question content
+- Page proximity (images on same page as question text)`
+    : '\nNOTE: No images available for this chunk.';
+  
+  const prompt = `You are an expert CAPS examiner analyzing a Grade ${grade} ${subject} past exam paper from ${year} that has been extracted using PyMuPDF.
+
+${totalChunks > 1 ? `CRITICAL: This is CHUNK ${chunkNumber} of ${totalChunks} from the paper. Extract questions in the EXACT sequential order they appear. Maintain the original question numbering format exactly as it appears.` : ''}
+
+EXTRACTED PAPER TEXT${totalChunks > 1 ? ` (Chunk ${chunkNumber}/${totalChunks})` : ''}:
+${paperChunk}
+
+${memoChunk ? `MEMO/ANSWER KEY TEXT${totalChunks > 1 ? ` (Corresponding section)` : ''}:
+${memoChunk}` : ''}${imagesSection}
+
+CRITICAL REQUIREMENTS FOR QUESTION EXTRACTION:
+
+1. EXACT ORDER: Extract in sequential order (1.1, 1.2, 1.3, 2.1, etc.). Do NOT skip or reorganize.
+   - Each question must be a SEPARATE entry in the array
+   - Do NOT bunch multiple questions together
+   - If you see "1.1.1", "1.1.2", "1.1.3" - these are THREE separate questions, not one
+
+2. EXACT NUMBERING: Use EXACT format from PDF (1.1, 1.2, 1.2.1, 2.1, 2.1.1, etc.)
+
+3. QUESTION TYPE DETECTION:
+   - MULTIPLE CHOICE (MCQ): If question has options A, B, C, D → set type: "multiple-choice"
+   - FREE TEXT: If question asks to explain, describe, write, etc. → set type: "free-text"
+   - MATCHING: If question has columns to match → set type: "matching"
+   - TRUE/FALSE: If question asks true/false → set type: "true-false"
+
+4. EXACT TEXT - COMPLETE EXTRACTION:
+   - Copy word-for-word from the PDF - do NOT paraphrase or summarize
+   - MULTIPLE CHOICE: Extract ALL options (A, B, C, D) with FULL TEXT
+     * WRONG: "A\nB\nC\nD" (just letters)
+     * WRONG: "Question text? A B C D" (bunched together)
+     * CORRECT: "Question text?\nA. Complete option A text\nB. Complete option B text\nC. Complete option C text\nD. Complete option D text"
+     * Each option MUST be on a new line with the letter and full text
+   - INCLUDE ALL QUESTION PARTS: Don't just extract the question stem - include everything
+   - PRESERVE FORMATTING: Keep line breaks between options
+
+5. IMAGE DETECTION (CRITICAL):
+   - Set hasImage: true if question contains ANY of these:
+     * "diagram" / "diagramme" / "diagramme hieronder"
+     * "figure" / "figuur"
+     * "identify part" / "identifiseer deel"
+     * "study the" / "bestudeer die"
+     * "refer to" / "verwys na"
+     * "look at" / "kyk na"
+     * "the diagram shows" / "die diagram toon"
+     * "structure" / "struktuur" (when asking to identify)
+   - If question says "diagrams below" or "diagramme hieronder" → hasImage: true
+   - If question asks to "identify part A/B/C" → hasImage: true
+   - If question mentions any visual element → hasImage: true
+   - When in doubt, if question references something visual → hasImage: true
+
+6. ANSWERS: ${memoChunk ? 'Extract from memo, match by question number. For MCQ, include letter AND full option text (e.g., "B. Option B text").' : 'Leave empty string if no memo.'}
+
+7. QUESTION SEPARATION:
+   - Each question number (1.1.1, 1.1.2, etc.) is a SEPARATE question
+   - Do NOT combine multiple questions into one entry
+   - If you see "1.1.1" followed by "1.1.2" → create TWO separate question objects
+
+8. ${totalChunks > 1 ? 'EXTRACT PARTIAL QUESTIONS: If a question is cut off at chunk boundary, extract what you can see. The next chunk will get the rest.' : 'EXTRACT ALL QUESTIONS: Make sure you extract every single question from this section.'}
+
+You MUST output only valid JSON.
+
+No text outside JSON.
+
+No comments.
+
+No quotes around keys that contain quotes.
+
+If you cannot produce JSON, return: {"generatedQuestions":[]}
+
+Respond in this exact schema:
+
+{
+  "generatedQuestions": [
+    {
+      "questionNumber": "1.1.1",
+      "questionText": "Which ONE is CORRECT?\\nA. Complete option A text here\\nB. Complete option B text here\\nC. Complete option C text here\\nD. Complete option D text here",
+      "type": "multiple-choice",
+      "marks": 2,
+      "hasImage": false,
+      "imageFilename": null,
+      "answer": "B. Complete option B text here"
+    },
+    {
+      "questionNumber": "1.2.1",
+      "questionText": "Identify part A in the diagram below.",
+      "type": "free-text",
+      "marks": 2,
+      "hasImage": true,
+      "imageFilename": "page4_img1.png",
+      "answer": "Part A is the iris"
+    }
+  ]
+}
+
+CRITICAL: When hasImage is true, you MUST set imageFilename to the exact filename from the AVAILABLE IMAGES list above (e.g., "page4_img1.png"). If no matching image is found, set imageFilename to null but keep hasImage: true.
+
+CRITICAL REQUIREMENTS:
+- For MCQ questions:
+  * type MUST be "multiple-choice"
+  * questionText MUST include FULL TEXT for each option on separate lines
+  * Format: "Question text?\\nA. Complete option A text\\nB. Complete option B text\\nC. Complete option C text\\nD. Complete option D text"
+  * NOT just: "A\\nB\\nC\\nD" or "Question? A B C D"
+- For questions with images:
+  * hasImage MUST be true
+  * Check for: "diagram", "figure", "identify part", "study the", etc.
+- Each question number is a SEPARATE question - do NOT bunch them together
+- Extract ALL questions in sequential order (1.1, 1.2, 1.3, etc.)
+
+Output only JSON. No markdown. No prose.`;
+
+  const MAX_RETRIES = 3;
+  
+  try {
+    // Log prompt length for debugging
+    console.log(`   Prompt length: ${prompt.length} characters`);
+    
+    const content = await groqChat(prompt, { 
+      temperature: 0,
+      model: 'llama-3.1-8b-instant', // Small, fast, reliable for deterministic JSON outputs
+      maxTokens: 3000
+    });
+    
+    // With response_format: { type: 'json_object' }, content should already be valid JSON
+    // But we still extract and validate
+    let jsonText = extractJsonFromText(content);
+    
+    if (!jsonText) {
+      throw new Error(`Failed to extract JSON from response. Content length: ${content.length} chars`);
+    }
+    
+    // Parse JSON (should be valid now with strict mode)
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch (parseError) {
+      const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+      throw new Error(`JSON parsing failed: ${errorMsg}. This should not happen with strict JSON mode.`);
+    }
+    
+    // Extract questions using flexible key matching
+    const questions = extractQuestions(parsed);
+    
+    if (!questions || questions.length === 0) {
+      console.warn(`⚠️ No questions found in response. Parsed keys:`, Object.keys(parsed));
+      return { success: false, message: `No questions extracted${totalChunks > 1 ? ` from chunk ${chunkNumber}` : ''}` };
+    }
+    
+    // Return in expected format
+    return {
+      success: true,
+      message: `Extracted ${questions.length} questions${totalChunks > 1 ? ` from chunk ${chunkNumber}` : ''}`,
+      generatedQuestions: questions
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isRateLimit = errorMessage.includes('429') || 
+                        errorMessage.includes('Rate limit') || 
+                        errorMessage.includes('rate_limit_exceeded');
+    
+    if (isRateLimit && retryCount < MAX_RETRIES) {
+      const waitTime = extractWaitTime(errorMessage);
+      console.log(`   ⏳ Rate limit hit for chunk ${chunkNumber}, waiting ${waitTime}s before retry ${retryCount + 1}/${MAX_RETRIES}...`);
+      
+      await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+      
+      return processPyMuPDFChunk(
+        paperChunk,
+        memoChunk,
+        chunkNumber,
+        totalChunks,
+        subject,
+        grade,
+        year,
+        paperExtraction,
+        retryCount + 1
+      );
+    }
+    
+    console.error(`Error processing chunk ${chunkNumber}:`, error);
+    return {
+      success: false,
+      message: errorMessage
+    };
+  }
+}
+
+/**
+ * Process PyMuPDF extraction in chunks
+ */
+async function processPyMuPDFChunked(
+  paperText: string,
+  memoText: string,
+  numChunks: number,
+  chunkSize: number,
+  memoSize: number,
+  subject: string,
+  grade: number,
+  year: number,
+  paperExtraction: PyMuPDFExtractionResult
+): Promise<PastPaperOutput> {
+  const allQuestions: PastPaperOutput['generatedQuestions'] = [];
+  
+  for (let i = 0; i < numChunks; i++) {
+    const start = i * chunkSize;
+    const end = Math.min(start + chunkSize, paperText.length);
+    const paperChunk = paperText.substring(start, end);
+    
+    // Get corresponding memo chunk (try to align with paper chunk)
+    const memoStart = Math.floor((i / numChunks) * memoText.length);
+    const memoEnd = Math.min(memoStart + memoSize, memoText.length);
+    const memoChunk = memoText.substring(memoStart, memoEnd);
+    
+    console.log(`   📄 Processing chunk ${i + 1}/${numChunks} (${paperChunk.length} chars)`);
+    
+    const chunkResult = await processPyMuPDFChunk(
+      paperChunk,
+      memoChunk,
+      i + 1,
+      numChunks,
+      subject,
+      grade,
+      year,
+      paperExtraction
+    );
+    
+    if (chunkResult.success && chunkResult.generatedQuestions) {
+      allQuestions.push(...chunkResult.generatedQuestions);
+      console.log(`   ✅ Chunk ${i + 1}/${numChunks} extracted ${chunkResult.generatedQuestions.length} questions`);
+    } else {
+      console.warn(`   ⚠️  Chunk ${i + 1} failed: ${chunkResult.message}`);
+    }
+    
+    // Delay between chunks to respect Groq rate limits (6000 tokens/minute)
+    // With smaller chunks (3000 chars ≈ 1000-1500 tokens), we can process faster
+    // But still need delay to avoid rate limits
+    if (i < numChunks - 1) {
+      const delay = 10; // 10 seconds between chunks (reduced from 12s due to smaller chunks)
+      console.log(`   ⏸️  Waiting ${delay}s before next chunk (rate limit protection)...`);
+      await new Promise(resolve => setTimeout(resolve, delay * 1000));
+    }
+  }
+  
+  if (allQuestions.length === 0) {
+    return { success: false, message: 'No questions extracted from any chunk' };
+  }
+  
+  // Deduplicate and sort questions
+  const deduplicated = deduplicateQuestions(allQuestions);
+  deduplicated.sort((a, b) => compareQuestionNumbers(a.questionNumber, b.questionNumber));
+  
+  console.log(`   ✅ Extracted ${deduplicated.length} questions from ${numChunks} chunks`);
+  console.log(`   📊 Sample (first 3):`);
+  deduplicated.slice(0, 3).forEach((q, idx) => {
+    console.log(`      ${idx + 1}. Q${q.questionNumber}: ${q.questionText.substring(0, 80)}...`);
+    console.log(`         Marks: ${q.marks}, HasImage: ${q.hasImage}`);
+  });
+  
+  return {
+    success: true,
+    message: `Extracted ${deduplicated.length} questions from ${numChunks} chunks`,
+    generatedQuestions: deduplicated
+  };
+}
+
+/**
+ * Build simplified JSON structure for LLM
+ * Includes essential layout information without overwhelming the context
+ */
+function buildStructuredPaperJSON(extraction: PyMuPDFExtractionResult): any {
+  return {
+    pages: extraction.pages.map(page => ({
+      page: page.page,
+      text_blocks: page.text_blocks.slice(0, 50).map(block => ({ // Limit to 50 blocks per page
+        bbox: block.bbox,
+        text: block.text.substring(0, 500) // Limit text length
+      })),
+      images: page.images.map(img => ({
+        filename: img.filename,
+        bbox: img.bbox,
+        width: img.width,
+        height: img.height
+      }))
+    }))
+  };
 }

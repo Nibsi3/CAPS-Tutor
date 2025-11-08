@@ -30,3 +30,28 @@ export async function sendEmailVerification(account: Account): Promise<void> {
   await account.createVerification(verificationUrl);
 }
 
+/**
+ * Updates the user's password (no old password required when authenticated).
+ * Note: For email/password users, Appwrite may require old password on the server side.
+ * For OAuth users, old password is optional. This implementation attempts without old password.
+ */
+export async function updatePassword(account: Account, password: string, oldPassword?: string): Promise<void> {
+  // Appwrite SDK signature: updatePassword(password: string, oldPassword?: string)
+  // oldPassword is optional in the signature but may be required server-side for email/password users
+  await account.updatePassword(password, oldPassword);
+}
+
+/**
+ * Creates a password recovery request.
+ */
+export async function createPasswordRecovery(account: Account, email: string, url: string): Promise<void> {
+  await account.createRecovery(email, url);
+}
+
+/**
+ * Completes the password recovery process.
+ */
+export async function updatePasswordRecovery(account: Account, userId: string, secret: string, password: string, passwordAgain: string): Promise<void> {
+  await account.updateRecovery(userId, secret, password, passwordAgain);
+}
+

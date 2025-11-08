@@ -1,3 +1,10 @@
+export async function GET() {
+  return Response.json(
+    { error: 'Method not allowed. Use POST instead.' },
+    { status: 405, headers: { Allow: 'POST' } }
+  );
+}
+
 export async function POST(request: Request) {
     try {
         const { userId } = await request.json();

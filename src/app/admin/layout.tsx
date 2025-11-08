@@ -40,7 +40,7 @@ function AdminLayoutContent({
   useEffect(() => {
     if (!isUserLoading) {
       if (!user || user.email !== ADMIN_EMAIL) {
-        router.push('/dashboard');
+        router.push('/forbidden');
       }
     }
   }, [user, isUserLoading, router]);

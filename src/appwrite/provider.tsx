@@ -109,9 +109,32 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
       })
       .catch((error) => {
         clearTimeout(timeout);
-        // If no session exists, that's fine - user is just not logged in
-        if (error.code === 401 || error.type === 'general_unauthorized_scope' || error.message === 'Timeout') {
-          appwriteLogger.debug('auth', 'No active session found (user not logged in)');
+        
+        // Check if this is a "no session" error (user is not authenticated)
+        // This includes:
+        // - 401 Unauthorized
+        // - Missing scopes (guests don't have account scope)
+        // - Timeout errors
+        const errorMessage = error?.message || String(error || '');
+        const isMissingScopeError = 
+          typeof errorMessage === 'string' && (
+            errorMessage.includes('missing scopes') ||
+            errorMessage.includes('missing scope') ||
+            (errorMessage.includes('guests') && errorMessage.includes('account'))
+          );
+        
+        const isNoSessionError = 
+          error.code === 401 || 
+          error.type === 'general_unauthorized_scope' || 
+          error.message === 'Timeout' ||
+          isMissingScopeError;
+        
+        if (isNoSessionError) {
+          appwriteLogger.debug('auth', 'No active session found (user not logged in)', {
+            errorType: error?.type,
+            errorCode: error?.code,
+            errorMessage: typeof errorMessage === 'string' ? errorMessage.substring(0, 100) : 'unknown'
+          });
           setUserAuthState({ user: null, isUserLoading: false, userError: null });
         } else {
           appwriteLogger.error('auth', 'Failed to get account', error);

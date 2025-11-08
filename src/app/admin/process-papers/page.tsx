@@ -47,8 +47,8 @@ export default function ProcessPastPapersPage() {
                 <CardHeader>
                     <CardTitle className="text-2xl">Process Past Papers</CardTitle>
                     <CardDescription>
-                        Process all past papers from the local directory and upload them to Firestore. 
-                        This will scan the "past papers" folder, pair papers with memos, generate questions using AI, and save them to Firestore.
+                        Process all Life Science Paper 1 past papers from Appwrite Storage. 
+                        This will scan the storage bucket, pair papers with memos, extract questions using OCR, generate questions using AI, match images to questions, and save them to the database.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -98,8 +98,23 @@ export default function ProcessPastPapersPage() {
                             </CardHeader>
                             <CardContent>
                                 <p className="mb-2">{result.message || result.error}</p>
-                                {result.total !== undefined && (
+                                {result.totalFiles !== undefined && (
                                     <div className="space-y-1 text-sm">
+                                        <p><strong>Total files in storage:</strong> {result.totalFiles}</p>
+                                        {result.sampleFilenames && result.sampleFilenames.length > 0 && (
+                                            <div className="mt-2">
+                                                <p className="font-semibold mb-1">Sample filenames found:</p>
+                                                <ul className="list-disc list-inside text-xs space-y-1 max-h-32 overflow-y-auto">
+                                                    {result.sampleFilenames.map((name: string, idx: number) => (
+                                                        <li key={idx} className="text-muted-foreground">{name}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {result.total !== undefined && (
+                                    <div className="space-y-1 text-sm mt-2">
                                         <p><strong>Total pairs found:</strong> {result.total}</p>
                                         <p className="text-green-600"><strong>✓ Processed:</strong> {result.processed}</p>
                                         <p className="text-yellow-600"><strong>⊘ Skipped (duplicates):</strong> {result.skipped}</p>

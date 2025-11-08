@@ -6,6 +6,20 @@ export const translations = {
     saveChanges: "Save Changes",
     view: "View",
 
+    // Home Page
+    homePageTitle: "The Ultimate AI Tutor for the CAPS Curriculum",
+    homePageDescription: "Master any subject with interactive lessons, adaptive practice, and instant feedback, all perfectly aligned with the South African curriculum.",
+    getStartedForFree: "Get Started for Free",
+    learnSmarter: "Learn Smarter",
+    homePageFeaturesTitle: "Everything you need to excel in your exams",
+    homePageFeaturesDescription: "Our platform is more than just questions and answers. It's a complete learning ecosystem designed to help you understand, practice, and master your subjects.",
+    adaptivePractice: "Adaptive Practice",
+    adaptivePracticeDescription: "Generate custom quizzes that focus on your weak topics, helping you improve where it matters most.",
+    instantAIFeedback: "Instant AI Feedback",
+    instantAIFeedbackDescription: "Never get stuck again. Our AI provides instant, step-by-step explanations for every question.",
+    progressTracking: "Progress Tracking",
+    progressTrackingDescription: "Visualize your progress with detailed analytics on topic mastery, time spent, and historical performance.",
+
     // Dashboard Layout
     dashboard: "Dashboard",
     lessons: "Lessons",
@@ -110,6 +124,20 @@ export const translations = {
     cancel: "Kanselleer",
     saveChanges: "Stoor Veranderinge",
     view: "Besigtig",
+
+    // Home Page
+    homePageTitle: "Die Ultieme AI Tutor vir die CAPS Kurrikulum",
+    homePageDescription: "Bemeester enige vak met interaktiewe lesse, aanpasbare oefeninge en onmiddellike terugvoer, alles perfek belyn met die Suid-Afrikaanse kurrikulum.",
+    getStartedForFree: "Begin Gratis",
+    learnSmarter: "Leer Slimmer",
+    homePageFeaturesTitle: "Alles wat jy nodig het om te presteer in jou eksamens",
+    homePageFeaturesDescription: "Ons platform is meer as net vrae en antwoorde. Dit is 'n volledige leer-ekosisteem ontwerp om jou te help om jou vakke te verstaan, te oefen en te bemeester.",
+    adaptivePractice: "Aanpasbare Oefening",
+    adaptivePracticeDescription: "Genereer pasgemaakte vasvrae wat fokus op jou swak onderwerpe, wat jou help om te verbeter waar dit die meeste saak maak.",
+    instantAIFeedback: "Onmiddellike AI Terugvoer",
+    instantAIFeedbackDescription: "Raak nooit weer vas nie. Ons AI bied onmiddellike, stap-vir-stap verduidelikings vir elke vraag.",
+    progressTracking: "Vorderingsopsporing",
+    progressTrackingDescription: "Visualiseer jou vordering met gedetailleerde analise oor onderwerp bemeestering, tyd spandeer, en historiese prestasie.",
 
     // Dashboard Layout
     dashboard: "Kontroleskerm",

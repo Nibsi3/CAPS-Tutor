@@ -66,6 +66,15 @@ export function useDoc<T = any>(
         const errorCode = (err as any).code;
         const errorMessage = (err as any).message?.toLowerCase() || '';
         const errorType = (err as any).type;
+        const errorName = (err as any).name || '';
+        
+        // Check for network errors (Failed to fetch, CORS, etc.)
+        const isNetworkError = 
+          errorMessage.includes('failed to fetch') ||
+          errorMessage.includes('network error') ||
+          errorMessage.includes('networkerror') ||
+          errorName === 'TypeError' && errorMessage.includes('fetch') ||
+          errorMessage === '';
         
         // Check if collection doesn't exist - must specifically mention collection
         // A document 404 will say "Document with the requested ID could not be found"
@@ -121,6 +130,19 @@ export function useDoc<T = any>(
               message: 'This is normal if the document does not exist yet.',
             });
           }
+          setData(null);
+          setError(null);
+        } else if (isNetworkError) {
+          // Handle network errors gracefully - often temporary issues
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ Network error accessing document:', {
+              collectionId,
+              databaseId,
+              documentId,
+              message: 'This may be a temporary network issue or CORS problem.',
+            });
+          }
+          // Don't set error - network errors are often temporary
           setData(null);
           setError(null);
         } else {

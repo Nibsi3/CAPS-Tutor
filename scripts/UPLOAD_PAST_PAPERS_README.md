@@ -19,7 +19,7 @@ This script uploads all PDF files from the `past papers` directory to your Appwr
    - Open your `.env.local` file in the project root
    - Add the following line:
      ```
-     APPWRITE_API_KEY=your_api_key_here
+     APPWRITE_API_KEY=standard_cb8d1e93a8899b8392b9fcf82ea9b47fff96cdde29fae8c062726fee05d5dfa38a3825ea20e244f7c017274b2f443f3d449c361cd8ae348392ffda434b4bf746c61b17d9f94e590026aa9397cc8c6b32eaa7c19aab9c6009eb26d51c45572ece49ac9e08ab14b55dac1375192d82a9870ee26f329a9d72be3df6936c97009451
      ```
    - Replace `your_api_key_here` with the API key you just copied
    - Save the file

@@ -8,26 +8,35 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Target, Bot, BarChart } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-
-const features = [
-  {
-    name: 'Adaptive Practice',
-    description: 'Generate custom quizzes that focus on your weak topics, helping you improve where it matters most.',
-    icon: Target,
-  },
-  {
-    name: 'Instant AI Feedback',
-    description: 'Never get stuck again. Our AI provides instant, step-by-step explanations for every question.',
-    icon: Bot,
-  },
-  {
-    name: 'Progress Tracking',
-    description: 'Visualize your progress with detailed analytics on topic mastery, time spent, and historical performance.',
-    icon: BarChart,
-  },
-];
+import { useLanguage } from "@/components/language-provider";
+import { translations } from "@/lib/translations";
 
 export default function HomePageContent() {
+  const currentLang = useLanguage();
+  const t = translations[currentLang] || translations.en;
+  
+  // Debug: Log language changes
+  console.log("HomePageContent - Current language:", currentLang);
+  
+  // Features array using translations
+  const features = [
+    {
+      name: t.adaptivePractice || 'Adaptive Practice',
+      description: t.adaptivePracticeDescription || 'Generate custom quizzes that focus on your weak topics, helping you improve where it matters most.',
+      icon: Target,
+    },
+    {
+      name: t.instantAIFeedback || 'Instant AI Feedback',
+      description: t.instantAIFeedbackDescription || 'Never get stuck again. Our AI provides instant, step-by-step explanations for every question.',
+      icon: Bot,
+    },
+    {
+      name: t.progressTracking || 'Progress Tracking',
+      description: t.progressTrackingDescription || 'Visualize your progress with detailed analytics on topic mastery, time spent, and historical performance.',
+      icon: BarChart,
+    },
+  ];
+  
   console.log("page-start");
   
   try {
@@ -60,10 +69,10 @@ export default function HomePageContent() {
             <div className="flex flex-col items-center justify-center space-y-6 text-center">
               <div className="space-y-4">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl font-headline">
-                  The Ultimate AI Tutor for the CAPS Curriculum
+                  {t.homePageTitle}
                 </h1>
                 <p className="max-w-[700px] mx-auto text-muted-foreground md:text-lg">
-                  Master any subject with interactive lessons, adaptive practice, and instant feedback, all perfectly aligned with the South African curriculum.
+                  {t.homePageDescription}
                 </p>
               </div>
             </div>
@@ -74,7 +83,7 @@ export default function HomePageContent() {
 
             <div className="flex items-center justify-center gap-4 pt-8">
                 <Button asChild size="lg">
-                    <Link href="/register">Get Started for Free</Link>
+                    <Link href="/register">{t.getStartedForFree}</Link>
                 </Button>
             </div>
           </section>
@@ -112,12 +121,12 @@ export default function HomePageContent() {
           <section className="py-24 sm:py-32 bg-muted/30">
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
               <div className="mx-auto max-w-2xl lg:text-center">
-                <p className="text-base font-semibold leading-7 text-primary">Learn Smarter</p>
+                <p className="text-base font-semibold leading-7 text-primary">{t.learnSmarter}</p>
                 <h2 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl font-headline">
-                  Everything you need to excel in your exams
+                  {t.homePageFeaturesTitle}
                 </h2>
                 <p className="mt-6 text-lg leading-8 text-muted-foreground">
-                  Our platform is more than just questions and answers. It's a complete learning ecosystem designed to help you understand, practice, and master your subjects.
+                  {t.homePageFeaturesDescription}
                 </p>
               </div>
               <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">

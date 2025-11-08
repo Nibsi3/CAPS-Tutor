@@ -23,6 +23,8 @@ const AiTutorInputSchema = z.object({
   subjects: z.array(z.string()).describe('The subjects the student is studying.'),
   language: z.string().optional().describe('The language the student prefers for the response.'),
   attachments: z.array(AttachmentSchema).optional().describe('Optional attachments (images or PDFs) that the student has uploaded for help.'),
+  memoAnswer: z.string().optional().describe('The correct answer from the memo/answer key for reference when helping with past paper questions.'),
+  questionText: z.string().optional().describe('The full text of the practice question the student is asking about.'),
 });
 export type AiTutorInput = z.infer<typeof AiTutorInputSchema>;
 
@@ -85,6 +87,17 @@ Core Instructions:
    - Encourage them to apply the method you just demonstrated to their original question.
 
 ${input.attachments && input.attachments.length > 0 ? `5. ATTACHMENT ANALYSIS: The student has provided attachments (${input.attachments.map(a => a.name).join(', ')}). Carefully analyze any images, math problems, or document content they've shared. If they've uploaded a photo of a math problem, identify the specific problem and guide them through understanding it without solving it directly. If they've shared a PDF or document, reference relevant sections and help them understand the content.` : ''}
+
+${input.questionText ? `Practice Question Context:
+"""
+${input.questionText}
+"""
+` : ''}
+
+${input.memoAnswer ? `MEMO/ANSWER KEY REFERENCE:
+The official answer from the memorandum is: "${input.memoAnswer}"
+
+IMPORTANT: Use this memo answer as a reference to guide the student, but DO NOT simply give them the answer. Help them understand the concept and work through the problem themselves. If they ask about the answer, explain the reasoning behind it rather than just stating it.` : ''}
 
 Student's Request:
 """

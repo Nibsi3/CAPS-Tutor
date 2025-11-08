@@ -63,6 +63,8 @@ import { useRouter } from 'next/navigation';
 import { LiteratureSelection, literatureSchema } from '@/components/forms/LiteratureSelection';
 import { useLanguage, useSetLanguage } from '@/components/language-provider';
 import { translations } from '@/lib/translations';
+import { updatePassword } from '@/appwrite/auth/email-auth';
+import { Lock } from 'lucide-react';
 
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
@@ -101,6 +103,20 @@ interface UserProfile {
   literature?: z.infer<typeof literatureSchema>;
 }
 
+const passwordFormSchema = z.object({
+  newPassword: z.string().min(8, {
+    message: 'Password must be at least 8 characters.',
+  }),
+  confirmPassword: z.string().min(8, {
+    message: 'Password must be at least 8 characters.',
+  }),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match.",
+  path: ["confirmPassword"],
+});
+
+type PasswordFormValues = z.infer<typeof passwordFormSchema>;
+
 export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
   const account = useAccount();
@@ -109,6 +125,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showAddSubjectDialog, setShowAddSubjectDialog] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const prevGradeRef = useRef<string>('');
   
   const currentLang = useLanguage();
@@ -126,6 +143,14 @@ export default function SettingsPage() {
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
   const [lastSavedTimestamp, setLastSavedTimestamp] = useState<number>(0);
+
+  const passwordForm = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordFormSchema),
+    defaultValues: {
+      newPassword: '',
+      confirmPassword: '',
+    },
+  });
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -175,11 +200,16 @@ export default function SettingsPage() {
       // Only reset if the form values are different from userProfile to avoid unnecessary resets
       const currentGrade = form.getValues('gradeLevel');
       const profileGrade = userProfile.gradeLevel ? userProfile.gradeLevel.toString() : '';
+      const currentEnglish = form.getValues('english');
+      const currentAfrikaans = form.getValues('afrikaans');
       
       // Check if we actually need to reset (values are different)
+      // Also check language subjects to ensure they're always synced
       if (currentGrade !== profileGrade || 
           form.getValues('firstName') !== (userProfile.firstName || '') ||
-          form.getValues('lastName') !== (userProfile.lastName || '')) {
+          form.getValues('lastName') !== (userProfile.lastName || '') ||
+          currentEnglish !== englishSelection ||
+          currentAfrikaans !== afrikaansSelection) {
         reset({
           ...userProfile,
           firstName: userProfile.firstName || '',
@@ -237,6 +267,36 @@ export default function SettingsPage() {
       prevGradeRef.current = watchedGrade;
     }
   }, [watchedGrade, form]);
+
+  async function onPasswordSubmit(data: PasswordFormValues) {
+    if (!account) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Account not available.",
+      });
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await updatePassword(account, data.newPassword);
+      toast({
+        title: "Password Updated",
+        description: "Your password has been successfully changed.",
+      });
+      passwordForm.reset();
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update password. Please try again.",
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }
 
   async function onSubmit(data: ProfileFormValues) {
     if (!userProfileRef) {
@@ -352,6 +412,10 @@ export default function SettingsPage() {
           title: t.settingsSavedTitle,
           description: t.settingsSavedDescription,
         });
+        
+        // Reload the page to show updated settings
+        router.refresh();
+        window.location.reload();
       })
       .catch((serverError) => {
         console.error('Error saving settings:', serverError);
@@ -466,9 +530,11 @@ export default function SettingsPage() {
         </Popover>
       </div>
       
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 relative pb-32">
-          <div className="max-w-5xl space-y-6">
+      <div className="max-w-5xl space-y-6">
+        {/* Profile Settings Form */}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 relative pb-32">
+            <div className="space-y-6">
             {/* Two Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Personal Information Section with Grade Slider - Left */}
@@ -547,220 +613,328 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              {/* All Subjects Section - Right */}
-              <Card className="shadow-sm">
+              {/* Change Password Section - Right */}
+              <Card className="shadow-sm border-primary/20">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-lg font-semibold">My Subjects</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                    <Lock className="h-5 w-5 text-primary" />
+                    Change Password
+                  </CardTitle>
                   <CardDescription className="text-sm">
-                    Select all the subjects you are studying
+                    Update your account password
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Content Subjects */}
-                  <FormField
-                    control={form.control}
-                    name="contentSubjects"
-                    render={() => (
-                      <FormItem>
-                        <div className="space-y-4">
-                          <div>
-                            <FormLabel className="text-sm font-semibold">{t.contentSubjects}</FormLabel>
-                            <FormDescription className="text-xs">
-                              {t.contentSubjectsDescription}
-                            </FormDescription>
-                          </div>
-                          
-                          {watchedContentSubjects && watchedContentSubjects.length > 0 && (
-                            <div className="grid grid-cols-2 gap-2">
-                              {watchedContentSubjects.map((subject) => (
-                                <Badge 
-                                  key={subject} 
-                                  variant="secondary" 
-                                  className="px-3 py-2 text-sm flex items-center justify-between"
-                                >
-                                  <span className="truncate">{subject}</span>
-                                  {gradeValue >= 10 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const currentValue = watchedContentSubjects || [];
-                                        form.setValue('contentSubjects', currentValue.filter(s => s !== subject), {
-                                          shouldDirty: true,
-                                          shouldValidate: true,
-                                        });
-                                      }}
-                                      className="hover:text-destructive flex-shrink-0"
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </button>
-                                  )}
-                                </Badge>
-                              ))}
-                            </div>
+                <CardContent>
+                  <Form {...passwordForm}>
+                    <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
+                        <FormField
+                          control={passwordForm.control}
+                          name="newPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">New Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" placeholder="Enter new password" {...field} className="h-10" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
                           )}
-                          
-                          {/* Add Subject Button - Only for Grade 10-12 */}
-                          {gradeValue >= 10 && (
-                            <Dialog open={showAddSubjectDialog} onOpenChange={setShowAddSubjectDialog}>
-                              <DialogTrigger asChild>
-                                <Button type="button" variant="outline" className="w-full gap-2">
-                                  <Plus className="h-4 w-4" />
-                                  Add Subject
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Select Subjects</DialogTitle>
-                                  <DialogDescription>
-                                    Choose all the subjects you are studying. You can select multiple.
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto py-4">
-                                  {contentSubjects.map((subject) => {
-                                    const isSelected = watchedContentSubjects?.includes(subject.value);
-                                    return (
-                                      <button
-                                        key={subject.value}
-                                        type="button"
-                                        onClick={() => {
-                                          const currentValue = watchedContentSubjects || [];
-                                          if (isSelected) {
-                                            // Remove if already selected
-                                            form.setValue('contentSubjects', currentValue.filter(s => s !== subject.value), {
-                                              shouldDirty: true,
-                                              shouldValidate: true,
-                                            });
-                                          } else {
-                                            // Add if not selected
-                                            form.setValue('contentSubjects', [...currentValue, subject.value], {
-                                              shouldDirty: true,
-                                              shouldValidate: true,
-                                            });
-                                          }
-                                        }}
-                                        className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-200 text-left ${
-                                          isSelected
-                                            ? 'border-primary bg-primary/10 hover:bg-primary/20'
-                                            : 'hover:border-primary/50 hover:bg-accent/30'
-                                        }`}
-                                      >
-                                        <span className="text-sm font-medium">{subject.label}</span>
-                                        {isSelected ? (
-                                          <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                                            <X className="h-3 w-3 text-primary-foreground" />
-                                          </div>
-                                        ) : (
-                                          <Plus className="h-4 w-4 text-muted-foreground" />
-                                        )}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                                <div className="flex justify-end gap-2 pt-4 border-t">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => setShowAddSubjectDialog(false)}
-                                  >
-                                    Cancel
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    onClick={() => setShowAddSubjectDialog(false)}
-                                  >
-                                    Done
-                                  </Button>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
+                        />
+                        <FormField
+                          control={passwordForm.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium">Confirm Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" placeholder="Confirm new password" {...field} className="h-10" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
                           )}
-                          {gradeValue < 10 && (
-                            <p className="text-xs text-muted-foreground italic">
-                              Subjects are automatically set for Grades 1-9 based on CAPS curriculum
-                            </p>
-                          )}
-                        </div>
-                        
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Language Subjects */}
-                  <div className="space-y-4 pt-4 border-t">
-                    <div className="flex items-center justify-between">
-                      <FormLabel className="text-sm font-semibold">{t.languageSubjects}</FormLabel>
+                        />
+                      </div>
                       <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm" 
-                        className="gap-2"
-                        onClick={() => {
-                          toast({
-                            title: "Coming Soon",
-                            description: "Additional language support will be added soon.",
-                          });
-                        }}
+                        type="submit" 
+                        disabled={isChangingPassword || !passwordForm.formState.isDirty}
+                        className="w-full"
                       >
-                        <Plus className="h-3 w-3" />
-                        Add Language
+                        {isChangingPassword && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                        Update Password
                       </Button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="english"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium">English</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={gradeValue >= 1 && gradeValue <= 9}>
-                              <FormControl>
-                                <SelectTrigger className="h-10">
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">{t.notStudying}</SelectItem>
-                                {languageSubjects.english.map(sub => (
-                                  <SelectItem key={sub.value} value={sub.value}>
-                                    {sub.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="afrikaans"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium">Afrikaans</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={gradeValue >= 1 && gradeValue <= 9}>
-                              <FormControl>
-                                <SelectTrigger className="h-10">
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">{t.notStudying}</SelectItem>
-                                {languageSubjects.afrikaans.map(sub => (
-                                  <SelectItem key={sub.value} value={sub.value}>
-                                    {sub.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Selected Language Subjects Display - Below the cards, side by side */}
+            {(watchedEnglish && watchedEnglish !== 'none') || (watchedAfrikaans && watchedAfrikaans !== 'none') ? (
+              <Card className="shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-semibold">Selected Language Subjects</CardTitle>
+                  <CardDescription className="text-sm">
+                    Your selected language subjects
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-3">
+                    {watchedEnglish && watchedEnglish !== 'none' && (
+                      <Badge variant="secondary" className="px-4 py-2 text-sm">
+                        {watchedEnglish}
+                      </Badge>
+                    )}
+                    {watchedAfrikaans && watchedAfrikaans !== 'none' && (
+                      <Badge variant="secondary" className="px-4 py-2 text-sm">
+                        {watchedAfrikaans}
+                      </Badge>
+                    )}
                   </div>
                 </CardContent>
               </Card>
+            ) : null}
+
+            {/* All Subjects Section - Moved down */}
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold">My Subjects</CardTitle>
+                <CardDescription className="text-sm">
+                  Select all the subjects you are studying
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Content Subjects */}
+                <FormField
+                  control={form.control}
+                  name="contentSubjects"
+                  render={() => (
+                    <FormItem>
+                      <div className="space-y-4">
+                        <div>
+                          <FormLabel className="text-sm font-semibold">{t.contentSubjects}</FormLabel>
+                          <FormDescription className="text-xs">
+                            {t.contentSubjectsDescription}
+                          </FormDescription>
+                        </div>
+                        
+                        {watchedContentSubjects && watchedContentSubjects.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2">
+                            {watchedContentSubjects.map((subject) => (
+                              <Badge 
+                                key={subject} 
+                                variant="secondary" 
+                                className="px-3 py-2 text-sm flex items-center justify-between"
+                              >
+                                <span className="truncate">{subject}</span>
+                                {gradeValue >= 10 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const currentValue = watchedContentSubjects || [];
+                                      form.setValue('contentSubjects', currentValue.filter(s => s !== subject), {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      });
+                                    }}
+                                    className="hover:text-destructive flex-shrink-0"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Add Subject Button - Only for Grade 10-12 */}
+                        {gradeValue >= 10 && (
+                          <Dialog open={showAddSubjectDialog} onOpenChange={setShowAddSubjectDialog}>
+                            <DialogTrigger asChild>
+                              <Button type="button" variant="outline" className="w-full gap-2">
+                                <Plus className="h-4 w-4" />
+                                Add Subject
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Select Subjects</DialogTitle>
+                                <DialogDescription>
+                                  Choose all the subjects you are studying. You can select multiple.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto py-4">
+                                {contentSubjects.map((subject) => {
+                                  const isSelected = watchedContentSubjects?.includes(subject.value);
+                                  return (
+                                    <button
+                                      key={subject.value}
+                                      type="button"
+                                      onClick={() => {
+                                        const currentValue = watchedContentSubjects || [];
+                                        if (isSelected) {
+                                          // Remove if already selected
+                                          form.setValue('contentSubjects', currentValue.filter(s => s !== subject.value), {
+                                            shouldDirty: true,
+                                            shouldValidate: true,
+                                          });
+                                        } else {
+                                          // Add if not selected
+                                          form.setValue('contentSubjects', [...currentValue, subject.value], {
+                                            shouldDirty: true,
+                                            shouldValidate: true,
+                                          });
+                                        }
+                                      }}
+                                      className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-200 text-left ${
+                                        isSelected
+                                          ? 'border-primary bg-primary/10 hover:bg-primary/20'
+                                          : 'hover:border-primary/50 hover:bg-accent/30'
+                                      }`}
+                                    >
+                                      <span className="text-sm font-medium">{subject.label}</span>
+                                      {isSelected ? (
+                                        <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                                          <X className="h-3 w-3 text-primary-foreground" />
+                                        </div>
+                                      ) : (
+                                        <Plus className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <div className="flex justify-end gap-2 pt-4 border-t">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => setShowAddSubjectDialog(false)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  type="button"
+                                  onClick={() => setShowAddSubjectDialog(false)}
+                                >
+                                  Done
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                        {gradeValue < 10 && (
+                          <p className="text-xs text-muted-foreground italic">
+                            Subjects are automatically set for Grades 1-9 based on CAPS curriculum
+                          </p>
+                        )}
+                      </div>
+                      
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Language Subjects */}
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="text-sm font-semibold">{t.languageSubjects}</FormLabel>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-2"
+                      onClick={() => {
+                        toast({
+                          title: "Coming Soon",
+                          description: "Additional language support will be added soon.",
+                        });
+                      }}
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add Language
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="english"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">English</FormLabel>
+                          <Select 
+                            onValueChange={(value) => {
+                              // Use form.setValue to ensure form state is properly updated and marked as dirty
+                              form.setValue('english', value, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                                shouldTouch: true,
+                              });
+                              // Also call field.onChange to keep the field in sync
+                              field.onChange(value);
+                            }} 
+                            value={field.value} 
+                            disabled={gradeValue >= 1 && gradeValue <= 9}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="h-10">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">{t.notStudying}</SelectItem>
+                              {languageSubjects.english.map(sub => (
+                                <SelectItem key={sub.value} value={sub.value}>
+                                  {sub.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="afrikaans"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Afrikaans</FormLabel>
+                          <Select 
+                            onValueChange={(value) => {
+                              // Use form.setValue to ensure form state is properly updated and marked as dirty
+                              form.setValue('afrikaans', value, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                                shouldTouch: true,
+                              });
+                              // Also call field.onChange to keep the field in sync
+                              field.onChange(value);
+                            }} 
+                            value={field.value} 
+                            disabled={gradeValue >= 1 && gradeValue <= 9}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="h-10">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">{t.notStudying}</SelectItem>
+                              {languageSubjects.afrikaans.map(sub => (
+                                <SelectItem key={sub.value} value={sub.value}>
+                                  {sub.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             </div>
 
             {/* Literature Selection - Full Width */}
@@ -806,31 +980,31 @@ export default function SettingsPage() {
                   </AlertDialog>
                 </CardContent>
               </Card>
-          </div>
 
-          {/* Fixed Save Button at bottom right */}
-          <div className="fixed bottom-6 right-6 z-10">
-            <Card className="shadow-lg border-2">
-              <CardContent className="pt-4">
-                <Button 
-                  type="submit" 
-                  disabled={!formState.isDirty || formState.isSubmitting}
-                  size="lg"
-                  className="min-w-[200px]"
-                >
-                  {formState.isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                  {t.saveChanges}
-                </Button>
-                {formState.isDirty && (
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    You have unsaved changes
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </form>
-      </Form>
+            {/* Fixed Save Button at bottom right */}
+            <div className="fixed bottom-6 right-6 z-10">
+              <Card className="shadow-lg border-2">
+                <CardContent className="pt-4">
+                  <Button 
+                    type="submit" 
+                    disabled={!formState.isDirty || formState.isSubmitting}
+                    size="lg"
+                    className="min-w-[200px]"
+                  >
+                    {formState.isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                    {t.saveChanges}
+                  </Button>
+                  {formState.isDirty && (
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      You have unsaved changes
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 }

@@ -290,8 +290,68 @@ export default function PastPaperPracticePage() {
         return subject;
     };
 
+    /**
+     * Get image URL from Appwrite Storage file ID
+     */
+    const getImageUrlFromFileId = (fileId: string | null | undefined): string | undefined => {
+      if (!fileId) return undefined;
+      
+      // Appwrite Storage preview URL format
+      const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
+      const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || '';
+      const bucketId = '690dafea0021f232399e'; // QUESTION_IMAGES_BUCKET_ID
+      
+      return `${endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${projectId}`;
+    };
+
+    /**
+     * Parse MCQ options from questionText
+     * Extracts options in format: "A. Option text\nB. Option text\nC. Option text\nD. Option text"
+     */
+    const parseMCQOptions = (questionText: string): { questionStem: string; options: Array<{ value: string; label: string }> } | null => {
+        // Look for MCQ pattern: A. ... B. ... C. ... D. ...
+        const mcqPattern = /(.*?)(?:\n|^)\s*([A-D])\.\s*([^\n]+)(?:\n|$)\s*([A-D])\.\s*([^\n]+)(?:\n|$)\s*([A-D])\.\s*([^\n]+)(?:\n|$)\s*([A-D])\.\s*([^\n]+)/i;
+        const match = questionText.match(mcqPattern);
+        
+        if (match) {
+            const questionStem = match[1].trim();
+            const options = [
+                { value: match[2].toUpperCase(), label: match[3].trim() },
+                { value: match[4].toUpperCase(), label: match[5].trim() },
+                { value: match[6].toUpperCase(), label: match[7].trim() },
+                { value: match[8].toUpperCase(), label: match[9].trim() },
+            ];
+            return { questionStem, options };
+        }
+        
+        // Try alternative pattern: lines starting with A. B. C. D.
+        const lines = questionText.split('\n');
+        const optionLines: Array<{ letter: string; text: string }> = [];
+        let questionStem = '';
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            const optionMatch = line.match(/^([A-D])\.\s*(.+)$/i);
+            if (optionMatch) {
+                optionLines.push({ letter: optionMatch[1].toUpperCase(), text: optionMatch[2].trim() });
+            } else if (line && optionLines.length === 0) {
+                // This is part of the question stem
+                questionStem += (questionStem ? '\n' : '') + line;
+            }
+        }
+        
+        if (optionLines.length >= 4) {
+            return {
+                questionStem: questionStem.trim(),
+                options: optionLines.slice(0, 4).map(opt => ({ value: opt.letter, label: opt.text }))
+            };
+        }
+        
+        return null;
+    };
+
     useEffect(() => {
-        if (!paperData || !firestore) return;
+        if (!paperData) return;
         
         const loadQuestions = async () => {
             const baseSubject = getBaseSubject(paperData.subject) || paperData.subject;
@@ -312,7 +372,8 @@ export default function PastPaperPracticePage() {
             // Then fall back to generatedQuestions array (old structure)
             let questionsFromSubcollection: Question[] = [];
             
-            // Try to fetch from subcollection if using new structure
+            // Try to fetch from questions collection if using new structure
+            // Note: This collection may not exist yet - if so, we'll fall back to generatedQuestions
             if (paperDataNew && paperId && databases) {
                 try {
                     const questionsSnapshot = await databases.listDocuments(
@@ -321,33 +382,76 @@ export default function PastPaperPracticePage() {
                         [Query.equal('paperId', paperId as string)]
                     );
                     
-                    questionsFromSubcollection = questionsSnapshot.documents
-                        .map(doc => {
-                            const q = doc;
-                            return {
-                                id: `question-${q.number}`,
-                                question: q.question || q.questionText || '',
-                                topic: extractTopicFromQuestion(q.question || q.questionText || '', baseSubject),
-                                answer: q.answer || null,
-                                type: 'free-text' as const,
-                                imageUrl: q.image && (q.image.startsWith('data:image/') || q.image.startsWith('data:application/pdf')) ? q.image : undefined,
-                                questionNumber: q.number || q.questionNumber || '',
-                                marks: q.marks || 0,
-                            };
-                        })
-                        .sort((a, b) => {
-                            // Sort by question number (handle "1.1", "1.2", "2.1", etc.)
-                            const aParts = a.questionNumber.split('.').map(Number);
-                            const bParts = b.questionNumber.split('.').map(Number);
-                            for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-                                const aVal = aParts[i] || 0;
-                                const bVal = bParts[i] || 0;
-                                if (aVal !== bVal) return aVal - bVal;
-                            }
-                            return 0;
-                        });
-                } catch (e) {
-                    console.warn('Could not fetch from subcollection:', e);
+                    if (questionsSnapshot.documents.length > 0) {
+                        questionsFromSubcollection = questionsSnapshot.documents
+                            .map(doc => {
+                                const q = doc;
+                                const questionText = q.question || q.questionText || '';
+                                
+                                // Check if it's MCQ by type field or by parsing questionText
+                                const dbType = q.type || '';
+                                const parsedMCQ = parseMCQOptions(questionText);
+                                const isMCQ = dbType === 'multiple-choice' || parsedMCQ !== null;
+                                
+                                // Get image URL from file ID (preferred) or data URI (fallback)
+                                const imageUrl = q.imageFileId 
+                                    ? getImageUrlFromFileId(q.imageFileId)
+                                    : (q.image || q.imageDataUri || (q.hasImage && q.imageDataUri ? q.imageDataUri : undefined));
+                                
+                                // If MCQ, extract options and use question stem only
+                                if (isMCQ && parsedMCQ) {
+                                    return {
+                                        id: `question-${q.number}`,
+                                        question: parsedMCQ.questionStem,
+                                        topic: extractTopicFromQuestion(parsedMCQ.questionStem, baseSubject),
+                                        answer: q.answer || null,
+                                        type: 'multiple-choice' as const,
+                                        options: parsedMCQ.options,
+                                        imageUrl,
+                                        questionNumber: q.number || q.questionNumber || '',
+                                        marks: q.marks || 0,
+                                    };
+                                }
+                                
+                                // Free-text question
+                                return {
+                                    id: `question-${q.number}`,
+                                    question: questionText,
+                                    topic: extractTopicFromQuestion(questionText, baseSubject),
+                                    answer: q.answer || null,
+                                    type: 'free-text' as const,
+                                    imageUrl,
+                                    questionNumber: q.number || q.questionNumber || '',
+                                    marks: q.marks || 0,
+                                };
+                            })
+                            .sort((a, b) => {
+                                // Sort by question number (handle "1.1", "1.2", "2.1", etc.)
+                                const aParts = a.questionNumber.split('.').map(Number);
+                                const bParts = b.questionNumber.split('.').map(Number);
+                                for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                                    const aVal = aParts[i] || 0;
+                                    const bVal = bParts[i] || 0;
+                                    if (aVal !== bVal) return aVal - bVal;
+                                }
+                                return 0;
+                            });
+                    }
+                } catch (e: any) {
+                    // Collection doesn't exist, unauthorized, or other error - this is fine, we'll use fallback
+                    const isCollectionNotFound = e?.code === 404 || 
+                                                e?.message?.includes('Collection') || 
+                                                e?.message?.includes('could not be found');
+                    const isUnauthorized = e?.code === 401 || 
+                                          e?.code === 403 ||
+                                          e?.message?.includes('not authorized') ||
+                                          e?.message?.includes('unauthorized');
+                    
+                    // Only log if it's not a "not found" or "unauthorized" error (expected fallback scenarios)
+                    if (!isCollectionNotFound && !isUnauthorized) {
+                        console.warn('Could not fetch from questions collection:', e);
+                    }
+                    // Silently fall back to generatedQuestions array
                 }
             }
             
@@ -356,16 +460,41 @@ export default function PastPaperPracticePage() {
                 questions = questionsFromSubcollection;
             } else if (paperData.generatedQuestions && paperData.generatedQuestions.length > 0) {
                 // Fall back to old structure
-                questions = paperData.generatedQuestions.map((gq, idx) => ({
-                    id: `generated-${idx}`,
-                    question: gq.questionText,
-                    topic: extractTopicFromQuestion(gq.questionText, baseSubject),
-                    answer: gq.answer,
-                    type: 'free-text' as const,
-                    imageUrl: gq.hasImage && gq.imageDataUri && (gq.imageDataUri.startsWith('data:image/') || gq.imageDataUri.startsWith('data:application/pdf')) ? gq.imageDataUri : undefined,
-                    questionNumber: gq.questionNumber,
-                    marks: gq.marks,
-                }));
+                questions = paperData.generatedQuestions.map((gq, idx) => {
+                    const questionText = gq.questionText || '';
+                    
+                    // Check if it's MCQ by type field or by parsing questionText
+                    const dbType = (gq as any).type || '';
+                    const parsedMCQ = parseMCQOptions(questionText);
+                    const isMCQ = dbType === 'multiple-choice' || parsedMCQ !== null;
+                    
+                    // If MCQ, extract options and use question stem only
+                    if (isMCQ && parsedMCQ) {
+                        return {
+                            id: `generated-${idx}`,
+                            question: parsedMCQ.questionStem,
+                            topic: extractTopicFromQuestion(parsedMCQ.questionStem, baseSubject),
+                            answer: gq.answer,
+                            type: 'multiple-choice' as const,
+                            options: parsedMCQ.options,
+                            imageUrl: gq.hasImage && gq.imageDataUri && (gq.imageDataUri.startsWith('data:image/') || gq.imageDataUri.startsWith('data:application/pdf')) ? gq.imageDataUri : undefined,
+                            questionNumber: gq.questionNumber,
+                            marks: gq.marks,
+                        };
+                    }
+                    
+                    // Free-text question
+                    return {
+                        id: `generated-${idx}`,
+                        question: questionText,
+                        topic: extractTopicFromQuestion(questionText, baseSubject),
+                        answer: gq.answer,
+                        type: 'free-text' as const,
+                        imageUrl: gq.hasImage && gq.imageDataUri && (gq.imageDataUri.startsWith('data:image/') || gq.imageDataUri.startsWith('data:application/pdf')) ? gq.imageDataUri : undefined,
+                        questionNumber: gq.questionNumber,
+                        marks: gq.marks,
+                    };
+                });
             }
             
             // Filter questions by literature selections
@@ -575,6 +704,8 @@ export default function PastPaperPracticePage() {
                 gradeLevel: tutorGradeLevel,
                 subjects: [baseSubject],
                 language: userProfile?.language,
+                questionText: currentQuestion?.question,
+                memoAnswer: currentQuestion?.answer || undefined,
             });
             setTutorMessages([...newMessages, { role: 'assistant', content: result.response }]);
         } catch (error) {

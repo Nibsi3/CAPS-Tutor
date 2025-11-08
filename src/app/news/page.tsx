@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,11 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { PROVINCES, type Province, type NewsArticle, getProvinceTabLabel } from "@/lib/news-types";
 import { Search, Calendar, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const ITEMS_PER_PAGE = 12;
 const SEARCH_DEBOUNCE_MS = 500;
 
 export default function NewsPage() {
+  const searchParams = useSearchParams();
   const [selectedProvince, setSelectedProvince] = useState<Province | "All South Africa">("All South Africa");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -20,6 +23,14 @@ export default function NewsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Initialize search query from URL parameters
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+  }, [searchParams]);
 
   // Debounce search query
   useEffect(() => {
@@ -95,6 +106,29 @@ export default function NewsPage() {
     general: "bg-gray-500/10 text-gray-700 dark:text-gray-400",
   };
 
+  const isValidExternalUrl = useCallback((url: string | undefined): boolean => {
+    if (!url || url === "#" || url.trim() === "") return false;
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const handleTagClick = useCallback((tag: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSearchQuery(tag);
+    setDisplayCount(ITEMS_PER_PAGE); // Reset to first page
+    // Update URL with search parameter
+    const url = new URL(window.location.href);
+    url.searchParams.set('search', tag);
+    window.history.pushState({}, '', url.toString());
+    // Scroll to top of articles
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   return (
     <main className="flex-1">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -158,79 +192,91 @@ export default function NewsPage() {
               ) : (
                 <>
                   <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {articles.slice(0, displayCount).map((article) => (
-                      <Card key={article.id} className="flex flex-col hover:shadow-lg transition-shadow">
-                        <CardHeader>
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <Badge
-                              className={categoryColors[article.category]}
-                              variant="secondary"
-                            >
-                              {article.category}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {article.province}
-                            </Badge>
-                          </div>
-                          <CardTitle className="text-lg line-clamp-2">
-                            {article.title}
-                          </CardTitle>
-                          <CardDescription className="line-clamp-2">
-                            {article.description}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-1 flex flex-col">
-                          <p className="text-sm text-muted-foreground line-clamp-3 mb-4 flex-1">
-                            {article.content}
-                          </p>
-                          <div className="space-y-3 pt-4 border-t">
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>{getTimeAgo(article.publishedAt)}</span>
-                              </div>
-                              <span>{formatDate(article.publishedAt)}</span>
+                    {articles.slice(0, displayCount).map((article) => {
+                      const hasValidUrl = isValidExternalUrl(article.sourceUrl);
+                      
+                      const cardContent = (
+                        <Card className="flex flex-col hover:shadow-lg transition-shadow cursor-pointer h-full">
+                          <CardHeader>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <Badge
+                                className={categoryColors[article.category]}
+                                variant="secondary"
+                              >
+                                {article.category}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {article.province}
+                              </Badge>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-medium text-muted-foreground">
-                                {article.source}
-                              </span>
-                              {article.sourceUrl && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  asChild
-                                  className="h-7 text-xs"
-                                >
-                                  <a
-                                    href={article.sourceUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1"
-                                  >
-                                    Read more
+                            <CardTitle className="text-lg line-clamp-2">
+                              {article.title}
+                            </CardTitle>
+                            <CardDescription className="line-clamp-2">
+                              {article.description}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="flex-1 flex flex-col">
+                            <p className="text-sm text-muted-foreground line-clamp-3 mb-4 flex-1">
+                              {article.content}
+                            </p>
+                            <div className="space-y-3 pt-4 border-t">
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>{getTimeAgo(article.publishedAt)}</span>
+                                </div>
+                                <span>{formatDate(article.publishedAt)}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-muted-foreground">
+                                  {article.source}
+                                </span>
+                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  Read more
+                                  {hasValidUrl ? (
                                     <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                </Button>
+                                  ) : null}
+                                </span>
+                              </div>
+                              {article.tags && article.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1 pt-2">
+                                  {article.tags.slice(0, 3).map((tag, index) => (
+                                    <Badge
+                                      key={index}
+                                      variant="outline"
+                                      className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                                      onClick={(e) => handleTagClick(tag, e)}
+                                    >
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                </div>
                               )}
                             </div>
-                            {article.tags && article.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 pt-2">
-                                {article.tags.slice(0, 3).map((tag, index) => (
-                                  <Badge
-                                    key={index}
-                                    variant="outline"
-                                    className="text-xs"
-                                  >
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+
+                      return hasValidUrl ? (
+                        <a
+                          key={article.id}
+                          href={article.sourceUrl!}
+                          rel="noopener noreferrer"
+                          className="block"
+                        >
+                          {cardContent}
+                        </a>
+                      ) : (
+                        <Link
+                          key={article.id}
+                          href={`/news/${article.id}`}
+                          className="block"
+                        >
+                          {cardContent}
+                        </Link>
+                      );
+                    })}
                   </div>
                   {articles.length > displayCount && (
                     <div className="flex justify-center mt-8">

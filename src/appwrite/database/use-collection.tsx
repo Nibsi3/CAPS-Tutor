@@ -78,6 +78,15 @@ export function useCollection<T = any>(
         // Handle permission errors gracefully
         const errorCode = (err as any).code;
         const errorMessage = (err as any).message?.toLowerCase() || '';
+        const errorName = (err as any).name || '';
+        
+        // Check for network errors (Failed to fetch, CORS, etc.)
+        const isNetworkError = 
+          errorMessage.includes('failed to fetch') ||
+          errorMessage.includes('network error') ||
+          errorMessage.includes('networkerror') ||
+          errorName === 'TypeError' && errorMessage.includes('fetch') ||
+          errorMessage === '';
         
         const isPermissionError = 
           errorCode === 401 || 
@@ -118,6 +127,18 @@ export function useCollection<T = any>(
           // The error is still set so components can show a message if needed
           setError(new Error(helpfulMessage));
           setData([]);
+        } else if (isNetworkError) {
+          // Handle network errors gracefully - often temporary issues
+          appwriteLogger.warn(
+            'database',
+            `Network error accessing collection: ${collectionId}`,
+            { collectionId, databaseId },
+            err
+          );
+          // Return empty array and don't set error to prevent app crashes
+          // Network errors are often temporary and shouldn't block the UI
+          setData([]);
+          setError(null);
         } else if (isPermissionError) {
           // Return empty array for permission errors to prevent app crashes
           appwriteLogger.warn(
