@@ -17,6 +17,12 @@ import { pdfToImages } from '@/lib/pdf-utils';
 import { z } from 'zod';
 import { ExtractedPDF } from '@/lib/past-paper-processor';
 import type { PyMuPDFExtractionResult, PageData } from '@/lib/pdf-pymupdf-extractor';
+import {
+  generatePaperJsonFromExtraction,
+  ExtractedPaperJson,
+  ExtractedQuestionJson,
+  ExtractedPaperJsonSchema,
+} from '@/lib/paper-json-extractor';
 
 const PastPaperInputSchema = z.object({
   docId: z.string().describe('The Firestore document ID of the past paper entry.'),
@@ -57,8 +63,10 @@ const PastPaperOutputSchema = z.object({
     success: z.boolean().describe('Indicates whether the processing was successful.'),
     message: z.string().describe('A message providing details about the outcome.'),
     generatedQuestions: z.array(GeneratedQuestionSchema).optional().describe('An array of questions extracted from the paper.'),
+    extractedPaperJson: ExtractedPaperJsonSchema.optional().describe('Structured JSON output that powers Paper Editor v3.'),
 });
 
+export type GeneratedQuestion = z.infer<typeof GeneratedQuestionSchema>;
 export type PastPaperOutput = z.infer<typeof PastPaperOutputSchema>;
 
 // Question count guidelines based on subject and paper type
@@ -790,20 +798,49 @@ export async function processPastPaperFromPyMuPDF(
     console.log(`   Memo: ${memoExtraction.num_pages} pages`);
   }
   
-  // Extract text content from PyMuPDF (concatenate all text blocks)
+  // First attempt: single-pass structured JSON extraction (matches legacy workflow)
+  try {
+    const subjectLabel = subject.replace(/\s+/g, ' ').trim();
+    const paperMatch = subjectLabel.match(/paper\s*\d+/i);
+    const paperName = paperMatch ? paperMatch[0].replace(/\s+/g, ' ').replace(/paper/i, 'Paper') : 'Paper 1';
+    const baseSubject = paperMatch ? subjectLabel.replace(paperMatch[0], '').trim() || subjectLabel : subjectLabel;
+    
+    const paperJson = await generatePaperJsonFromExtraction({
+      extraction: paperExtraction,
+      subject: baseSubject,
+      grade,
+      paper: paperName,
+      year,
+    });
+    
+    const generatedQuestions = convertExtractedJsonToGeneratedQuestions(paperJson);
+    
+    if (generatedQuestions.length === 0) {
+      throw new Error('Structured JSON extraction returned 0 questions');
+    }
+    
+    console.log(`   ✅ Structured JSON extraction produced ${generatedQuestions.length} questions`);
+    
+    return {
+      success: true,
+      message: `Extracted ${generatedQuestions.length} questions via structured JSON pipeline`,
+      generatedQuestions,
+      extractedPaperJson: paperJson,
+    };
+  } catch (error) {
+    console.warn('⚠️ Structured JSON extraction failed, falling back to chunked processing:', error instanceof Error ? error.message : error);
+  }
+  
+  // Fallback: chunked processing (legacy approach)
   const paperText = extractTextFromPyMuPDF(paperExtraction);
   const memoText = memoExtraction ? extractTextFromPyMuPDF(memoExtraction) : '';
   
   console.log(`   📝 Extracted text: ${paperText.length} chars (paper), ${memoText.length} chars (memo)`);
   
-  // Chunked processing strategy for Groq free tier limits
-  // llama-3.1-8b-instant supports ~8k tokens TOTAL (including JSON schema + instructions + metadata)
-  // Actual token length ≈ 3× character length, so 1500 chars ≈ 4500 tokens (safe)
-  const CHUNK_SIZE = 1500; // Characters per chunk (safe for 8k token limit)
-  const MEMO_SIZE = 1000;  // Memo size per chunk
+  const CHUNK_SIZE = 1500;
+  const MEMO_SIZE = 1000;
   
   if (paperText.length <= CHUNK_SIZE) {
-    // Paper is small enough to process in one go
     console.log(`   ✓ Paper fits in single chunk, processing normally`);
     return await processPyMuPDFChunk(
       paperText,
@@ -817,7 +854,6 @@ export async function processPastPaperFromPyMuPDF(
     );
   }
   
-  // Paper needs chunking
   const numChunks = Math.ceil(paperText.length / CHUNK_SIZE);
   console.log(`   📑 Splitting paper into ${numChunks} chunks for processing`);
   
@@ -841,6 +877,11 @@ function extractTextFromPyMuPDF(extraction: PyMuPDFExtractionResult): string {
   const pages: string[] = [];
   
   for (const page of extraction.pages) {
+    if (page.text?.trim()) {
+      pages.push(`--- Page ${page.page} ---\n${page.text.trim()}`);
+      continue;
+    }
+    
     const pageText: string[] = [];
     
     // Sort text blocks by position (top to bottom, left to right)
@@ -1226,6 +1267,89 @@ async function processPyMuPDFChunked(
     message: `Extracted ${deduplicated.length} questions from ${numChunks} chunks`,
     generatedQuestions: deduplicated
   };
+}
+
+function convertExtractedJsonToGeneratedQuestions(paperJson: ExtractedPaperJson): GeneratedQuestion[] {
+  const questions: GeneratedQuestion[] = [];
+  
+  paperJson.questions.forEach((question, index) => {
+    const questionNumber = normalizeQuestionNumber(question.number, index);
+    const questionText = formatQuestionTextFromJson(question);
+    
+    if (!questionText) {
+      return;
+    }
+    
+    const marks = typeof question.marks === 'number' && question.marks > 0
+      ? question.marks
+      : estimateMarksFromJson(question);
+    
+    questions.push({
+      questionNumber,
+      questionText,
+      marks,
+      answer: question.answer ?? '',
+      hasImage: Boolean(question.imageFilename || question.imageDataUri),
+      imageFilename: question.imageFilename ?? undefined,
+      imageDataUri: question.imageDataUri ?? undefined,
+      type: mapQuestionType(question.type),
+    });
+  });
+  
+  return questions.sort((a, b) => compareQuestionNumbers(a.questionNumber, b.questionNumber));
+}
+
+function normalizeQuestionNumber(number: string | undefined, index: number): string {
+  if (number && number.trim()) {
+    return number.trim();
+  }
+  
+  const main = Math.floor(index / 10) + 1;
+  const sub = (index % 10) + 1;
+  return `${main}.${sub}`;
+}
+
+function formatQuestionTextFromJson(question: ExtractedQuestionJson): string {
+  const stem = question.question?.trim() || '';
+  if (!stem) {
+    return '';
+  }
+  
+  if (question.options && question.options.length > 0) {
+    const formattedOptions = question.options
+      .map(opt => opt.trim())
+      .filter(Boolean)
+      .join('\n');
+    return `${stem}\n${formattedOptions}`;
+  }
+  
+  return stem;
+}
+
+function estimateMarksFromJson(question: ExtractedQuestionJson): number {
+  if (question.type?.toLowerCase().includes('multiple')) {
+    return 2;
+  }
+  if (question.type?.toLowerCase().includes('diagram')) {
+    return 4;
+  }
+  
+  const length = question.question?.length ?? 0;
+  if (length > 400) return 8;
+  if (length > 200) return 5;
+  if (length > 120) return 4;
+  return 2;
+}
+
+function mapQuestionType(type?: string): string {
+  if (!type) return 'free-text';
+  const normalized = type.toLowerCase();
+  if (normalized.includes('multiple')) return 'multiple-choice';
+  if (normalized.includes('diagram')) return 'diagram';
+  if (normalized.includes('true')) return 'true-false';
+  if (normalized.includes('fill')) return 'fill-in';
+  if (normalized.includes('match')) return 'matching';
+  return 'free-text';
 }
 
 /**

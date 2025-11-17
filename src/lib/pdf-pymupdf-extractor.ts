@@ -23,10 +23,14 @@ export interface ExtractedImage {
   width: number;
   height: number;
   xref: number;
+  page?: number;
+  dataUri?: string;
+  label?: string | null;
 }
 
 export interface PageData {
   page: number;
+  text?: string;
   text_blocks: TextBlock[];
   images: ExtractedImage[];
 }
