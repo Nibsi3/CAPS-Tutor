@@ -458,11 +458,6 @@ def main():
     """Main function to process PDFs."""
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
     
-    # Filter for Life Sciences P1 only (for testing)
-    # Remove the filter to process all PDFs
-    filter_subject = "Life Sciences"
-    filter_paper = "P1"
-    
     all_pdfs = []
     
     if not os.path.exists(PDF_FOLDER):
@@ -482,12 +477,6 @@ def main():
         # Skip memos for now
         if "Memo" in pdf_file:
             print(f"Skipping memo: {pdf_file}", file=sys.stderr)
-            continue
-        
-        # Filter for testing
-        if filter_subject and filter_subject.lower() not in pdf_file.lower():
-            continue
-        if filter_paper and filter_paper.upper() not in pdf_file.upper():
             continue
         
         pdf_path = os.path.join(PDF_FOLDER, pdf_file)

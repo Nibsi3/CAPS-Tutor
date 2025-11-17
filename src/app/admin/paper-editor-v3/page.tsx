@@ -73,13 +73,60 @@ export default function PaperEditorV3Page() {
   const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
   const [questionPreview, setQuestionPreview] = useState<Question | null>(null);
 
-  // Load extracted JSON file
-  const handleFileUpload = async (file: File) => {
-    if (!file.name.endsWith('_extracted.json')) {
+  // Handle PDF upload and extraction
+  const handlePDFUpload = async (file: File) => {
+    if (!file.name.endsWith('.pdf')) {
       toast({
         variant: 'destructive',
         title: 'Invalid File',
-        description: 'Please upload a file ending with "_extracted.json"',
+        description: 'Please upload a PDF file',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload-and-extract-pdf', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to extract PDF');
+      }
+
+      const result = await response.json();
+      setExtractedPaper(result.extractedPaper);
+      setSelectedFile(file);
+      
+      const totalImages = result.extractedPaper.pages.reduce((sum: number, p: ExtractedPage) => sum + p.images.length, 0);
+      toast({
+        title: 'PDF Extracted',
+        description: `Extracted ${result.extractedPaper.pages.length} pages with ${totalImages} images`,
+      });
+    } catch (error) {
+      console.error('Error extracting PDF:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Extraction Failed',
+        description: error instanceof Error ? error.message : 'Failed to extract PDF. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load extracted JSON file
+  const handleJSONUpload = async (file: File) => {
+    if (!file.name.endsWith('_extracted.json') && !file.name.endsWith('.json')) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid File',
+        description: 'Please upload a JSON file',
       });
       return;
     }
@@ -105,6 +152,21 @@ export default function PaperEditorV3Page() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle file upload (PDF or JSON)
+  const handleFileUpload = async (file: File) => {
+    if (file.name.endsWith('.pdf')) {
+      await handlePDFUpload(file);
+    } else if (file.name.endsWith('.json')) {
+      await handleJSONUpload(file);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid File',
+        description: 'Please upload a PDF or JSON file',
+      });
     }
   };
 
@@ -246,21 +308,24 @@ export default function PaperEditorV3Page() {
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <Label htmlFor="json-file">Upload Extracted JSON File</Label>
+              <Label htmlFor="file-upload">Upload PDF or Extracted JSON File</Label>
               <Input
-                id="json-file"
+                id="file-upload"
                 type="file"
-                accept=".json"
+                accept=".pdf,.json"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleFileUpload(file);
                 }}
                 disabled={loading}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Upload a PDF to extract automatically, or upload an existing extracted JSON file
+              </p>
             </div>
             {selectedFile && (
               <div className="text-sm text-muted-foreground">
-                Loaded: {selectedFile.name}
+                {selectedFile.name.endsWith('.pdf') ? '📄 PDF' : '📋 JSON'}: {selectedFile.name}
               </div>
             )}
           </div>
