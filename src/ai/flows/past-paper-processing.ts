@@ -841,6 +841,12 @@ function extractTextFromPyMuPDF(extraction: PyMuPDFExtractionResult): string {
   const pages: string[] = [];
   
   for (const page of extraction.pages) {
+    const directText = page.text?.trim();
+    if (directText) {
+      pages.push(`--- Page ${page.page} ---\n${directText}`);
+      continue;
+    }
+
     const pageText: string[] = [];
     
     // Sort text blocks by position (top to bottom, left to right)
@@ -911,17 +917,17 @@ function getImagesForChunk(
   // Estimate which pages this chunk covers
   const totalPages = paperExtraction.num_pages;
   const pagesPerChunk = totalPages / totalChunks;
-  const startPage = Math.floor((chunkNumber - 1) * pagesPerChunk);
-  const endPage = Math.min(Math.ceil(chunkNumber * pagesPerChunk), totalPages);
+  const startIndex = Math.floor((chunkNumber - 1) * pagesPerChunk);
+  const endIndex = Math.min(Math.ceil(chunkNumber * pagesPerChunk), totalPages - 1);
   
   // Get images from pages in this range (with some overlap for context)
   const pageRange = {
-    start: Math.max(0, startPage - 1), // Include previous page for context
-    end: Math.min(totalPages - 1, endPage + 1) // Include next page for context
+    start: Math.max(0, startIndex - 1), // Include previous page for context
+    end: Math.min(totalPages - 1, endIndex + 1) // Include next page for context
   };
   
   for (let pageNum = pageRange.start; pageNum <= pageRange.end; pageNum++) {
-    const page = paperExtraction.pages.find(p => p.page === pageNum);
+    const page = paperExtraction.pages.find(p => p.page === pageNum + 1);
     if (page) {
       for (const image of page.images) {
         images.push({

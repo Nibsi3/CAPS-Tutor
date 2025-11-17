@@ -9,7 +9,8 @@ import sys
 import json
 import fitz  # PyMuPDF
 import os
-from pathlib import Path
+import base64
+import re
 
 # Force UTF-8 encoding for stdout (Windows fix)
 try:
@@ -20,6 +21,103 @@ except AttributeError:
     # The PYTHONIOENCODING env var should handle it
     pass
 
+def parse_metadata(filename):
+    """
+    Parse subject, grade, paper, year, and language metadata from filename.
+    Expected formats like 'Life Sciences P1 Nov 2020 Eng (2).pdf'
+    """
+    name = os.path.splitext(filename)[0]
+
+    # Remove trailing copy indicators e.g. (2), (Final)
+    name = re.sub(r'\s*\([\w\d]+\)\s*$', '', name).strip()
+
+    paper_match = re.search(r'\bP(?:aper)?\s*(\d+)\b', name, re.IGNORECASE)
+    year_match = re.search(r'(19|20)\d{2}', name)
+
+    paper = f"Paper {paper_match.group(1)}" if paper_match else "Paper 1"
+    year = int(year_match.group(0)) if year_match else None
+
+    # Remove paper and year tokens to isolate subject
+    subject_part = re.sub(r'\bP(?:aper)?\s*\d+\b', '', name, flags=re.IGNORECASE)
+    if year:
+        subject_part = subject_part.replace(str(year), '')
+    subject_part = re.sub(r'\b(Nov|June|Eng|Afr|Memo|Addendum|Final)\b', '', subject_part, flags=re.IGNORECASE)
+    subject = re.sub(r'\s+', ' ', subject_part).strip() or "Unknown"
+
+    # Determine grade heuristically (default Grade 12)
+    grade = 12
+
+    language = "English"
+    if re.search(r'\bafr\b', name, re.IGNORECASE):
+        language = "Afrikaans"
+
+    return {
+        "subject": subject,
+        "grade": grade,
+        "paper": paper,
+        "year": year,
+        "language": language,
+    }
+
+
+def image_is_mostly_black(pix):
+    """Detect placeholder/black bar images by sampling pixels."""
+    sample_points = []
+    width, height = pix.width, pix.height
+    for sy in range(0, min(10, height), max(1, height // 10 or 1)):
+        for sx in range(0, min(10, width), max(1, width // 10 or 1)):
+            if sx < width and sy < height:
+                sample_points.append((sx, sy))
+
+    if not sample_points:
+        return False
+
+    black_pixels = 0
+    for x, y in sample_points[:100]:
+        try:
+            pixel = pix.pixel(x, y)
+            r = (pixel >> 16) & 0xFF
+            g = (pixel >> 8) & 0xFF
+            b = pixel & 0xFF
+            if r < 40 and g < 40 and b < 40:
+                black_pixels += 1
+        except Exception:
+            continue
+
+    return (black_pixels / len(sample_points)) > 0.75
+
+
+def find_image_label(text_blocks, img_rect):
+    """Attempt to find the caption/label associated with an image."""
+    label_text = ""
+    tolerant_rect = fitz.Rect(img_rect.x0 - 20, img_rect.y0 - 20, img_rect.x1 + 20, img_rect.y1 + 20)
+
+    for block in text_blocks:
+        if len(block) < 5:
+            continue
+        bx0, by0, bx1, by1 = block[0], block[1], block[2], block[3]
+        block_text = block[4] if len(block) > 4 else ""
+        block_rect = fitz.Rect(bx0, by0, bx1, by1)
+
+        if block_rect.intersects(tolerant_rect) or block_rect.y1 <= img_rect.y0 + 10:
+            block_text_clean = block_text.strip()
+            if not block_text_clean:
+                continue
+            if re.search(r'\b(figure|fig|diagram|image|illustration)\b', block_text_clean, re.IGNORECASE):
+                return block_text_clean
+            if len(block_text_clean) < 120:
+                label_text += block_text_clean + " "
+
+    return label_text.strip() or None
+
+
+def image_to_data_uri(pix):
+    """Convert pixmap to PNG data URI."""
+    image_bytes = pix.tobytes("png")
+    encoded = base64.b64encode(image_bytes).decode('utf-8')
+    return f"data:image/png;base64,{encoded}"
+
+
 def extract_pdf_structured(pdf_path, output_dir):
     """
     Extract text blocks and images with bounding boxes from PDF
@@ -27,6 +125,8 @@ def extract_pdf_structured(pdf_path, output_dir):
     """
     # Open PDF
     doc = fitz.open(pdf_path)
+
+    metadata = parse_metadata(os.path.basename(pdf_path))
     
     # Create output directory for images
     images_dir = os.path.join(output_dir, "images")
@@ -36,8 +136,10 @@ def extract_pdf_structured(pdf_path, output_dir):
     
     for page_index, page in enumerate(doc):
         page_num = page_index + 1
+        page_text = page.get_text("text")
         page_data = {
             "page": page_num,
+            "text": page_text,
             "text_blocks": [],
             "images": []
         }
@@ -83,22 +185,37 @@ def extract_pdf_structured(pdf_path, output_dir):
                 if pix.n > 4:
                     pix = fitz.Pixmap(fitz.csRGB, pix)
                 
-                # Save image
+                width = pix.width
+                height = pix.height
+                aspect_ratio = width / height if height else 0
+
+                # Skip tiny logos or banners similar to legacy extractor
+                if width < 150 or height < 150:
+                    pix = None
+                    continue
+                if aspect_ratio > 4 or aspect_ratio < 0.25:
+                    pix = None
+                    continue
+                if image_is_mostly_black(pix):
+                    pix = None
+                    continue
+
                 filename = f"page{page_num}_img{img_index}.png"
                 filepath = os.path.join(images_dir, filename)
                 pix.save(filepath)
-                
-                # Get image dimensions
-                width = pix.width
-                height = pix.height
-                
+
+                data_uri = image_to_data_uri(pix)
+                label = find_image_label(blocks, rect)
+
                 page_data["images"].append({
                     "path": filepath,
                     "filename": filename,
                     "bbox": bbox,
                     "width": width,
                     "height": height,
-                    "xref": xref
+                    "xref": xref,
+                    "dataUri": data_uri,
+                    "label": label
                 })
                 
                 pix = None  # Free memory
@@ -113,7 +230,8 @@ def extract_pdf_structured(pdf_path, output_dir):
     return {
         "filename": os.path.basename(pdf_path),
         "num_pages": len(pages_data),
-        "pages": pages_data
+        "pages": pages_data,
+        "metadata": metadata
     }
 
 

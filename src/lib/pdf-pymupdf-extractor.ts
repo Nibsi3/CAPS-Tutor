@@ -23,18 +23,30 @@ export interface ExtractedImage {
   width: number;
   height: number;
   xref: number;
+  dataUri?: string;
+  label?: string | null;
 }
 
 export interface PageData {
   page: number;
+  text?: string;
   text_blocks: TextBlock[];
   images: ExtractedImage[];
+}
+
+export interface ExtractionMetadata {
+  subject?: string;
+  grade?: number;
+  paper?: string;
+  year?: number;
+  language?: string;
 }
 
 export interface PyMuPDFExtractionResult {
   filename: string;
   num_pages: number;
   pages: PageData[];
+  metadata?: ExtractionMetadata;
 }
 
 /**

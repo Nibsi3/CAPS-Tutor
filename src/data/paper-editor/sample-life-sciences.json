@@ -1,0 +1,102 @@
+{
+  "subject": "Life Sciences",
+  "paper": "Paper 1",
+  "year": 2020,
+  "grade": 12,
+  "language": "English",
+  "sections": [
+    {
+      "id": "section-a",
+      "title": "Section A: Multiple-Choice Questions",
+      "description": "Answer all questions. Choose the correct letter (A-D).",
+      "totalMarks": 50,
+      "questionRange": "1"
+    },
+    {
+      "id": "section-b",
+      "title": "Section B: Structured Questions",
+      "description": "Answer all questions in the spaces provided.",
+      "totalMarks": 70,
+      "questionRange": "2-3"
+    },
+    {
+      "id": "section-c",
+      "title": "Section C: Essay Questions",
+      "description": "Answer any ONE question.",
+      "totalMarks": 30,
+      "questionRange": "4"
+    }
+  ],
+  "questions": [
+    {
+      "number": "1.1",
+      "sectionId": "section-a",
+      "type": "multiple-choice",
+      "marks": 2,
+      "text": "Which ONE of the following organelles is responsible for the synthesis of proteins in a eukaryotic cell?",
+      "options": [
+        "A. Mitochondrion",
+        "B. Ribosome",
+        "C. Golgi apparatus",
+        "D. Lysosome"
+      ],
+      "answer": "B",
+      "hasImage": false
+    },
+    {
+      "number": "1.7",
+      "sectionId": "section-a",
+      "type": "multiple-choice",
+      "marks": 2,
+      "text": "The diagram below represents a plant tissue. Identify the tissue labelled X.",
+      "options": [
+        "A. Xylem",
+        "B. Phloem",
+        "C. Collenchyma",
+        "D. Sclerenchyma"
+      ],
+      "answer": "A",
+      "hasImage": true,
+      "imageId": "page4_img1"
+    },
+    {
+      "number": "2.1.1",
+      "sectionId": "section-b",
+      "type": "free-text",
+      "marks": 4,
+      "text": "Define the term <em>homeostasis</em> and explain why it is important for enzyme-controlled reactions.",
+      "answer": "Homeostasis is the maintenance of a constant internal environment, ensuring optimal conditions (e.g., temperature and pH) for enzyme activity."
+    },
+    {
+      "number": "2.3.2",
+      "sectionId": "section-b",
+      "type": "data-response",
+      "marks": 6,
+      "text": "Study the graph provided and describe how insulin and glucagon maintain blood glucose concentration after a carbohydrate-rich meal.",
+      "hasImage": true,
+      "imageId": "page8_img2",
+      "answer": "Insulin is secreted when blood glucose rises; it stimulates glucose uptake and glycogenesis. Glucagon is secreted when glucose drops; it stimulates glycogenolysis to increase blood glucose."
+    },
+    {
+      "number": "4.1",
+      "sectionId": "section-c",
+      "type": "essay",
+      "marks": 20,
+      "text": "Discuss the adaptations of the human nephron that make ultrafiltration, selective reabsorption, and secretion efficient processes."
+    }
+  ],
+  "images": [
+    {
+      "id": "page4_img1",
+      "filename": "page4_img1.png",
+      "label": "Figure 1: Transverse section through a dicot stem",
+      "dataUri": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAn0B9Vxnm28AAAAASUVORK5CYII="
+    },
+    {
+      "id": "page8_img2",
+      "filename": "page8_img2.png",
+      "label": "Figure 2: Regulation of blood glucose concentration",
+      "dataUri": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAQAAACNbyblAAAALElEQVR42mP8z/C/HwMDAwNDw0AIiIiBNE0TAxEJw0gGphBqQBoAAJ4HC+Wcv16wAAAAASUVORK5CYII="
+    }
+  ]
+}
