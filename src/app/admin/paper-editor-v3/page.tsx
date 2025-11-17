@@ -10,10 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Loader, FileText, Image as ImageIcon, Save, Upload, Eye, Edit2, X, Check } from 'lucide-react';
+import { Loader, FileText, Image as ImageIcon, Save, Upload, Eye, Edit2, X, Check, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface ExtractedPage {
   page: number;
@@ -29,6 +28,12 @@ interface ExtractedImage {
   height: number;
   rect: [number, number, number, number];
   label?: string | null;
+  opencv_analysis?: {
+    is_diagram?: boolean | null;
+    edge_density?: number | null;
+    mean_brightness?: number | null;
+    std_dev?: number | null;
+  };
 }
 
 interface ExtractedPaper {
@@ -86,9 +91,10 @@ export default function PaperEditorV3Page() {
       setExtractedPaper(data);
       setSelectedFile(file);
       
+      const totalImages = data.pages.reduce((sum, p) => sum + p.images.length, 0);
       toast({
         title: 'File Loaded',
-        description: `Loaded ${data.pages.length} pages with ${data.pages.reduce((sum, p) => sum + p.images.length, 0)} images`,
+        description: `Loaded ${data.pages.length} pages with ${totalImages} images`,
       });
     } catch (error) {
       console.error('Error loading file:', error);
@@ -115,7 +121,8 @@ export default function PaperEditorV3Page() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate questions');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate questions');
       }
 
       const data: ProcessedPaper = await response.json();
@@ -130,7 +137,7 @@ export default function PaperEditorV3Page() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to generate questions. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to generate questions. Please try again.',
       });
     } finally {
       setLoading(false);
@@ -159,7 +166,8 @@ export default function PaperEditorV3Page() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save paper');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save paper');
       }
 
       toast({
@@ -171,11 +179,25 @@ export default function PaperEditorV3Page() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to save paper. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to save paper. Please try again.',
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  // Download processed paper as JSON
+  const downloadPaper = () => {
+    if (!processedPaper) return;
+
+    const dataStr = JSON.stringify(processedPaper, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${processedPaper.subject}_${processedPaper.paper}_${processedPaper.year}_processed.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const getQuestionTypeLabel = (type: Question['type']) => {
@@ -292,10 +314,16 @@ export default function PaperEditorV3Page() {
                   {processedPaper.questions.length} questions • {totalMarks} total marks
                 </CardDescription>
               </div>
-              <Button onClick={savePaper} disabled={loading}>
-                <Save className="w-4 h-4 mr-2" />
-                Save Paper
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={downloadPaper} variant="outline">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download JSON
+                </Button>
+                <Button onClick={savePaper} disabled={loading}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Paper
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -303,7 +331,9 @@ export default function PaperEditorV3Page() {
               <TabsList>
                 <TabsTrigger value="editor">Editor</TabsTrigger>
                 <TabsTrigger value="preview">Preview</TabsTrigger>
-                <TabsTrigger value="images">Images ({extractedPaper?.pages.reduce((sum, p) => sum + p.images.length, 0) || 0})</TabsTrigger>
+                <TabsTrigger value="images">
+                  Images ({extractedPaper?.pages.reduce((sum, p) => sum + p.images.length, 0) || 0})
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="editor" className="space-y-4">
@@ -312,7 +342,7 @@ export default function PaperEditorV3Page() {
                     <Card key={index} className="mb-4">
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Badge variant="outline" className="font-mono">
                               {question.number}
                             </Badge>
@@ -563,6 +593,15 @@ export default function PaperEditorV3Page() {
                             </CardTitle>
                             {image.label && (
                               <CardDescription>{image.label}</CardDescription>
+                            )}
+                            {image.opencv_analysis && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {image.opencv_analysis.is_diagram !== null && (
+                                  <span className="mr-2">
+                                    {image.opencv_analysis.is_diagram ? '📊 Diagram' : '📷 Photo'}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </CardHeader>
                           <CardContent>
