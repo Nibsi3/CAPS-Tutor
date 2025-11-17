@@ -1,6 +1,7 @@
 """
 Action 1: Extract PDFs & Parse Metadata
 Extracts text and images from PDFs and automatically parses metadata from filenames.
+This is a rewritten version that ensures reliable extraction.
 """
 
 import fitz  # PyMuPDF
@@ -8,6 +9,7 @@ import json
 import os
 import re
 import base64
+from pathlib import Path
 
 # Folder where all PDFs are stored
 PDF_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "past papers")
@@ -16,10 +18,11 @@ OUTPUT_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "extrac
 
 def parse_metadata(filename):
     """
+    Parse metadata from filename.
     Example filename: 'Life Sciences P1 Nov 2020 Eng (2).pdf'
     Extracts:
     - subject: Life Sciences
-    - grade: 12 (we can define a mapping if needed)
+    - grade: 12 (default for past papers)
     - paper: Paper 1
     - year: 2020
     """
@@ -47,6 +50,109 @@ def parse_metadata(filename):
     return subject, grade, paper, year
 
 
+def is_valid_image(pix, width, height, page_num, img_index):
+    """
+    Check if an image should be included (filters out logos, headers, black bars).
+    Returns True if image should be kept, False if it should be skipped.
+    """
+    if not pix:
+        return False
+    
+    aspect_ratio = width / height if height > 0 else 0
+    
+    # Skip very small images (likely icons/logos) - increased threshold
+    if width < 150 or height < 150:
+        print(f"  Skipping small image ({width}x{height}) on page {page_num} - likely logo/icon")
+        return False
+    
+    # Skip very wide images (likely headers/banners with Department of Education logos)
+    if aspect_ratio > 4:
+        print(f"  Skipping wide banner image ({width}x{height}) on page {page_num} - likely header/logo")
+        return False
+    
+    # Skip very tall thin images (likely sidebars)
+    if aspect_ratio < 0.25:
+        print(f"  Skipping tall thin image ({width}x{height}) on page {page_num} - likely sidebar")
+        return False
+    
+    # Check if image is mostly black (broken/placeholder/black bars)
+    # Sample pixels from multiple areas
+    sample_points = []
+    for sy in range(0, min(10, height), max(1, height // 10)):
+        for sx in range(0, min(10, width), max(1, width // 10)):
+            if sx < width and sy < height:
+                sample_points.append((sx, sy))
+    
+    black_pixels = 0
+    total_samples = min(100, len(sample_points))
+    
+    for x, y in sample_points[:total_samples]:
+        try:
+            pixel = pix.pixel(x, y)
+            # Check if pixel is very dark (RGB all < 40 for black bars)
+            r = (pixel >> 16) & 0xFF
+            g = (pixel >> 8) & 0xFF
+            b = pixel & 0xFF
+            if r < 40 and g < 40 and b < 40:
+                black_pixels += 1
+        except:
+            pass
+    
+    # Skip if more than 75% of sampled pixels are black (black bars/placeholders)
+    if total_samples > 0 and (black_pixels / total_samples) > 0.75:
+        print(f"  Skipping mostly black image ({width}x{height}) on page {page_num} - likely black bar/placeholder")
+        return False
+    
+    return True
+
+
+def find_image_label(text_blocks, img_rect, page_num):
+    """
+    Find the label/caption for an image by looking at nearby text blocks.
+    Returns the label text or None.
+    """
+    label_text = ""
+    
+    for block in text_blocks:
+        if len(block) >= 5:
+            bx0, by0, bx1, by1 = block[0], block[1], block[2], block[3]
+            block_text = block[4] if len(block) > 4 else ""
+            block_rect = fitz.Rect(bx0, by0, bx1, by1)
+            
+            # If block is above or intersects horizontally with image (within tolerance)
+            if (block_rect.y1 <= img_rect.y0 + 10 and 
+                block_rect.x0 <= img_rect.x1 + 20 and 
+                block_rect.x1 >= img_rect.x0 - 20):
+                block_text_clean = block_text.strip()
+                if block_text_clean:
+                    # Check for common label patterns
+                    if any(keyword in block_text_clean.lower() for keyword in 
+                           ['figure', 'diagram', 'fig', 'image', 'illustration']):
+                        label_text = block_text_clean
+                        break
+                    # Also capture short text that might be a label
+                    elif len(block_text_clean) < 100:
+                        label_text += block_text_clean + " "
+    
+    # If no label found, try looking for text immediately above
+    if not label_text:
+        for block in text_blocks:
+            if len(block) >= 5:
+                bx0, by0, bx1, by1 = block[0], block[1], block[2], block[3]
+                block_text = block[4] if len(block) > 4 else ""
+                block_rect = fitz.Rect(bx0, by0, bx1, by1)
+                
+                # Text directly above image
+                if (block_rect.y1 <= img_rect.y0 + 5 and
+                    abs(block_rect.x0 - img_rect.x0) < 50):
+                    block_text_clean = block_text.strip()
+                    if block_text_clean and len(block_text_clean) < 150:
+                        label_text = block_text_clean
+                        break
+    
+    return label_text.strip() if label_text else None
+
+
 def extract_pdf(path):
     """Extract text and images from a PDF file."""
     doc = fitz.open(path)
@@ -71,159 +177,104 @@ def extract_pdf(path):
         "pages": []
     }
     
+    print(f"  Processing {len(doc)} pages...")
+    
     for page_num, page in enumerate(doc, start=1):
-        text = page.get_text()
-        
-        # Get text blocks with coordinates for finding image labels
-        text_blocks = page.get_text("blocks")
-        images = []
-        
-        # Extract images with coordinates and labels
-        for img_index, img in enumerate(page.get_images(full=True), start=1):
-            try:
-                xref = img[0]
-                
-                # Get image rectangle coordinates from image insertions
-                img_rects = page.get_image_rects(xref)
-                if not img_rects:
-                    continue
-                
-                img_rect = img_rects[0]  # Use first rectangle
-                
-                pix = fitz.Pixmap(doc, xref)
-                
-                # Convert to RGB if necessary
-                if pix.n - pix.alpha >= 4:  # CMYK: convert to RGB first
-                    pix1 = fitz.Pixmap(fitz.csRGB, pix)
-                    pix = pix1
-                    pix1 = None
-                
-                # Filter criteria: exclude logos, department images, and black bars
-                width = pix.width
-                height = pix.height
-                aspect_ratio = width / height if height > 0 else 0
-                
-                # Skip very small images (likely icons/logos) - increased threshold
-                if width < 150 or height < 150:
-                    print(f"  Skipping small image ({width}x{height}) on page {page_num} - likely logo/icon")
+        try:
+            # Get full text from page
+            text = page.get_text()
+            
+            # Get text blocks with coordinates for finding image labels
+            text_blocks = page.get_text("blocks")
+            images = []
+            
+            # Extract images with coordinates and labels
+            image_list = page.get_images(full=True)
+            print(f"    Page {page_num}: Found {len(image_list)} image(s)")
+            
+            for img_index, img in enumerate(image_list, start=1):
+                try:
+                    xref = img[0]
+                    
+                    # Get image rectangle coordinates from image insertions
+                    img_rects = page.get_image_rects(xref)
+                    if not img_rects:
+                        continue
+                    
+                    img_rect = img_rects[0]  # Use first rectangle
+                    
+                    pix = fitz.Pixmap(doc, xref)
+                    
+                    # Convert to RGB if necessary
+                    if pix.n - pix.alpha >= 4:  # CMYK: convert to RGB first
+                        pix1 = fitz.Pixmap(fitz.csRGB, pix)
+                        pix = pix1
+                        pix1 = None
+                    
+                    width = pix.width
+                    height = pix.height
+                    
+                    # Validate image before processing
+                    if not is_valid_image(pix, width, height, page_num, img_index):
+                        pix = None
+                        continue
+                    
+                    # Save image file
+                    img_filename = f"page_{page_num}_img_{img_index}.png"
+                    img_path = os.path.join(img_dir, img_filename)
+                    pix.save(img_path)
+                    
+                    # Convert to base64 data URI for JSON storage
+                    image_bytes = pix.tobytes("png")
+                    base64_encoded = base64.b64encode(image_bytes).decode('utf-8')
+                    data_uri = f"data:image/png;base64,{base64_encoded}"
+                    
+                    # Find label for image
+                    label_text = find_image_label(text_blocks, img_rect, page_num)
+                    
+                    images.append({
+                        "path": f"images/{img_filename}",
+                        "filename": img_filename,
+                        "dataUri": data_uri,
+                        "width": width,
+                        "height": height,
+                        "rect": [round(img_rect.x0, 2), round(img_rect.y0, 2), 
+                                round(img_rect.x1, 2), round(img_rect.y1, 2)],
+                        "label": label_text
+                    })
+                    
                     pix = None
+                    print(f"      ✓ Extracted image {img_index}: {img_filename} ({width}x{height})")
+                    
+                except Exception as e:
+                    print(f"      ⚠ Warning: Could not extract image {img_index} from page {page_num}: {e}")
                     continue
-                
-                # Skip very wide images (likely headers/banners with Department of Education logos)
-                if aspect_ratio > 4:
-                    print(f"  Skipping wide banner image ({width}x{height}) on page {page_num} - likely header/logo")
-                    pix = None
-                    continue
-                
-                # Skip very tall thin images (likely sidebars)
-                if aspect_ratio < 0.25:
-                    print(f"  Skipping tall thin image ({width}x{height}) on page {page_num} - likely sidebar")
-                    pix = None
-                    continue
-                
-                # Check if image is mostly black (broken/placeholder/black bars)
-                # Sample pixels from multiple areas
-                sample_points = []
-                for sy in range(0, min(10, height), max(1, height // 10)):
-                    for sx in range(0, min(10, width), max(1, width // 10)):
-                        if sx < width and sy < height:
-                            sample_points.append((sx, sy))
-                
-                black_pixels = 0
-                total_samples = min(100, len(sample_points))
-                
-                for x, y in sample_points[:total_samples]:
-                    try:
-                        pixel = pix.pixel(x, y)
-                        # Check if pixel is very dark (RGB all < 40 for black bars)
-                        r = (pixel >> 16) & 0xFF
-                        g = (pixel >> 8) & 0xFF
-                        b = pixel & 0xFF
-                        if r < 40 and g < 40 and b < 40:
-                            black_pixels += 1
-                    except:
-                        pass
-                
-                # Skip if more than 75% of sampled pixels are black (black bars/placeholders)
-                if total_samples > 0 and (black_pixels / total_samples) > 0.75:
-                    print(f"  Skipping mostly black image ({width}x{height}) on page {page_num} - likely black bar/placeholder")
-                    pix = None
-                    continue
-                
-                # Save image file
-                img_path = os.path.join(img_dir, f"page_{page_num}_img_{img_index}.png")
-                pix.save(img_path)
-                
-                # Convert to base64 data URI for Firestore
-                image_bytes = pix.tobytes("png")
-                base64_encoded = base64.b64encode(image_bytes).decode('utf-8')
-                data_uri = f"data:image/png;base64,{base64_encoded}"
-                
-                # Find nearest text block above or beside the image for label
-                label_text = ""
-                for block in text_blocks:
-                    if len(block) >= 5:
-                        bx0, by0, bx1, by1 = block[0], block[1], block[2], block[3]
-                        block_text = block[4] if len(block) > 4 else ""
-                        block_rect = fitz.Rect(bx0, by0, bx1, by1)
-                        
-                        # If block is above or intersects horizontally with image (within tolerance)
-                        if (block_rect.y1 <= img_rect.y0 + 10 and 
-                            block_rect.x0 <= img_rect.x1 + 20 and 
-                            block_rect.x1 >= img_rect.x0 - 20):
-                            block_text_clean = block_text.strip()
-                            if block_text_clean:
-                                # Check for common label patterns
-                                if any(keyword in block_text_clean.lower() for keyword in 
-                                       ['figure', 'diagram', 'fig', 'image', 'illustration']):
-                                    label_text = block_text_clean
-                                    break
-                                # Also capture short text that might be a label
-                                elif len(block_text_clean) < 100:
-                                    label_text += block_text_clean + " "
-                
-                # If no label found, try looking for text immediately above
-                if not label_text:
-                    for block in text_blocks:
-                        if len(block) >= 5:
-                            bx0, by0, bx1, by1 = block[0], block[1], block[2], block[3]
-                            block_text = block[4] if len(block) > 4 else ""
-                            block_rect = fitz.Rect(bx0, by0, bx1, by1)
-                            
-                            # Text directly above image
-                            if (block_rect.y1 <= img_rect.y0 + 5 and
-                                abs(block_rect.x0 - img_rect.x0) < 50):
-                                block_text_clean = block_text.strip()
-                                if block_text_clean and len(block_text_clean) < 150:
-                                    label_text = block_text_clean
-                                    break
-                
-                images.append({
-                    "path": f"images/page_{page_num}_img_{img_index}.png",
-                    "dataUri": data_uri,
-                    "width": width,
-                    "height": height,
-                    "rect": [img_rect.x0, img_rect.y0, img_rect.x1, img_rect.y1],
-                    "label": label_text.strip() if label_text else None
-                })
-                
-                pix = None
-            except Exception as e:
-                print(f"Warning: Could not extract image {img_index} from page {page_num}: {e}")
-                continue
-        
-        output["pages"].append({
-            "page": page_num,
-            "text": text,
-            "images": images
-        })
+            
+            output["pages"].append({
+                "page": page_num,
+                "text": text,
+                "images": images
+            })
+            
+        except Exception as e:
+            print(f"  ⚠ Error processing page {page_num}: {e}")
+            # Still add the page with empty data
+            output["pages"].append({
+                "page": page_num,
+                "text": "",
+                "images": []
+            })
     
     doc.close()
     
     # Save JSON output
-    json_path = os.path.join(output_dir, f"{base}.json")
+    json_path = os.path.join(output_dir, f"{base}_extracted.json")
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
+    
+    total_images = sum(len(page["images"]) for page in output["pages"])
+    print(f"  ✓ Extracted {len(output['pages'])} pages, {total_images} images")
+    print(f"  ✓ Saved JSON to: {json_path}")
     
     return json_path, img_dir
 
@@ -242,14 +293,21 @@ def main():
     
     if not os.path.exists(PDF_FOLDER):
         print(f"Error: PDF folder not found: {PDF_FOLDER}")
+        print(f"Expected path: {os.path.abspath(PDF_FOLDER)}")
         return []
     
-    for pdf_file in os.listdir(PDF_FOLDER):
-        if not pdf_file.endswith(".pdf"):
-            continue
-        
+    pdf_files = [f for f in os.listdir(PDF_FOLDER) if f.endswith(".pdf")]
+    
+    if not pdf_files:
+        print(f"No PDF files found in: {PDF_FOLDER}")
+        return []
+    
+    print(f"Found {len(pdf_files)} PDF file(s) in folder\n")
+    
+    for pdf_file in pdf_files:
         # Skip memos for now (we'll process them separately if needed)
         if "Memo" in pdf_file:
+            print(f"Skipping memo: {pdf_file}")
             continue
         
         # Filter for testing
@@ -259,7 +317,9 @@ def main():
             continue
         
         pdf_path = os.path.join(PDF_FOLDER, pdf_file)
+        print(f"\n{'='*80}")
         print(f"Processing: {pdf_file}")
+        print(f"{'='*80}")
         
         try:
             json_file, images_folder = extract_pdf(pdf_path)
@@ -275,9 +335,11 @@ def main():
                 "year": year
             })
             
-            print(f"  [OK] Extracted: {subject} {paper} {year}")
+            print(f"\n✓ Successfully processed: {subject} {paper} {year}")
         except Exception as e:
-            print(f"  [ERROR] Error processing {pdf_file}: {e}")
+            print(f"\n✗ Error processing {pdf_file}: {e}")
+            import traceback
+            traceback.print_exc()
             continue
     
     # Save metadata summary
@@ -285,17 +347,17 @@ def main():
     with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(all_pdfs, f, indent=2, ensure_ascii=False)
     
-    print(f"\n[SUCCESS] Processed {len(all_pdfs)} PDF(s)")
+    print(f"\n{'='*80}")
+    print(f"[SUCCESS] Processed {len(all_pdfs)} PDF(s)")
     print(f"[SUCCESS] Summary saved to: {summary_path}")
+    print(f"{'='*80}\n")
     
     return all_pdfs
 
 
 if __name__ == "__main__":
     result = main()
-    print(f"\nAll PDFs array:")
-    print(json.dumps(result, indent=2))
-
-
-
-
+    if result:
+        print(f"\nExtraction complete! Processed {len(result)} PDF(s).")
+    else:
+        print("\nNo PDFs were processed.")
