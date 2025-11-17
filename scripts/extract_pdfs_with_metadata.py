@@ -9,11 +9,20 @@ import json
 import os
 import re
 import base64
-import cv2
-import numpy as np
+import sys
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
+# Try to import OpenCV
+try:
+    import cv2
+    import numpy as np
+    OPENCV_AVAILABLE = True
+except ImportError:
+    OPENCV_AVAILABLE = False
+    print("Warning: OpenCV not available. Install with: pip install opencv-python numpy")
+
+# Try to import LangChain
 try:
     from langchain.output_parsers import PydanticOutputParser
     from langchain.prompts import PromptTemplate
@@ -26,34 +35,6 @@ except ImportError:
 # Folder where all PDFs are stored
 PDF_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "past papers")
 OUTPUT_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "extracted_papers")
-
-
-class ImageData(BaseModel):
-    """Structured image data model"""
-    path: str
-    filename: str
-    dataUri: str
-    width: int
-    height: int
-    rect: List[float]
-    label: Optional[str] = None
-
-
-class PageData(BaseModel):
-    """Structured page data model"""
-    page: int
-    text: str
-    images: List[ImageData]
-
-
-class ExtractedPaperData(BaseModel):
-    """Structured extracted paper data model"""
-    pdf: str
-    subject: str
-    grade: int
-    paper: str
-    year: int
-    pages: List[PageData]
 
 
 def parse_metadata(filename: str) -> tuple:
@@ -84,11 +65,14 @@ def parse_metadata(filename: str) -> tuple:
     return subject, grade, paper, year
 
 
-def process_image_with_opencv(image_path: str) -> Dict[str, Any]:
+def process_image_with_opencv(image_path: str) -> Optional[Dict[str, Any]]:
     """
     Process image with OpenCV for enhancement and analysis.
     Returns image metadata and enhanced image path.
     """
+    if not OPENCV_AVAILABLE:
+        return None
+    
     try:
         # Read image with OpenCV
         img = cv2.imread(image_path)
@@ -108,14 +92,13 @@ def process_image_with_opencv(image_path: str) -> Dict[str, Any]:
         is_diagram = edge_density > 0.1
         
         # Enhance contrast for better OCR if needed
+        enhanced_path = image_path
         if is_diagram:
             # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
             clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
             enhanced = clahe.apply(gray)
             enhanced_path = image_path.replace('.png', '_enhanced.png')
             cv2.imwrite(enhanced_path, enhanced)
-        else:
-            enhanced_path = image_path
         
         # Calculate image statistics
         mean_brightness = np.mean(gray)
@@ -131,7 +114,7 @@ def process_image_with_opencv(image_path: str) -> Dict[str, Any]:
             'enhanced_path': enhanced_path if is_diagram else image_path
         }
     except Exception as e:
-        print(f"  ⚠ OpenCV processing error: {e}")
+        print(f"  ⚠ OpenCV processing error: {e}", file=sys.stderr)
         # Fallback: just get dimensions
         try:
             img = cv2.imread(image_path)
@@ -162,17 +145,17 @@ def is_valid_image(pix, width: int, height: int, page_num: int, img_index: int) 
     
     # Skip very small images (likely icons/logos)
     if width < 150 or height < 150:
-        print(f"  Skipping small image ({width}x{height}) on page {page_num} - likely logo/icon")
+        print(f"  Skipping small image ({width}x{height}) on page {page_num} - likely logo/icon", file=sys.stderr)
         return False
     
     # Skip very wide images (likely headers/banners)
     if aspect_ratio > 4:
-        print(f"  Skipping wide banner image ({width}x{height}) on page {page_num} - likely header/logo")
+        print(f"  Skipping wide banner image ({width}x{height}) on page {page_num} - likely header/logo", file=sys.stderr)
         return False
     
     # Skip very tall thin images (likely sidebars)
     if aspect_ratio < 0.25:
-        print(f"  Skipping tall thin image ({width}x{height}) on page {page_num} - likely sidebar")
+        print(f"  Skipping tall thin image ({width}x{height}) on page {page_num} - likely sidebar", file=sys.stderr)
         return False
     
     # Check if image is mostly black (broken/placeholder/black bars)
@@ -198,7 +181,7 @@ def is_valid_image(pix, width: int, height: int, page_num: int, img_index: int) 
     
     # Skip if more than 75% of sampled pixels are black
     if total_samples > 0 and (black_pixels / total_samples) > 0.75:
-        print(f"  Skipping mostly black image ({width}x{height}) on page {page_num} - likely black bar/placeholder")
+        print(f"  Skipping mostly black image ({width}x{height}) on page {page_num} - likely black bar/placeholder", file=sys.stderr)
         return False
     
     return True
@@ -257,11 +240,44 @@ def structure_with_langchain(extracted_data: Dict[str, Any]) -> Dict[str, Any]:
         return extracted_data
     
     try:
-        # Use Pydantic models to validate and structure data
-        paper_data = ExtractedPaperData(**extracted_data)
-        return paper_data.dict()
+        # Validate structure (basic validation without full Pydantic)
+        if not isinstance(extracted_data, dict):
+            return extracted_data
+        
+        # Ensure required fields exist
+        required_fields = ['pdf', 'subject', 'grade', 'paper', 'year', 'pages']
+        for field in required_fields:
+            if field not in extracted_data:
+                print(f"  ⚠ Missing required field: {field}", file=sys.stderr)
+        
+        # Validate pages structure
+        if 'pages' in extracted_data and isinstance(extracted_data['pages'], list):
+            for page in extracted_data['pages']:
+                if not isinstance(page, dict):
+                    continue
+                if 'images' in page and isinstance(page['images'], list):
+                    for img in page['images']:
+                        if not isinstance(img, dict):
+                            continue
+                        # Ensure image has required fields
+                        if 'dataUri' not in img and 'path' in img:
+                            # Try to read and convert to dataUri if missing
+                            try:
+                                img_path = os.path.join(
+                                    os.path.dirname(extracted_data.get('json_path', '')),
+                                    img['path']
+                                )
+                                if os.path.exists(img_path):
+                                    with open(img_path, 'rb') as f:
+                                        img_data = f.read()
+                                        base64_encoded = base64.b64encode(img_data).decode('utf-8')
+                                        img['dataUri'] = f"data:image/png;base64,{base64_encoded}"
+                            except:
+                                pass
+        
+        return extracted_data
     except Exception as e:
-        print(f"  ⚠ LangChain structuring error: {e}, using raw data")
+        print(f"  ⚠ LangChain structuring error: {e}, using raw data", file=sys.stderr)
         return extracted_data
 
 
@@ -289,7 +305,7 @@ def extract_pdf(path: str) -> tuple:
         "pages": []
     }
     
-    print(f"  Processing {len(doc)} pages...")
+    print(f"  Processing {len(doc)} pages...", file=sys.stderr)
     
     for page_num, page in enumerate(doc, start=1):
         try:
@@ -302,7 +318,7 @@ def extract_pdf(path: str) -> tuple:
             
             # Extract images with coordinates and labels
             image_list = page.get_images(full=True)
-            print(f"    Page {page_num}: Found {len(image_list)} image(s)")
+            print(f"    Page {page_num}: Found {len(image_list)} image(s)", file=sys.stderr)
             
             for img_index, img in enumerate(image_list, start=1):
                 try:
@@ -336,12 +352,22 @@ def extract_pdf(path: str) -> tuple:
                     img_path = os.path.join(img_dir, img_filename)
                     pix.save(img_path)
                     
-                    # Process with OpenCV
-                    opencv_data = process_image_with_opencv(img_path)
-                    if opencv_data:
-                        # Use enhanced image if available
-                        if opencv_data.get('enhanced_path') and os.path.exists(opencv_data['enhanced_path']):
-                            img_path = opencv_data['enhanced_path']
+                    # Process with OpenCV if available
+                    opencv_data = None
+                    if OPENCV_AVAILABLE:
+                        opencv_data = process_image_with_opencv(img_path)
+                        if opencv_data and opencv_data.get('enhanced_path') and os.path.exists(opencv_data['enhanced_path']):
+                            # Use enhanced image if available
+                            enhanced_path = opencv_data['enhanced_path']
+                            if enhanced_path != img_path:
+                                # Read enhanced image and update base64
+                                try:
+                                    enhanced_img = cv2.imread(enhanced_path)
+                                    if enhanced_img is not None:
+                                        # Save enhanced version
+                                        cv2.imwrite(img_path, enhanced_img)
+                                except:
+                                    pass
                     
                     # Convert to base64 data URI
                     image_bytes = pix.tobytes("png")
@@ -374,10 +400,10 @@ def extract_pdf(path: str) -> tuple:
                     images.append(image_data)
                     
                     pix = None
-                    print(f"      ✓ Extracted image {img_index}: {img_filename} ({width}x{height})")
+                    print(f"      ✓ Extracted image {img_index}: {img_filename} ({width}x{height})", file=sys.stderr)
                     
                 except Exception as e:
-                    print(f"      ⚠ Warning: Could not extract image {img_index} from page {page_num}: {e}")
+                    print(f"      ⚠ Warning: Could not extract image {img_index} from page {page_num}: {e}", file=sys.stderr)
                     continue
             
             output["pages"].append({
@@ -387,7 +413,7 @@ def extract_pdf(path: str) -> tuple:
             })
             
         except Exception as e:
-            print(f"  ⚠ Error processing page {page_num}: {e}")
+            print(f"  ⚠ Error processing page {page_num}: {e}", file=sys.stderr)
             output["pages"].append({
                 "page": page_num,
                 "text": "",
@@ -396,17 +422,23 @@ def extract_pdf(path: str) -> tuple:
     
     doc.close()
     
+    # Store json_path for LangChain processing
+    json_path = os.path.join(output_dir, f"{base}_extracted.json")
+    output["json_path"] = json_path
+    
     # Structure with LangChain if available
     structured_output = structure_with_langchain(output)
     
+    # Remove json_path from final output
+    structured_output.pop("json_path", None)
+    
     # Save JSON output
-    json_path = os.path.join(output_dir, f"{base}_extracted.json")
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(structured_output, f, indent=2, ensure_ascii=False)
     
     total_images = sum(len(page["images"]) for page in structured_output["pages"])
-    print(f"  ✓ Extracted {len(structured_output['pages'])} pages, {total_images} images")
-    print(f"  ✓ Saved JSON to: {json_path}")
+    print(f"  ✓ Extracted {len(structured_output['pages'])} pages, {total_images} images", file=sys.stderr)
+    print(f"  ✓ Saved JSON to: {json_path}", file=sys.stderr)
     
     return json_path, img_dir
 
@@ -423,22 +455,22 @@ def main():
     all_pdfs = []
     
     if not os.path.exists(PDF_FOLDER):
-        print(f"Error: PDF folder not found: {PDF_FOLDER}")
-        print(f"Expected path: {os.path.abspath(PDF_FOLDER)}")
+        print(f"Error: PDF folder not found: {PDF_FOLDER}", file=sys.stderr)
+        print(f"Expected path: {os.path.abspath(PDF_FOLDER)}", file=sys.stderr)
         return []
     
     pdf_files = [f for f in os.listdir(PDF_FOLDER) if f.endswith(".pdf")]
     
     if not pdf_files:
-        print(f"No PDF files found in: {PDF_FOLDER}")
+        print(f"No PDF files found in: {PDF_FOLDER}", file=sys.stderr)
         return []
     
-    print(f"Found {len(pdf_files)} PDF file(s) in folder\n")
+    print(f"Found {len(pdf_files)} PDF file(s) in folder\n", file=sys.stderr)
     
     for pdf_file in pdf_files:
         # Skip memos for now
         if "Memo" in pdf_file:
-            print(f"Skipping memo: {pdf_file}")
+            print(f"Skipping memo: {pdf_file}", file=sys.stderr)
             continue
         
         # Filter for testing
@@ -448,9 +480,9 @@ def main():
             continue
         
         pdf_path = os.path.join(PDF_FOLDER, pdf_file)
-        print(f"\n{'='*80}")
-        print(f"Processing: {pdf_file}")
-        print(f"{'='*80}")
+        print(f"\n{'='*80}", file=sys.stderr)
+        print(f"Processing: {pdf_file}", file=sys.stderr)
+        print(f"{'='*80}", file=sys.stderr)
         
         try:
             json_file, images_folder = extract_pdf(pdf_path)
@@ -466,9 +498,9 @@ def main():
                 "year": year
             })
             
-            print(f"\n✓ Successfully processed: {subject} {paper} {year}")
+            print(f"\n✓ Successfully processed: {subject} {paper} {year}", file=sys.stderr)
         except Exception as e:
-            print(f"\n✗ Error processing {pdf_file}: {e}")
+            print(f"\n✗ Error processing {pdf_file}: {e}", file=sys.stderr)
             import traceback
             traceback.print_exc()
             continue
@@ -478,10 +510,10 @@ def main():
     with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(all_pdfs, f, indent=2, ensure_ascii=False)
     
-    print(f"\n{'='*80}")
-    print(f"[SUCCESS] Processed {len(all_pdfs)} PDF(s)")
-    print(f"[SUCCESS] Summary saved to: {summary_path}")
-    print(f"{'='*80}\n")
+    print(f"\n{'='*80}", file=sys.stderr)
+    print(f"[SUCCESS] Processed {len(all_pdfs)} PDF(s)", file=sys.stderr)
+    print(f"[SUCCESS] Summary saved to: {summary_path}", file=sys.stderr)
+    print(f"{'='*80}\n", file=sys.stderr)
     
     return all_pdfs
 
@@ -489,6 +521,6 @@ def main():
 if __name__ == "__main__":
     result = main()
     if result:
-        print(f"\nExtraction complete! Processed {len(result)} PDF(s).")
+        print(f"\nExtraction complete! Processed {len(result)} PDF(s).", file=sys.stderr)
     else:
-        print("\nNo PDFs were processed.")
+        print("\nNo PDFs were processed.", file=sys.stderr)
