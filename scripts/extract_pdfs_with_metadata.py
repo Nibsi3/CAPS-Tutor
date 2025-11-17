@@ -33,7 +33,18 @@ except ImportError:
     print("Warning: LangChain not available. Using basic JSON structuring.")
 
 # Folder where all PDFs are stored
-PDF_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "past papers")
+# Try both "past papers" (with space) and "past_papers" (without space) for compatibility
+_past_papers_with_space = os.path.join(os.path.dirname(os.path.dirname(__file__)), "past papers")
+_past_papers_no_space = os.path.join(os.path.dirname(os.path.dirname(__file__)), "past_papers")
+if os.path.exists(_past_papers_with_space):
+    PDF_FOLDER = _past_papers_with_space
+elif os.path.exists(_past_papers_no_space):
+    PDF_FOLDER = _past_papers_no_space
+else:
+    # Default to past_papers (no space) - create it if needed
+    PDF_FOLDER = _past_papers_no_space
+    os.makedirs(PDF_FOLDER, exist_ok=True)
+
 OUTPUT_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), "extracted_papers")
 
 
