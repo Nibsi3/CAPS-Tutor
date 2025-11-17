@@ -98,6 +98,13 @@ function AdminLayoutContent({
                 Process All Papers
               </Link>
               <Link
+                href="/admin/paper-editor-v3"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <FileText className="h-4 w-4" />
+                Paper Editor v3
+              </Link>
+              <Link
                 href="#"
                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
               >
