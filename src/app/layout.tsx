@@ -73,19 +73,69 @@ export default function RootLayout({
                   const style = document.createElement('style');
                   style.id = 'block-appwrite-fonts-css';
                   style.textContent = \`
+                    /* Override Appwrite font definitions */
                     @font-face {
                       font-family: 'Inter';
                       src: local('Arial'), local('Helvetica'), local('sans-serif');
+                      font-weight: 100 900;
+                      font-style: normal italic;
                     }
                     @font-face {
                       font-family: 'Fira Code';
                       src: local('Monaco'), local('Menlo'), local('Courier New'), local('monospace');
+                      font-weight: 100 900;
+                      font-style: normal italic;
                     }
-                    /* Block any attempts to load fonts from assets.appwrite.io */
-                    @import url('data:text/css,');
+                    @font-face {
+                      font-family: 'Fira Code VF';
+                      src: local('Monaco'), local('Menlo'), local('Courier New'), local('monospace');
+                      font-weight: 100 900;
+                      font-style: normal italic;
+                    }
+                    /* Block any @import attempts to Appwrite fonts */
+                    @import url('data:text/css;base64,');
                   \`;
                   if (document.head) {
-                    document.head.appendChild(style);
+                    document.head.insertBefore(style, document.head.firstChild);
+                  }
+
+                  // Remove any existing Appwrite font links immediately
+                  const existingLinks = document.querySelectorAll('link[href*="assets.appwrite.io"]');
+                  existingLinks.forEach(link => link.remove());
+
+                  // Set up a MutationObserver to catch dynamically added font links
+                  const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                      mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === 1) { // Element node
+                          const element = node as Element;
+                          if (element.tagName === 'LINK') {
+                            const linkElement = element as HTMLLinkElement;
+                            const href = linkElement.href || linkElement.getAttribute('href') || '';
+                            const rel = linkElement.getAttribute('rel') || '';
+                            if ((rel === 'preload' || rel === 'stylesheet') && (href.includes('assets.appwrite.io') || href.includes('.woff') || href.includes('.woff2'))) {
+                              console.debug('[FontBlocker] Removed dynamically added font link:', href);
+                              linkElement.remove();
+                            }
+                          } else if (element.tagName === 'STYLE') {
+                            const styleElement = element as HTMLStyleElement;
+                            const content = styleElement.textContent || styleElement.innerHTML || '';
+                            if (content.includes('assets.appwrite.io') || content.includes('@font-face') && (content.includes('.woff') || content.includes('.woff2'))) {
+                              console.debug('[FontBlocker] Removed dynamically added font style');
+                              styleElement.remove();
+                            }
+                          }
+                        }
+                      });
+                    });
+                  });
+
+                  // Start observing
+                  if (document.head) {
+                    observer.observe(document.head, { childList: true, subtree: true });
+                  }
+                  if (document.body) {
+                    observer.observe(document.body, { childList: true, subtree: true });
                   }
                   
                   // Block font requests from Appwrite assets CDN - comprehensive patterns

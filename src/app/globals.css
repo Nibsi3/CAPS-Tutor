@@ -1,3 +1,6 @@
+/* Import self-hosted fonts (Fira Code & Inter) to replace Appwrite CDN fonts */
+@import url('/fonts/fonts.css');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

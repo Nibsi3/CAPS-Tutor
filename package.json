@@ -14,7 +14,8 @@
     "kill-port": "powershell -ExecutionPolicy Bypass -File scripts/kill-port.ps1 -Port 9002",
     "generate-questions": "node scripts/generate-questions-by-topic.mjs",
     "add-presets": "node scripts/add-presets-to-appwrite.mjs",
-    "add-dateofbirth-attribute": "node scripts/add-dateofbirth-attribute.mjs"
+    "add-dateofbirth-attribute": "node scripts/add-dateofbirth-attribute.mjs",
+    "download-fonts": "node scripts/download-fonts.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

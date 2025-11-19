@@ -43,7 +43,15 @@ export async function GET(request: NextRequest) {
     }
   } catch (error: any) {
     console.error('Error fetching features:', error);
-    // Return defaults on error
+    // Log more details for debugging
+    console.error('Error details:', {
+      message: error?.message,
+      code: error?.code,
+      type: error?.type,
+      stack: error?.stack,
+    });
+
+    // Return defaults on error with error info for debugging
     return NextResponse.json({
       success: true,
       features: {
@@ -54,6 +62,11 @@ export async function GET(request: NextRequest) {
         achievements: true,
         progressTracking: true,
       },
+      error: process.env.NODE_ENV === 'development' ? {
+        message: error?.message,
+        code: error?.code,
+        type: error?.type,
+      } : undefined,
     });
   }
 }

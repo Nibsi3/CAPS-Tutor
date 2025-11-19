@@ -28,6 +28,11 @@ const appwriteFontPatterns = [
   'FiraCode-',
   '/fonts/inter/',
   '/fonts/fira-code/',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  'font-display',
+  'font-face',
 ];
 
 const isAppwriteFontRequest = (url: string): boolean => {
