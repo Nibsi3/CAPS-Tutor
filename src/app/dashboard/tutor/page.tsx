@@ -108,19 +108,6 @@ export default function AiTutorPage() {
       router.push('/dashboard');
     }
   }, [aiTutorEnabled, featuresLoading, router, toast]);
-  
-  if (featuresLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader className="h-12 w-12 animate-spin" />
-      </div>
-    );
-  }
-  
-  if (!aiTutorEnabled) {
-    return null; // Will redirect via useEffect
-  }
-
   useEffect(() => {
     // Scroll to the bottom of the chat on new messages
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -317,6 +304,19 @@ export default function AiTutorPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, userProfile, messages.length]);
+
+
+  if (featuresLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin" />
+      </div>
+    );
+  }
+  
+  if (!aiTutorEnabled) {
+    return null; // Will redirect via useEffect
+  }
 
 
   return (

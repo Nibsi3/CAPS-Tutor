@@ -57,18 +57,6 @@ export default function ProgressPage() {
     }
   }, [progressTrackingEnabled, featuresLoading, router, toast]);
   
-  if (featuresLoading || isUserLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader className="h-12 w-12 animate-spin" />
-      </div>
-    );
-  }
-  
-  if (!progressTrackingEnabled) {
-    return null; // Will redirect via useEffect
-  }
-
   const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
     return {
@@ -154,12 +142,16 @@ export default function ProgressPage() {
   }, [processedProgress]);
 
 
-  if (isUserLoading || isProfileLoading) {
+  if (featuresLoading || isUserLoading || isProfileLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader className="h-12 w-12 animate-spin" />
       </div>
     );
+  }
+
+  if (!progressTrackingEnabled) {
+    return null; // Will redirect via useEffect
   }
 
   return (

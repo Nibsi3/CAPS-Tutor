@@ -57,8 +57,12 @@ export default function RootLayout({
   // The provider will return safe fallbacks when env vars are not set
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
+      <body
+        className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
+      >
+        <Script
+          id="block-appwrite-fonts"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
@@ -286,39 +290,6 @@ export default function RootLayout({
                 } catch (e) {
                   console.warn('[FontBlocker] Initialization error:', e);
                   // Fail open - don't block app initialization
-                }
-              })();
-            `,
-          }}
-        />
-      </head>
-      <body
-        className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
-      >
-        <Script
-          id="block-appwrite-fonts-fallback"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Fallback: Remove any font links that might have been added before head script ran
-              (function() {
-                try {
-                  if (typeof document !== 'undefined' && document.head) {
-                    const links = document.head.querySelectorAll('link');
-                    links.forEach((link) => {
-                      const href = link.href || link.getAttribute('href') || '';
-                      const rel = link.getAttribute('rel') || '';
-                      const as = link.getAttribute('as') || '';
-                      if ((rel === 'preload' && as === 'font') || 
-                          href.includes('assets.appwrite.io/fonts') ||
-                          href.includes('Inter-Regular.woff2') ||
-                          href.includes('FiraCode-Regular.woff2')) {
-                        link.remove();
-                      }
-                    });
-                  }
-                } catch (e) {
-                  // Ignore
                 }
               })();
             `,
