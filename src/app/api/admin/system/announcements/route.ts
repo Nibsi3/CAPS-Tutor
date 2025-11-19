@@ -22,12 +22,23 @@ export async function GET(request: NextRequest) {
       }
     } catch (initError: any) {
       console.error('Failed to initialize Appwrite client:', initError);
+      // If API key is missing, return empty array instead of error
+      // This allows the app to load even if admin features aren't available
+      if (initError.message?.includes('APPWRITE_API_KEY')) {
+        console.warn('APPWRITE_API_KEY not available - returning empty announcements array');
+        return NextResponse.json({
+          success: true,
+          announcements: [],
+          total: 0,
+          message: 'Server API key not configured - admin features unavailable'
+        });
+      }
       return NextResponse.json(
         {
           success: false,
           error: initError.message || 'Failed to initialize database connection',
           details: initError.message?.includes('APPWRITE_API_KEY')
-            ? 'APPWRITE_API_KEY environment variable is required. Please set it in .env.local and restart the server.'
+            ? 'APPWRITE_API_KEY environment variable is required. For Appwrite Cloud Sites, ensure it is set in deployment settings (not just project settings) and the site is redeployed.'
             : undefined,
         },
         { status: 500 }
