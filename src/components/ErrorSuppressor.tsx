@@ -73,7 +73,48 @@ if (typeof window !== 'undefined' && !(window as any).__errorSuppressorSetup) {
     if (handleChromeExtensionError(message)) {
       event.preventDefault();
     }
+    
+    // Also suppress Appwrite font request errors (blocked by our font blocker)
+    const messageStr = String(message || '');
+    if (
+      messageStr.includes('Blocked Appwrite font request') ||
+      messageStr.includes('assets.appwrite.io/fonts') ||
+      messageStr.includes('FiraCode-Regular') ||
+      messageStr.includes('Inter-Regular')
+    ) {
+      event.preventDefault();
+    }
   });
+
+  // Suppress network errors for blocked font requests
+  window.addEventListener('error', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLLinkElement || target instanceof HTMLStyleElement) {
+      const href = (target as HTMLLinkElement).href || '';
+      const textContent = (target as HTMLStyleElement).textContent || '';
+      if (
+        href.includes('assets.appwrite.io/fonts') ||
+        href.includes('FiraCode-Regular') ||
+        href.includes('Inter-Regular') ||
+        textContent.includes('assets.appwrite.io/fonts') ||
+        textContent.includes('FiraCode-Regular') ||
+        textContent.includes('Inter-Regular')
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
+    
+    // Also suppress CORS errors for Appwrite fonts
+    const message = event.message || '';
+    if (
+      (message.includes('Access to font') || message.includes('CORS policy')) &&
+      (message.includes('appwrite.io') || message.includes('assets.appwrite.io'))
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true); // Use capture phase to catch errors early
 
   (window as any).__errorSuppressorSetup = true;
   (window as any).__errorSuppressorOriginals = { originalError, originalWarn };
