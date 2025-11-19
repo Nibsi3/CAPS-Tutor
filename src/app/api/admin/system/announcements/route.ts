@@ -10,6 +10,16 @@ export async function GET(request: NextRequest) {
     let databases;
     try {
       databases = getServerDatabases();
+      if (!databases) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Database connection failed',
+            details: 'Appwrite client initialization returned null. Please check your environment variables.',
+          },
+          { status: 500 }
+        );
+      }
     } catch (initError: any) {
       console.error('Failed to initialize Appwrite client:', initError);
       return NextResponse.json(
