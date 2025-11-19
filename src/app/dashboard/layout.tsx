@@ -59,9 +59,9 @@ export default function DashboardLayout({
     }
   }, [user, isUserLoading, router]);
 
-  // Redirect admins to admin dashboard if they're not in student mode
+  // Redirect admins to admin dashboard only when they're in admin mode
   useEffect(() => {
-    if (!isUserLoading && !isAdminLoading && user && isAdmin && !adminModeEnabled) {
+    if (!isUserLoading && !isAdminLoading && user && isAdmin && adminModeEnabled) {
       router.push('/admin');
     }
   }, [user, isUserLoading, isAdmin, isAdminLoading, adminModeEnabled, router]);

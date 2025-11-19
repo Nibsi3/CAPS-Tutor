@@ -327,9 +327,9 @@ export default function ContentControlPage() {
   }, [userSearch]);
 
   // Load functions
-  const loadSystemSettings = async () => {
+  const loadSystemSettings = async (force = false) => {
     try {
-      const response = await adminAPI.getSystemSettings();
+      const response = await adminAPI.getSystemSettings({ force });
       if (response.success) {
         const settings = response.settings;
         setMaintenanceMode(settings.maintenanceMode || false);
@@ -348,16 +348,19 @@ export default function ContentControlPage() {
   };
 
 
-  const loadUsers = async () => {
+  const loadUsers = async (force = false) => {
     setLoadingUsers(true);
     try {
-      const response = await adminAPI.getUsers({ limit: 50, search: userSearch || undefined });
+      const response = await adminAPI.getUsers(
+        { limit: 50, search: userSearch || undefined },
+        { force }
+      );
       if (response.success) {
         setUsers(response.users || []);
         
         // Load user roles
         try {
-          const rolesResponse = await adminAPI.getAccessRoles();
+          const rolesResponse = await adminAPI.getAccessRoles({ force });
           if (rolesResponse.success) {
             const rolesMap: Record<string, string> = {};
             rolesResponse.users?.forEach((userRole: any) => {
@@ -377,11 +380,11 @@ export default function ContentControlPage() {
     }
   };
 
-  const loadAnnouncements = async () => {
+  const loadAnnouncements = async (force = false) => {
     setLoadingAnnouncements(true);
     try {
       // Load ALL announcements (not just active ones) for the admin view
-      const response = await adminAPI.getAnnouncements();
+      const response = await adminAPI.getAnnouncements(undefined, { force });
       console.log('Loaded announcements response:', response);
       console.log('Announcements array:', response?.announcements);
       console.log('Announcements count:', response?.announcements?.length || 0);
@@ -444,7 +447,7 @@ export default function ContentControlPage() {
           description: response.message || `Successfully deleted ${response.deleted || selectedAnnouncements.size} announcement(s).`,
         });
         setSelectedAnnouncements(new Set());
-        loadAnnouncements();
+        loadAnnouncements(true);
       } else {
         throw new Error(response.error || 'Failed to delete announcements');
       }
@@ -496,7 +499,7 @@ export default function ContentControlPage() {
           description: `Updated access for ${selectedRestrictionUser.email}.`,
         });
         closeRestrictionDialog();
-        loadUsers();
+        loadUsers(true);
       } else {
         throw new Error(response.error || 'Failed to apply restriction');
       }
@@ -511,13 +514,13 @@ export default function ContentControlPage() {
     }
   };
 
-  const loadSubjectAvailability = async () => {
+  const loadSubjectAvailability = async (force = false) => {
     try {
-      const response = await adminAPI.getSubjectAvailability();
+      const response = await adminAPI.getSubjectAvailability({ force });
       if (response.success) {
         setSubjectAvailability(response.availability || {});
         // Load custom subjects from system settings
-        const settingsResponse = await adminAPI.getSystemSettings();
+        const settingsResponse = await adminAPI.getSystemSettings({ force });
         if (settingsResponse.success && settingsResponse.settings?.customSubjects) {
           setCustomSubjects(settingsResponse.settings.customSubjects || []);
         }
@@ -579,6 +582,7 @@ export default function ContentControlPage() {
           }
         });
         setSubjectAvailability(newAvailability);
+        loadSubjectAvailability(true);
       } else {
         throw new Error(settingsResponse.error || 'Failed to save custom subject');
       }
@@ -596,10 +600,10 @@ export default function ContentControlPage() {
     }
   };
 
-  const loadStorageStats = async () => {
+  const loadStorageStats = async (force = false) => {
     setLoadingStorage(true);
     try {
-      const response = await adminAPI.getStorageStats();
+      const response = await adminAPI.getStorageStats({ force });
       if (response.success) {
         setStorageStats(response.storage);
       }
@@ -610,10 +614,10 @@ export default function ContentControlPage() {
     }
   };
 
-  const loadPOPIARequests = async () => {
+  const loadPOPIARequests = async (force = false) => {
     setLoadingPOPIA(true);
     try {
-      const response = await adminAPI.getPOPIARequests();
+      const response = await adminAPI.getPOPIARequests({ force });
       if (response.success) {
         setPopiaRequests(response.requests || []);
       }
@@ -624,10 +628,10 @@ export default function ContentControlPage() {
     }
   };
 
-  const loadAPIKeys = async () => {
+  const loadAPIKeys = async (force = false) => {
     setLoadingAPIKeys(true);
     try {
-      const response = await adminAPI.getAPIKeys();
+      const response = await adminAPI.getAPIKeys({ force });
       if (response.success) {
         setApiKeys(response.apiKeys || []);
       }
@@ -711,6 +715,11 @@ export default function ContentControlPage() {
       }
 
       if (response?.success) {
+        if (section === 'Subject Availability') {
+          loadSubjectAvailability(true);
+        } else {
+          loadSystemSettings(true);
+        }
         toast({
           title: "Settings Saved",
           description: `${section} settings have been saved successfully.`,
@@ -1183,7 +1192,7 @@ export default function ContentControlPage() {
                     onChange={(e) => setUserSearch(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        loadUsers();
+                        loadUsers(true);
                       }
                     }}
                   />
@@ -1310,7 +1319,7 @@ export default function ContentControlPage() {
                                             [userItem.id]: newRole,
                                             [userItem.email]: newRole,
                                           });
-                                          loadUsers();
+                                          loadUsers(true);
                                         } else {
                                           throw new Error(response.error || 'Failed to update role');
                                         }
@@ -1738,7 +1747,7 @@ export default function ContentControlPage() {
                           setAnnouncementScheduledEnd('');
                           setAnnouncementUseScheduling(false);
                           // Reload announcements to show the new one
-                          await loadAnnouncements();
+                          await loadAnnouncements(true);
                         } else {
                           const errorMessage = response?.error || response?.message || 'Failed to create announcement';
                           console.error('Announcement creation failed:', response);
@@ -1855,7 +1864,7 @@ export default function ContentControlPage() {
                                           title: "Success",
                                           description: "Announcement deleted successfully.",
                                         });
-                                        loadAnnouncements();
+                                        loadAnnouncements(true);
                                       }
                                     } catch (error: any) {
                                       toast({
@@ -2506,7 +2515,7 @@ export default function ContentControlPage() {
                             description: "API key saved successfully.",
                           });
                           setNewAPIKey({ serviceName: '', apiKey: '', description: '', active: true });
-                          loadAPIKeys();
+                          loadAPIKeys(true);
                         } else {
                           throw new Error(response.error || 'Failed to save API key');
                         }
@@ -2573,7 +2582,7 @@ export default function ContentControlPage() {
                                             title: "Success",
                                             description: "API key deleted successfully.",
                                           });
-                                          loadAPIKeys();
+                                          loadAPIKeys(true);
                                         }
                                       } catch (error: any) {
                                         toast({

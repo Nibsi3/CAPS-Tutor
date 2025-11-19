@@ -1,5 +1,13 @@
 import type {NextConfig} from 'next';
+import bundleAnalyzer from '@next/bundle-analyzer';
 import path from 'path';
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+  openAnalyzer: false,
+  analyzerMode: 'static',
+  generateStatsFile: true,
+});
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -270,4 +278,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

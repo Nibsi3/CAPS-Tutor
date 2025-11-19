@@ -3,6 +3,19 @@
  * Centralized API calls for the content control admin panel
  */
 
+import { fetchWithCache, FetchCacheOptions, invalidateCacheByTags } from './fetch-cache';
+
+const mergeCacheOptions = (
+  defaults: FetchCacheOptions,
+  overrides?: FetchCacheOptions
+): FetchCacheOptions => ({
+  ttl: overrides?.ttl ?? defaults.ttl,
+  force: overrides?.force ?? defaults.force,
+  tags: Array.from(
+    new Set([...(defaults.tags ?? []), ...(overrides?.tags ?? [])])
+  ),
+});
+
 // Content Management APIs
 export async function getPastPapers(params?: { subject?: string; year?: string; limit?: number; offset?: number }) {
   const queryParams = new URLSearchParams();
@@ -77,9 +90,19 @@ export async function createWeeklyTask(data: any) {
   return response.json();
 }
 
-export async function getSubjectAvailability() {
-  const response = await fetch('/api/admin/content/subject-availability');
-  return response.json();
+export async function getSubjectAvailability(options?: FetchCacheOptions) {
+  const endpoint = '/api/admin/content/subject-availability';
+  return fetchWithCache(
+    `GET:${endpoint}`,
+    async () => {
+      const response = await fetch(endpoint);
+      return response.json();
+    },
+    mergeCacheOptions(
+      { ttl: 2 * 60 * 1000, tags: ['subject-availability'] },
+      options
+    )
+  );
 }
 
 export async function updateSubjectAvailability(availability: Record<string, string[]>) {
@@ -88,13 +111,27 @@ export async function updateSubjectAvailability(availability: Record<string, str
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ availability }),
   });
-  return response.json();
+  const result = await response.json();
+  if (result?.success) {
+    invalidateCacheByTags(['subject-availability']);
+  }
+  return result;
 }
 
 // System Settings APIs
-export async function getSystemSettings() {
-  const response = await fetch('/api/admin/system/settings');
-  return response.json();
+export async function getSystemSettings(options?: FetchCacheOptions) {
+  const endpoint = '/api/admin/system/settings';
+  return fetchWithCache(
+    `GET:${endpoint}`,
+    async () => {
+      const response = await fetch(endpoint);
+      return response.json();
+    },
+    mergeCacheOptions(
+      { ttl: 2 * 60 * 1000, tags: ['system-settings'] },
+      options
+    )
+  );
 }
 
 export async function updateSystemSettings(section: string, data: any) {
@@ -103,15 +140,29 @@ export async function updateSystemSettings(section: string, data: any) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ section, data }),
   });
-  return response.json();
+  const result = await response.json();
+  if (result?.success) {
+    invalidateCacheByTags(['system-settings']);
+  }
+  return result;
 }
 
-export async function getAnnouncements(active?: boolean) {
+export async function getAnnouncements(active?: boolean, options?: FetchCacheOptions) {
   const queryParams = new URLSearchParams();
   if (active !== undefined) queryParams.append('active', active.toString());
 
-  const response = await fetch(`/api/admin/system/announcements?${queryParams}`);
-  return response.json();
+  const endpoint = `/api/admin/system/announcements?${queryParams}`;
+  return fetchWithCache(
+    `GET:${endpoint}`,
+    async () => {
+      const response = await fetch(endpoint);
+      return response.json();
+    },
+    mergeCacheOptions(
+      { ttl: 60 * 1000, tags: ['announcements'] },
+      options
+    )
+  );
 }
 
 export async function createAnnouncement(data: any) {
@@ -126,8 +177,10 @@ export async function createAnnouncement(data: any) {
       const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }));
       return { success: false, error: errorData.error || `HTTP ${response.status}` };
     }
-    
     const result = await response.json();
+    if (result?.success) {
+      invalidateCacheByTags(['announcements']);
+    }
     return result;
   } catch (error: any) {
     console.error('Network error creating announcement:', error);
@@ -141,14 +194,22 @@ export async function updateAnnouncement(announcementId: string, updates: any) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ announcementId, ...updates }),
   });
-  return response.json();
+  const result = await response.json();
+  if (result?.success) {
+    invalidateCacheByTags(['announcements']);
+  }
+  return result;
 }
 
 export async function deleteAnnouncement(announcementId: string) {
   const response = await fetch(`/api/admin/system/announcements?announcementId=${announcementId}`, {
     method: 'DELETE',
   });
-  return response.json();
+  const result = await response.json();
+  if (result?.success) {
+    invalidateCacheByTags(['announcements']);
+  }
+  return result;
 }
 
 export async function deleteAnnouncements(announcementIds: string[]) {
@@ -157,18 +218,35 @@ export async function deleteAnnouncements(announcementIds: string[]) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ announcementIds }),
   });
-  return response.json();
+  const result = await response.json();
+  if (result?.success) {
+    invalidateCacheByTags(['announcements']);
+  }
+  return result;
 }
 
 // User Management APIs
-export async function getUsers(params?: { search?: string; limit?: number; offset?: number }) {
+export async function getUsers(
+  params?: { search?: string; limit?: number; offset?: number },
+  options?: FetchCacheOptions
+) {
   const queryParams = new URLSearchParams();
   if (params?.search) queryParams.append('search', params.search);
   if (params?.limit) queryParams.append('limit', params.limit.toString());
   if (params?.offset) queryParams.append('offset', params.offset.toString());
 
-  const response = await fetch(`/api/admin/users/list?${queryParams}`);
-  return response.json();
+  const endpoint = `/api/admin/users/list?${queryParams}`;
+  return fetchWithCache(
+    `GET:${endpoint}`,
+    async () => {
+      const response = await fetch(endpoint);
+      return response.json();
+    },
+    mergeCacheOptions(
+      { ttl: 45 * 1000, tags: ['users'] },
+      options
+    )
+  );
 }
 
 export async function exportUsers(userId: string, format: 'csv' | 'json' = 'csv') {
@@ -186,7 +264,11 @@ export async function applyRestriction(data: { userId?: string; email?: string; 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return response.json();
+  const result = await response.json();
+  if (result?.success) {
+    invalidateCacheByTags(['users']);
+  }
+  return result;
 }
 
 export async function getRestrictions(userId?: string, email?: string) {
@@ -251,9 +333,19 @@ export async function generateReport(data: { reportType: string; startDate: stri
   return response;
 }
 
-export async function getAccessRoles() {
-  const response = await fetch('/api/admin/analytics/access-roles');
-  return response.json();
+export async function getAccessRoles(options?: FetchCacheOptions) {
+  const endpoint = '/api/admin/analytics/access-roles';
+  return fetchWithCache(
+    `GET:${endpoint}`,
+    async () => {
+      const response = await fetch(endpoint);
+      return response.json();
+    },
+    mergeCacheOptions(
+      { ttl: 2 * 60 * 1000, tags: ['access-roles'] },
+      options
+    )
+  );
 }
 
 export async function updateAccessRole(data: { userId?: string; email?: string; role: string; adminId: string }) {
@@ -262,13 +354,27 @@ export async function updateAccessRole(data: { userId?: string; email?: string; 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return response.json();
+  const result = await response.json();
+  if (result?.success) {
+    invalidateCacheByTags(['access-roles']);
+  }
+  return result;
 }
 
 // Compliance APIs
-export async function getPOPIARequests() {
-  const response = await fetch('/api/admin/compliance/popia');
-  return response.json();
+export async function getPOPIARequests(options?: FetchCacheOptions) {
+  const endpoint = '/api/admin/compliance/popia';
+  return fetchWithCache(
+    `GET:${endpoint}`,
+    async () => {
+      const response = await fetch(endpoint);
+      return response.json();
+    },
+    mergeCacheOptions(
+      { ttl: 60 * 1000, tags: ['popia'] },
+      options
+    )
+  );
 }
 
 export async function processPOPIARequest(requestId: string, action: 'approve' | 'reject', adminId: string, reason?: string) {
@@ -277,12 +383,26 @@ export async function processPOPIARequest(requestId: string, action: 'approve' |
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ requestId, action, adminId, reason }),
   });
-  return response.json();
+  const result = await response.json();
+  if (result?.success) {
+    invalidateCacheByTags(['popia']);
+  }
+  return result;
 }
 
-export async function getStorageStats() {
-  const response = await fetch('/api/admin/compliance/storage');
-  return response.json();
+export async function getStorageStats(options?: FetchCacheOptions) {
+  const endpoint = '/api/admin/compliance/storage';
+  return fetchWithCache(
+    `GET:${endpoint}`,
+    async () => {
+      const response = await fetch(endpoint);
+      return response.json();
+    },
+    mergeCacheOptions(
+      { ttl: 2 * 60 * 1000, tags: ['storage-stats'] },
+      options
+    )
+  );
 }
 
 export async function getAuditLogs(params?: { startDate?: string; endDate?: string; logType?: string; format?: string }) {
@@ -311,9 +431,19 @@ export async function updateEmailSmsConfig(email: any, sms: any, userId: string)
   return response.json();
 }
 
-export async function getAPIKeys() {
-  const response = await fetch('/api/admin/integrations/api-keys');
-  return response.json();
+export async function getAPIKeys(options?: FetchCacheOptions) {
+  const endpoint = '/api/admin/integrations/api-keys';
+  return fetchWithCache(
+    `GET:${endpoint}`,
+    async () => {
+      const response = await fetch(endpoint);
+      return response.json();
+    },
+    mergeCacheOptions(
+      { ttl: 60 * 1000, tags: ['api-keys'] },
+      options
+    )
+  );
 }
 
 export async function createAPIKey(data: { serviceName: string; apiKey: string; description: string; active: boolean; userId: string }) {
@@ -322,7 +452,11 @@ export async function createAPIKey(data: { serviceName: string; apiKey: string; 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  return response.json();
+  const result = await response.json();
+  if (result?.success) {
+    invalidateCacheByTags(['api-keys']);
+  }
+  return result;
 }
 
 export async function updateAPIKey(keyId: string, updates: any) {
@@ -331,13 +465,21 @@ export async function updateAPIKey(keyId: string, updates: any) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ keyId, ...updates }),
   });
-  return response.json();
+  const result = await response.json();
+  if (result?.success) {
+    invalidateCacheByTags(['api-keys']);
+  }
+  return result;
 }
 
 export async function deleteAPIKey(keyId: string) {
   const response = await fetch(`/api/admin/integrations/api-keys?keyId=${keyId}`, {
     method: 'DELETE',
   });
-  return response.json();
+  const result = await response.json();
+  if (result?.success) {
+    invalidateCacheByTags(['api-keys']);
+  }
+  return result;
 }
 
