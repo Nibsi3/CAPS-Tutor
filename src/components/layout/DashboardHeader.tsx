@@ -35,19 +35,7 @@ export function DashboardHeader() {
   
   const { user, isUserLoading } = useUser();
   const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
-  const { adminModeEnabled, toggleAdminMode, setAdminModeEnabled } = useAdminMode(isAdmin);
-  
-  // Sync admin mode with current route
-  useEffect(() => {
-    if (isAdmin && pathname) {
-      const isOnAdminRoute = pathname.startsWith('/admin');
-      if (isOnAdminRoute && !adminModeEnabled) {
-        setAdminModeEnabled(true);
-      } else if (!isOnAdminRoute && adminModeEnabled) {
-        setAdminModeEnabled(false);
-      }
-    }
-  }, [pathname, isAdmin, adminModeEnabled, setAdminModeEnabled]);
+  const { adminModeEnabled, toggleAdminMode } = useAdminMode(isAdmin);
   
   const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;

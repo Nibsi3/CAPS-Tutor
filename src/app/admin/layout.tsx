@@ -22,6 +22,7 @@ import { DashboardHeader } from "@/components/layout/DashboardHeader"
 import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { AppwriteClientProvider } from '@/appwrite/client-provider';
 import { useIsAdmin } from '@/hooks/use-is-admin';
+import { useAdminMode } from '@/hooks/use-admin-mode';
 
 function AdminLayoutContent({
   children,
@@ -30,6 +31,7 @@ function AdminLayoutContent({
 }) {
   const { user, isUserLoading } = useUser();
   const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
+  const { adminModeEnabled } = useAdminMode(isAdmin || false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -37,9 +39,14 @@ function AdminLayoutContent({
     if (!isUserLoading && !isAdminLoading) {
       if (!user || !isAdmin) {
         router.push('/forbidden');
+        return;
+      }
+      // If admin mode is disabled, redirect to student dashboard
+      if (isAdmin && !adminModeEnabled) {
+        router.push('/dashboard');
       }
     }
-  }, [user, isUserLoading, isAdmin, isAdminLoading, router]);
+  }, [user, isUserLoading, isAdmin, isAdminLoading, adminModeEnabled, router]);
 
   if (isUserLoading || isAdminLoading || !user || !isAdmin) {
     return (

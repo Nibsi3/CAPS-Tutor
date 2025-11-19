@@ -67,18 +67,6 @@ export default function AchievementsPage() {
     }
   }, [achievementsEnabled, featuresLoading, router, toast]);
   
-  if (featuresLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader className="h-12 w-12 animate-spin" />
-      </div>
-    );
-  }
-  
-  if (!achievementsEnabled) {
-    return null; // Will redirect via useEffect
-  }
-  
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -197,6 +185,18 @@ export default function AchievementsPage() {
     special: ALL_ACHIEVEMENTS.filter(a => a.category === 'special').length,
   };
 
+  if (featuresLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin" />
+      </div>
+    );
+  }
+  
+  if (!achievementsEnabled) {
+    return null; // Will redirect via useEffect
+  }
+  
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">

@@ -24,9 +24,9 @@ export default function DashboardPage() {
     const lang = useLanguage();
     const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
 
-    // Redirect admins to admin dashboard if they're not in student mode
+    // Redirect admins to admin dashboard only when they're in admin mode
     useEffect(() => {
-        if (!isAdminLoading && isAdmin && !adminModeEnabled) {
+        if (!isAdminLoading && isAdmin && adminModeEnabled) {
             router.push('/admin');
         }
     }, [isAdmin, isAdminLoading, adminModeEnabled, router]);

@@ -81,6 +81,22 @@ export default function AiTutorPage() {
   // Restore scroll position on reload
   useScrollRestore('tutor-page');
   
+  // All hooks must be called before any conditional returns
+  const userProfileRef = useMemoAppwrite(() => {
+    if (!user) return null;
+    return {
+      databaseId: appwriteConfig.databaseId,
+      collectionId: 'user',
+      documentId: user.$id,
+    };
+  }, [user]);
+  const { data: userProfile } = useDoc<{ gradeLevel: number; subjects: string[]; language?: string; }>(userProfileRef);
+
+  // Memoize example prompts to ensure they update when grade or subjects change
+  const examplePrompts = useMemo(() => {
+    return getExamplePrompts(userProfile?.gradeLevel, userProfile?.subjects);
+  }, [userProfile?.gradeLevel, userProfile?.subjects]);
+  
   // Redirect if feature is disabled
   useEffect(() => {
     if (!featuresLoading && !aiTutorEnabled) {
@@ -104,22 +120,6 @@ export default function AiTutorPage() {
   if (!aiTutorEnabled) {
     return null; // Will redirect via useEffect
   }
-
-
-  const userProfileRef = useMemoAppwrite(() => {
-    if (!user) return null;
-    return {
-      databaseId: appwriteConfig.databaseId,
-      collectionId: 'user',
-      documentId: user.$id,
-    };
-  }, [user]);
-  const { data: userProfile } = useDoc<{ gradeLevel: number; subjects: string[]; language?: string; }>(userProfileRef);
-
-  // Memoize example prompts to ensure they update when grade or subjects change
-  const examplePrompts = useMemo(() => {
-    return getExamplePrompts(userProfile?.gradeLevel, userProfile?.subjects);
-  }, [userProfile?.gradeLevel, userProfile?.subjects]);
 
   useEffect(() => {
     // Scroll to the bottom of the chat on new messages
@@ -224,7 +224,7 @@ export default function AiTutorPage() {
 
   const handleCameraClick = () => {
     // Check if device supports camera
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
       // Device likely supports camera, trigger camera input
       cameraInputRef.current?.click();
     } else {

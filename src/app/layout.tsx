@@ -57,12 +57,8 @@ export default function RootLayout({
   // The provider will return safe fallbacks when env vars are not set
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
-      >
-        <Script
-          id="block-appwrite-fonts"
-          strategy="beforeInteractive"
+      <head>
+        <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
@@ -74,6 +70,8 @@ export default function RootLayout({
                     'assets.appwrite.io/fonts',
                     'assets.appwrite.io/fonts/fira-code',
                     'assets.appwrite.io/fonts/inter',
+                    'https://assets.appwrite.io/fonts/inter',
+                    'https://assets.appwrite.io/fonts/fira-code',
                     'Inter-Regular.woff2',
                     'FiraCode-Regular.woff2',
                     '/fonts/fira-code/',
@@ -87,6 +85,42 @@ export default function RootLayout({
                       return false; // Fail open - don't block if we can't check
                     }
                   };
+                  
+                  // Remove existing font link tags immediately (synchronous)
+                  const removeExistingFontLinks = () => {
+                    try {
+                      if (!document.head) return;
+                      const links = document.head.querySelectorAll('link');
+                      links.forEach((link) => {
+                        const href = link.href || link.getAttribute('href') || '';
+                        const rel = link.getAttribute('rel') || '';
+                        const as = link.getAttribute('as') || '';
+                        
+                        // Block if it's a font preload or references Appwrite fonts
+                        if ((rel === 'preload' && as === 'font') || isBlocked(href)) {
+                          console.debug('[FontBlocker] Removed existing font link:', href);
+                          link.remove();
+                        }
+                      });
+                    } catch (e) {
+                      // Ignore errors
+                    }
+                  };
+                  
+                  // Run immediately if head exists, otherwise wait for it
+                  if (document.head) {
+                    removeExistingFontLinks();
+                  } else {
+                    // If head doesn't exist yet, check immediately when it's created
+                    const checkHead = setInterval(() => {
+                      if (document.head) {
+                        removeExistingFontLinks();
+                        clearInterval(checkHead);
+                      }
+                    }, 10);
+                    // Clear after 1 second to avoid infinite loop
+                    setTimeout(() => clearInterval(checkHead), 1000);
+                  }
                   
                   // Intercept fetch early - must be first
                   if (window.fetch && !window.__fontBlockerFetch) {
@@ -135,6 +169,64 @@ export default function RootLayout({
                     }
                   }
                   
+                  // Intercept link tag creation to block preloads and font links
+                  if (!window.__fontBlockerLink) {
+                    try {
+                      const originalCreateElement = Document.prototype.createElement;
+                      Document.prototype.createElement = function(tagName, options) {
+                        const element = originalCreateElement.call(this, tagName, options);
+                        if (element instanceof HTMLLinkElement) {
+                          const originalSetAttribute = element.setAttribute.bind(element);
+                          element.setAttribute = function(name, value) {
+                            // Block font preloads and Appwrite font links
+                            if (name === 'href' && isBlocked(value)) {
+                              console.debug('[FontBlocker] Blocked link href:', value);
+                              return;
+                            }
+                            if (name === 'rel' && value === 'preload') {
+                              // Store that it's a preload to check as attribute
+                              element.__isPreload = true;
+                            }
+                            if (name === 'as' && element.__isPreload && value === 'font') {
+                              // Block font preloads
+                              const href = element.getAttribute('href') || '';
+                              if (isBlocked(href) || href.includes('.woff') || href.includes('.woff2')) {
+                                console.debug('[FontBlocker] Blocked font preload:', href);
+                                return;
+                              }
+                            }
+                            return originalSetAttribute(name, value);
+                          };
+                          
+                          // Also intercept href property
+                          const originalHrefDescriptor = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href');
+                          if (originalHrefDescriptor) {
+                            Object.defineProperty(element, 'href', {
+                              set: function(value) {
+                                if (isBlocked(value)) {
+                                  console.debug('[FontBlocker] Blocked link href property:', value);
+                                  return;
+                                }
+                                if (originalHrefDescriptor.set) {
+                                  originalHrefDescriptor.set.call(this, value);
+                                }
+                              },
+                              get: function() {
+                                return originalHrefDescriptor.get ? originalHrefDescriptor.get.call(this) : (this.getAttribute('href') || '');
+                              },
+                              configurable: true,
+                              enumerable: true
+                            });
+                          }
+                        }
+                        return element;
+                      };
+                      window.__fontBlockerLink = true;
+                    } catch (e) {
+                      console.warn('[FontBlocker] Failed to intercept link creation:', e);
+                    }
+                  }
+                  
                   // Watch for dynamically added link tags via MutationObserver
                   // Delay this until DOM is ready to avoid blocking initialization
                   if (!window.__fontBlockerObserver && typeof MutationObserver !== 'undefined') {
@@ -151,7 +243,11 @@ export default function RootLayout({
                               mutation.addedNodes.forEach((node) => {
                                 if (node instanceof HTMLLinkElement) {
                                   const href = node.href || node.getAttribute('href') || '';
-                                  if (isBlocked(href)) {
+                                  const rel = node.getAttribute('rel') || '';
+                                  const as = node.getAttribute('as') || '';
+                                  
+                                  // Block font preloads and Appwrite font links
+                                  if ((rel === 'preload' && as === 'font') || isBlocked(href)) {
                                     console.debug('[FontBlocker] Blocked dynamically added link:', href);
                                     node.remove();
                                   }
@@ -190,6 +286,39 @@ export default function RootLayout({
                 } catch (e) {
                   console.warn('[FontBlocker] Initialization error:', e);
                   // Fail open - don't block app initialization
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body
+        className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
+      >
+        <Script
+          id="block-appwrite-fonts-fallback"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Fallback: Remove any font links that might have been added before head script ran
+              (function() {
+                try {
+                  if (typeof document !== 'undefined' && document.head) {
+                    const links = document.head.querySelectorAll('link');
+                    links.forEach((link) => {
+                      const href = link.href || link.getAttribute('href') || '';
+                      const rel = link.getAttribute('rel') || '';
+                      const as = link.getAttribute('as') || '';
+                      if ((rel === 'preload' && as === 'font') || 
+                          href.includes('assets.appwrite.io/fonts') ||
+                          href.includes('Inter-Regular.woff2') ||
+                          href.includes('FiraCode-Regular.woff2')) {
+                        link.remove();
+                      }
+                    });
+                  }
+                } catch (e) {
+                  // Ignore
                 }
               })();
             `,

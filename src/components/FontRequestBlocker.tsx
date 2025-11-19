@@ -16,6 +16,10 @@ import { useEffect } from 'react';
 const appwriteFontPatterns = [
   'assets.appwrite.io/fonts',
   'assets.appwrite.io',
+  'assets.appwrite.io/fonts/fira-code',
+  'assets.appwrite.io/fonts/inter',
+  'https://assets.appwrite.io/fonts/inter',
+  'https://assets.appwrite.io/fonts/fira-code',
   'fonts/inter/',
   'fonts/fira-code/',
   'Inter-Regular.woff2',
@@ -81,9 +85,21 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
     if (element instanceof HTMLLinkElement || element instanceof HTMLStyleElement) {
       const originalSetAttribute = element.setAttribute.bind(element);
       element.setAttribute = function(name: string, value: string) {
-        if ((name === 'href' || name === 'rel') && isAppwriteFontRequest(value)) {
+        // Block font preloads and Appwrite font links
+        if (name === 'href' && isAppwriteFontRequest(value)) {
           // Block setting the attribute
           return;
+        }
+        if (name === 'rel' && value === 'preload') {
+          // Store that it's a preload to check as attribute
+          (element as any).__isPreload = true;
+        }
+        if (name === 'as' && (element as any).__isPreload && value === 'font') {
+          // Block font preloads that reference Appwrite fonts
+          const href = element.getAttribute('href') || '';
+          if (isAppwriteFontRequest(href) || href.includes('.woff') || href.includes('.woff2')) {
+            return; // Block setting the attribute
+          }
         }
         return originalSetAttribute(name, value);
       };
@@ -122,7 +138,11 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
   Node.prototype.appendChild = function<T extends Node>(child: T): T {
     if (child instanceof HTMLLinkElement) {
       const href = child.href || child.getAttribute('href') || '';
-      if (isAppwriteFontRequest(href)) {
+      const rel = child.getAttribute('rel') || '';
+      const as = child.getAttribute('as') || '';
+      
+      // Block font preloads and Appwrite font links
+      if ((rel === 'preload' && as === 'font') || isAppwriteFontRequest(href)) {
         // Return the child without actually appending it
         return child;
       }
@@ -142,7 +162,11 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
   Node.prototype.insertBefore = function<T extends Node>(newNode: T, referenceNode: Node | null): T {
     if (newNode instanceof HTMLLinkElement) {
       const href = newNode.href || newNode.getAttribute('href') || '';
-      if (isAppwriteFontRequest(href)) {
+      const rel = newNode.getAttribute('rel') || '';
+      const as = newNode.getAttribute('as') || '';
+      
+      // Block font preloads and Appwrite font links
+      if ((rel === 'preload' && as === 'font') || isAppwriteFontRequest(href)) {
         // Return the node without actually inserting it
         return newNode;
       }

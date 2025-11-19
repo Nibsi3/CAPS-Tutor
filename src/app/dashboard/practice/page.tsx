@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,9 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
 import { getQuestionsForSubject, Question } from '@/lib/questions';
-import ReactMarkdown from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import { TypingText } from '@/components/ui/typing-text';
 import { Progress } from '@/components/ui/progress';
 import { useUser, useDatabases, useDoc, useCollection, useMemoAppwrite } from '@/appwrite';
 import { appwriteConfig } from '@/appwrite/config';
@@ -25,6 +23,19 @@ import { useIsAdmin } from '@/hooks/use-is-admin';
 import { getSubjectsForGrade } from '@/components/home/AllSubjectsSection';
 import { useScrollRestore } from '@/hooks/use-scroll-restore';
 import { useFeature } from '@/hooks/use-features';
+
+const MarkdownRenderer = dynamic(() => import('react-markdown'), {
+  ssr: false,
+  loading: () => <span className="text-xs text-muted-foreground">Loading content…</span>,
+});
+
+const TypingText = dynamic(
+  () => import('@/components/ui/typing-text').then((mod) => mod.TypingText),
+  {
+    ssr: false,
+    loading: () => <span className="text-xs text-muted-foreground">...</span>,
+  }
+);
 
 interface QuestionWithFeedback extends Question {
   studentAnswer?: string;
@@ -79,12 +90,29 @@ export default function PracticePage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [rehypeRawPlugin, setRehypeRawPlugin] = useState<any | null>(null);
   
   // AI Tutor State
   const [tutorMessages, setTutorMessages] = useState<Message[]>([]);
   const [tutorPrompt, setTutorPrompt] = useState('');
   const [isTutorLoading, setIsTutorLoading] = useState(false);
   const tutorChatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    import('rehype-raw')
+      .then((mod) => {
+        if (mounted) {
+          setRehypeRawPlugin(() => mod.default);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load rehype-raw plugin:', error);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
   
   // Fetch user profile to get literature selections
   const userProfileRef = useMemoAppwrite(() => {
@@ -622,7 +650,15 @@ export default function PracticePage() {
                             <div key={q.id} className={currentQuestionIndex === index ? 'block' : 'hidden'}>
                                 <div className="rounded-xl border bg-card text-card-foreground shadow p-6 space-y-4">
                                     <p className="font-semibold text-lg">Question {index + 1}: <span className="text-sm font-normal text-muted-foreground">({q.topic})</span></p>
-                                    <div className="text-base prose max-w-none"><ReactMarkdown rehypePlugins={[rehypeRaw]}>{q.question.replace(/\\n/g, '<br>')}</ReactMarkdown></div>
+                                    <div className="text-base prose max-w-none">
+                                      {rehypeRawPlugin ? (
+                                        <MarkdownRenderer rehypePlugins={[rehypeRawPlugin]}>
+                                          {q.question.replace(/\\n/g, '<br>')}
+                                        </MarkdownRenderer>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">Loading question…</span>
+                                      )}
+                                    </div>
                                     
                                     <Textarea 
                                     placeholder="Your answer..."
@@ -653,7 +689,7 @@ export default function PracticePage() {
                                                         : String(q.feedback.explanation || '')}
                                                     markdown={true}
                                                     speed={10}
-                                                    rehypePlugins={[rehypeRaw]}
+                                                    rehypePlugins={rehypeRawPlugin ? [rehypeRawPlugin] : undefined}
                                                 />
                                             </div>
                                         </div>
@@ -742,10 +778,16 @@ export default function PracticePage() {
                                     text={message.content}
                                     markdown={true}
                                     speed={10}
-                                    rehypePlugins={[rehypeRaw]}
+                                    rehypePlugins={rehypeRawPlugin ? [rehypeRawPlugin] : undefined}
                                 />
                             ) : (
-                                <ReactMarkdown rehypePlugins={[rehypeRaw]}>{message.content}</ReactMarkdown>
+                                rehypeRawPlugin ? (
+                                  <MarkdownRenderer rehypePlugins={[rehypeRawPlugin]}>
+                                    {message.content}
+                                  </MarkdownRenderer>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Rendering response…</span>
+                                )
                             )}
                         </div>
                         </div>

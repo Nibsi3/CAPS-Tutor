@@ -351,30 +351,28 @@ export default function ContentControlPage() {
   const loadUsers = async (force = false) => {
     setLoadingUsers(true);
     try {
-      const response = await adminAPI.getUsers(
-        { limit: 50, search: userSearch || undefined },
-        { force }
-      );
+      const [response, rolesResponse] = await Promise.all([
+        adminAPI.getUsers(
+          { limit: 50, search: userSearch || undefined },
+          { force }
+        ),
+        adminAPI.getAccessRoles({ force }),
+      ]);
+
       if (response.success) {
         setUsers(response.users || []);
-        
-        // Load user roles
-        try {
-          const rolesResponse = await adminAPI.getAccessRoles({ force });
-          if (rolesResponse.success) {
-            const rolesMap: Record<string, string> = {};
-            rolesResponse.users?.forEach((userRole: any) => {
-              rolesMap[userRole.id] = userRole.currentRole || 'user';
-              rolesMap[userRole.email] = userRole.currentRole || 'user';
-            });
-            setUserRoles(rolesMap);
-          }
-        } catch (error) {
-          console.error('Error loading user roles:', error);
-        }
+      }
+
+      if (rolesResponse.success) {
+        const rolesMap: Record<string, string> = {};
+        rolesResponse.users?.forEach((userRole: any) => {
+          rolesMap[userRole.id] = userRole.currentRole || 'user';
+          rolesMap[userRole.email] = userRole.currentRole || 'user';
+        });
+        setUserRoles(rolesMap);
       }
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error('Error loading users or roles:', error);
     } finally {
       setLoadingUsers(false);
     }
@@ -2296,7 +2294,7 @@ export default function ContentControlPage() {
                                               title: "Success",
                                               description: "Data erasure request approved and processed.",
                                             });
-                                            loadPOPIARequests();
+                                            loadPOPIARequests(true);
                                           } else {
                                             throw new Error(response.error || 'Failed to process request');
                                           }
@@ -2333,7 +2331,7 @@ export default function ContentControlPage() {
                                               title: "Success",
                                               description: "Data erasure request rejected.",
                                             });
-                                            loadPOPIARequests();
+                                            loadPOPIARequests(true);
                                           } else {
                                             throw new Error(response.error || 'Failed to process request');
                                           }
@@ -2364,7 +2362,7 @@ export default function ContentControlPage() {
                     )}
                     <Button 
                       variant="outline" 
-                      onClick={loadPOPIARequests}
+                      onClick={() => loadPOPIARequests(true)}
                       disabled={loadingPOPIA}
                     >
                       <RefreshCw className={`h-4 w-4 mr-2 ${loadingPOPIA ? 'animate-spin' : ''}`} />
