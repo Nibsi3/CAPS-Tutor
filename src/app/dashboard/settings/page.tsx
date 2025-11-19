@@ -74,6 +74,31 @@ import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const southAfricanProvinces = [
+  'Eastern Cape',
+  'Free State',
+  'Gauteng',
+  'KwaZulu-Natal',
+  'Limpopo',
+  'Mpumalanga',
+  'Northern Cape',
+  'North West',
+  'Western Cape',
+] as const;
+
+const provinceSchema = z
+  .string()
+  .optional()
+  .refine(
+    (value) =>
+      !value ||
+      value === '' ||
+      southAfricanProvinces.includes(value as typeof southAfricanProvinces[number]),
+    {
+      message: 'Select a valid South African province.',
+    }
+  );
+
 const profileFormSchema = z.object({
   firstName: z.string().min(2, {
     message: 'First name must be at least 2 characters.',
@@ -91,6 +116,10 @@ const profileFormSchema = z.object({
   literature: literatureSchema.optional(),
   photoURL: z.string().optional().or(z.literal('')),
   dateOfBirth: z.date().optional().nullable(),
+  province: provinceSchema,
+  suburb: z.string().max(120, {
+    message: 'Suburb name is too long.',
+  }).optional(),
 }).refine(data => {
     return (data.english && data.english !== "none") || 
            (data.afrikaans && data.afrikaans !== "none") || 
@@ -303,6 +332,8 @@ interface UserProfile {
   literature?: z.infer<typeof literatureSchema>;
   photoURL?: string;
   dateOfBirth?: string | null; // Stored as ISO string in database
+  province?: typeof southAfricanProvinces[number];
+  suburb?: string | null;
 }
 
 const passwordFormSchema = z.object({
@@ -386,6 +417,8 @@ export default function SettingsPage() {
         'afrikaans-ht': { novel: '', drama: '', poems: [] },
         'afrikaans-eat': { novel: '', drama: '', poems: [] },
       },
+      province: '',
+      suburb: '',
     },
     mode: 'onChange',
   });
@@ -420,6 +453,10 @@ export default function SettingsPage() {
       const profileGrade = userProfile.gradeLevel ? userProfile.gradeLevel.toString() : '';
       const currentEnglish = form.getValues('english');
       const currentAfrikaans = form.getValues('afrikaans');
+      const currentProvince = form.getValues('province') || '';
+      const profileProvince = userProfile.province || '';
+      const currentSuburb = form.getValues('suburb') || '';
+      const profileSuburb = userProfile.suburb || '';
       
       // Check if we actually need to reset (values are different)
       // Also check language subjects to ensure they're always synced
@@ -434,7 +471,9 @@ export default function SettingsPage() {
           form.getValues('photoURL') !== (userProfile.photoURL || '') ||
           form.getValues('dateOfBirth')?.getTime() !== dateOfBirthDate?.getTime() ||
           currentEnglish !== englishSelection ||
-          currentAfrikaans !== afrikaansSelection) {
+          currentAfrikaans !== afrikaansSelection ||
+          currentProvince !== profileProvince ||
+          currentSuburb !== profileSuburb) {
         reset({
           ...userProfile,
           firstName: userProfile.firstName || '',
@@ -452,6 +491,8 @@ export default function SettingsPage() {
               'afrikaans-ht': { novel: '', drama: '', poems: [] },
               'afrikaans-eat': { novel: '', drama: '', poems: [] },
           },
+          province: userProfile.province || '',
+          suburb: userProfile.suburb || '',
         });
         if (userProfile.language) {
           setLanguage(userProfile.language as keyof typeof translations);
@@ -469,6 +510,8 @@ export default function SettingsPage() {
         gradeLevel: '',
         english: 'none',
         afrikaans: 'none',
+        province: '',
+        suburb: '',
       });
     }
   }, [user, userProfile, isProfileLoading, reset, formState.isDirty, formState.isSubmitting, form, setLanguage, lastSavedTimestamp]);
@@ -676,6 +719,17 @@ export default function SettingsPage() {
         gradeLevel: parseInt(data.gradeLevel, 10),
         subjects: finalSubjects,
     };
+    const trimmedSuburb = data.suburb?.trim() || '';
+    if (data.province && data.province !== '') {
+      dataToSave.province = data.province;
+    } else if (data.province === '') {
+      dataToSave.province = null;
+    }
+    if (trimmedSuburb) {
+      dataToSave.suburb = trimmedSuburb;
+    } else if (data.suburb === '' || data.suburb === undefined) {
+      dataToSave.suburb = null;
+    }
     
     // Add photoURL if provided
     if (data.photoURL && data.photoURL.trim() !== '') {
@@ -760,6 +814,8 @@ export default function SettingsPage() {
               'afrikaans-ht': { novel: '', drama: '', poems: [] },
               'afrikaans-eat': { novel: '', drama: '', poems: [] },
             },
+            province: (updatedDoc as any).province || '',
+            suburb: (updatedDoc as any).suburb || '',
           };
           
           form.reset(formData, { keepValues: false }); // Reset form with fresh server data
@@ -1090,6 +1146,72 @@ export default function SettingsPage() {
                               </FormItem>
                             )}
                           />
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <FormField
+                              control={form.control}
+                              name="province"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-sm font-medium">Province</FormLabel>
+                                  <FormControl>
+                                    <div className="flex items-center gap-2">
+                                      <Select
+                                        value={field.value || ''}
+                                        onValueChange={(value) => field.onChange(value)}
+                                      >
+                                        <SelectTrigger className="h-10 flex-1">
+                                          <SelectValue placeholder="Select your province" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {southAfricanProvinces.map((province) => (
+                                            <SelectItem key={province} value={province}>
+                                              {province}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      {field.value && field.value !== '' && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="text-xs text-muted-foreground"
+                                          onClick={() => field.onChange('')}
+                                        >
+                                          Clear
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </FormControl>
+                                  <FormDescription className="text-xs">
+                                    Helps us personalise content for your province.
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="suburb"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-sm font-medium">Suburb / Town</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="e.g. Khayelitsha, Sandton, Giyani"
+                                      value={field.value ?? ''}
+                                      onChange={(event) => field.onChange(event.target.value)}
+                                      className="h-10"
+                                    />
+                                  </FormControl>
+                                  <FormDescription className="text-xs">
+                                    Optional, used for localised study recommendations.
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                           <FormItem>
                             <FormLabel className="text-sm font-medium">Email</FormLabel>
                             <FormControl>

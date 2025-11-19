@@ -225,18 +225,6 @@ Administrators have access to comprehensive management tools for:
 - Configuring system settings
 - Managing users and permissions
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is private and proprietary.
-
-## 📞 Support
-
-For support or questions, please open an issue on GitHub or contact the development team.
-
 ---
 
 **Built with ❤️ for South African students**
