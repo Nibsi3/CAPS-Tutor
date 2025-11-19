@@ -67,6 +67,24 @@ export function AnnouncementBanner() {
       const targetAudience = adminModeEnabled ? 'admins' : 'students'
       
       const response = await fetch('/api/admin/system/announcements?active=true')
+      
+      if (!response.ok) {
+        // Try to parse as JSON, but handle HTML errors gracefully
+        let data;
+        const contentType = response.headers.get('content-type')
+        if (contentType?.includes('application/json')) {
+          data = await response.json()
+          console.error('Announcements API error:', data)
+        } else {
+          // If not JSON, read as text to see what we got
+          const text = await response.text()
+          console.error('Non-JSON response from announcements API:', text.substring(0, 200))
+        }
+        setAnnouncements([])
+        setLoading(false)
+        return
+      }
+      
       const data = await response.json()
       
       if (data.success && data.announcements) {

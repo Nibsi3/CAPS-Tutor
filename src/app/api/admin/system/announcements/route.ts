@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerDatabases, ID } from '@/lib/appwrite-server';
 import { appwriteConfig } from '@/appwrite/config';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     let databases;
