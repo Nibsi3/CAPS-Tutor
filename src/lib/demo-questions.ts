@@ -12,7 +12,11 @@ type QuestionBank = Record<Subject, Record<Grade, string[]>>;
 type QuestionBankWithAnswers = Record<Subject, Record<Grade, QuestionWithAnswer[]>>;
 
 // Helper function to shuffle array
-function shuffleArray<T>(array: T[]): T[] {
+function shuffleArray<T>(array: T[] | null | undefined): T[] {
+	// Guard against null, undefined, or non-array values
+	if (!array || !Array.isArray(array)) {
+		return [];
+	}
 	const shuffled = [...array];
 	for (let i = shuffled.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));
@@ -150,13 +154,19 @@ export const QUESTION_BANK_WITH_ANSWERS: QuestionBankWithAnswers = {
 };
 
 export function getQuestions(subject: Subject, grade: Grade): string[] {
-	const questions = QUESTION_BANK[subject][grade];
-	// Return a shuffled copy of the questions array
+	const questions = QUESTION_BANK[subject]?.[grade];
+	// Return a shuffled copy of the questions array, or empty array if not found
+	if (!questions || !Array.isArray(questions)) {
+		return [];
+	}
 	return shuffleArray(questions);
 }
 
 export function getQuestionWithAnswer(subject: Subject, grade: Grade, questionText: string): QuestionWithAnswer | null {
-	const questions = QUESTION_BANK_WITH_ANSWERS[subject][grade];
+	const questions = QUESTION_BANK_WITH_ANSWERS[subject]?.[grade];
+	if (!questions || !Array.isArray(questions)) {
+		return null;
+	}
 	const found = questions.find(q => q.question === questionText);
 	return found || null;
 }

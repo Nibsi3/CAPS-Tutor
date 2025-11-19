@@ -5,7 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { getQuestions, getQuestionWithAnswer, Subject } from '@/lib/demo-questions';
+import { getQuestions, getQuestionWithAnswer, Subject, Grade, grades } from '@/lib/demo-questions';
 import { getInteractiveFeedback, InteractiveFeedbackOutput } from '@/ai/flows/interactive-feedback-explanation';
 import { Calculator, FlaskConical, Leaf, Loader, Play } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -27,11 +27,21 @@ export function AITryOut() {
 
   // Get and shuffle questions when subject or grade changes
   useEffect(() => {
-    const questions = getQuestions(subject, grade[0] as any);
-    setQuestionList(questions);
-    setCurrentQuestionIndex(0);
-    setAnswer('');
-    setFeedback(null);
+    const currentGrade = grade[0];
+    // Only get questions if grade is valid (10, 11, or 12)
+    if (grades.includes(currentGrade as Grade)) {
+      const questions = getQuestions(subject, currentGrade as Grade);
+      setQuestionList(questions);
+      setCurrentQuestionIndex(0);
+      setAnswer('');
+      setFeedback(null);
+    } else {
+      // If invalid grade, set empty list
+      setQuestionList([]);
+      setCurrentQuestionIndex(0);
+      setAnswer('');
+      setFeedback(null);
+    }
   }, [subject, grade]);
 
   // Update current question when index or question list changes
@@ -62,7 +72,16 @@ export function AITryOut() {
 
     try {
       // Get the correct answer for this question
-      const questionWithAnswer = getQuestionWithAnswer(subject, grade[0] as any, currentQuestion);
+      const currentGrade = grade[0];
+      if (!grades.includes(currentGrade as Grade)) {
+        toast({
+          variant: "destructive",
+          title: "Invalid grade",
+          description: "Please select a valid grade (10, 11, or 12).",
+        });
+        return;
+      }
+      const questionWithAnswer = getQuestionWithAnswer(subject, currentGrade as Grade, currentQuestion);
       const correctAnswer = questionWithAnswer?.answer;
 
       const result = await getInteractiveFeedback({
@@ -126,7 +145,7 @@ export function AITryOut() {
         <Slider
           value={grade}
           onValueChange={setGrade}
-          min={1}
+          min={10}
           max={12}
           step={1}
           className="flex-1"

@@ -15,12 +15,15 @@ import { useEffect } from 'react';
 
 const appwriteFontPatterns = [
   'assets.appwrite.io/fonts',
+  'assets.appwrite.io',
   'fonts/inter/',
   'fonts/fira-code/',
   'Inter-Regular.woff2',
   'FiraCode-Regular.woff2',
   'Inter-',
   'FiraCode-',
+  '/fonts/inter/',
+  '/fonts/fira-code/',
 ];
 
 const isAppwriteFontRequest = (url: string): boolean => {

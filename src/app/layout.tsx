@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -8,7 +9,6 @@ import { LanguageProvider } from '@/components/language-provider';
 import { ConditionalPublicLayout } from '@/components/layout/ConditionalPublicLayout';
 import { ErrorSuppressor } from '@/components/ErrorSuppressor';
 import { FontRequestBlocker } from '@/components/FontRequestBlocker';
-import { FontLoader } from '@/components/FontLoader';
 import { GlobalAchievementChecker } from '@/components/achievements/GlobalAchievementChecker';
 import { MaintenanceModeGuard } from '@/components/MaintenanceModeGuard';
 import { ScrollToTop } from '@/components/ScrollToTop';
@@ -60,8 +60,47 @@ export default function RootLayout({
       <body
         className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
       >
+        <Script
+          id="block-appwrite-fonts"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof window === 'undefined') return;
+                
+                // Block font requests from Appwrite assets CDN
+                const patterns = ['assets.appwrite.io/fonts', 'Inter-Regular.woff2', 'FiraCode-Regular.woff2'];
+                const isBlocked = (url) => patterns.some(p => url && url.includes && url.includes(p));
+                
+                // Intercept fetch early
+                if (window.fetch && !window.__fontBlockerFetch) {
+                  const originalFetch = window.fetch;
+                  window.fetch = function(...args) {
+                    const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+                    if (isBlocked(url)) {
+                      return Promise.reject(new Error('Blocked Appwrite font request'));
+                    }
+                    return originalFetch.apply(this, args);
+                  };
+                  window.__fontBlockerFetch = true;
+                }
+                
+                // Intercept XHR early
+                if (XMLHttpRequest && !window.__fontBlockerXHR) {
+                  const originalOpen = XMLHttpRequest.prototype.open;
+                  XMLHttpRequest.prototype.open = function(method, url) {
+                    if (isBlocked(url)) {
+                      throw new Error('Blocked Appwrite font request');
+                    }
+                    return originalOpen.apply(this, arguments);
+                  };
+                  window.__fontBlockerXHR = true;
+                }
+              })();
+            `,
+          }}
+        />
         <FontRequestBlocker />
-        <FontLoader />
         <ErrorSuppressor />
         <ThemeProvider
           attribute="class"
