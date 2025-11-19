@@ -38,12 +38,18 @@ export async function GET(request: NextRequest) {
     const apiKey = process.env.APPWRITE_API_KEY;
     if (!apiKey) {
       console.error('❌ APPWRITE_API_KEY is not set in environment variables');
+      console.error('   Checked process.env.APPWRITE_API_KEY:', typeof apiKey, apiKey ? 'exists' : 'undefined');
+      console.error('   Available env vars:', Object.keys(process.env).filter(k => k.includes('APPWRITE')).join(', '));
       return NextResponse.json(
         { 
           isAdmin: false, 
           error: 'API key not configured',
-          message: 'APPWRITE_API_KEY environment variable is required. Please set it in .env.local and restart the server.',
-          hint: 'See docs/FIX_ADMIN_PERMISSIONS.md for instructions'
+          message: 'APPWRITE_API_KEY environment variable is required but not found on the server.',
+          details: {
+            hint: 'For Appwrite Cloud Sites, set environment variables in: Deployment → Settings → Environment Variables (NOT project settings)',
+            localDev: 'For local development, set APPWRITE_API_KEY in .env.local and restart the server',
+            seeDocs: 'See docs/FIX_ADMIN_PERMISSIONS.md for detailed instructions'
+          }
         },
         { status: 500 }
       );
@@ -80,6 +86,10 @@ export async function GET(request: NextRequest) {
     try {
       // Query the admin collection by email
       // Note: Collection ID is 'adminid' (lowercase) as shown in Appwrite Console
+      console.log('🔍 Checking admin status for:', email);
+      console.log('   Database ID:', appwriteConfig.databaseId);
+      console.log('   Collection ID: adminid');
+      
       // First, try with status='active' filter
       const response = await databases.listDocuments(
         appwriteConfig.databaseId,
@@ -90,8 +100,11 @@ export async function GET(request: NextRequest) {
         ]
       );
 
+      console.log('   Query result: Found', response.documents?.length || 0, 'active admin(s)');
+
       if (response.documents && response.documents.length > 0) {
         const admin = response.documents[0];
+        console.log('✅ Admin found! Role:', admin.role, 'Status:', admin.status);
         return NextResponse.json({
           isAdmin: true,
           adminData: {
@@ -110,6 +123,7 @@ export async function GET(request: NextRequest) {
 
       // If no active admin found, check if admin exists with any status
       // This helps diagnose issues (e.g., status set to wrong value)
+      console.log('   No active admin found, checking for any admin with this email...');
       const allAdminsResponse = await databases.listDocuments(
         appwriteConfig.databaseId,
         'adminid', // Collection ID is lowercase 'adminid'
@@ -118,19 +132,28 @@ export async function GET(request: NextRequest) {
         ]
       );
 
+      console.log('   Found', allAdminsResponse.documents?.length || 0, 'admin(s) with any status');
+
       if (allAdminsResponse.documents && allAdminsResponse.documents.length > 0) {
         const admin = allAdminsResponse.documents[0];
+        console.log('⚠️ Admin exists but status is:', admin.status, '(expected: active)');
         // Admin exists but status is not 'active'
         return NextResponse.json({
           isAdmin: false,
           adminExists: true,
           currentStatus: admin.status,
-          message: `Admin found but status is "${admin.status}" instead of "active". Please update the status in Appwrite Console.`
+          message: `Admin found but status is "${admin.status}" instead of "active". Please update the status in Appwrite Console.`,
+          hint: 'Go to Appwrite Console → Databases → capstutor → adminid → Edit document → Change status to "active"'
         });
       }
 
       // No admin found
-      return NextResponse.json({ isAdmin: false });
+      console.log('❌ No admin found with email:', email);
+      return NextResponse.json({ 
+        isAdmin: false,
+        message: 'No admin record found for this email address.',
+        hint: 'Verify the email matches exactly (case-sensitive). The email in your admin document must match your logged-in user email.'
+      });
     } catch (error: any) {
       // Log detailed error information
       console.error('❌ Error checking admin status:');
