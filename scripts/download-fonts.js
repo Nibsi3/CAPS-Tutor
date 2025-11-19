@@ -17,22 +17,22 @@ if (!fs.existsSync(fontsDir)) {
 }
 
 const fonts = [
-  // Fira Code fonts (from jsDelivr CDN - reliable source)
+  // Fira Code fonts (from unpkg CDN - reliable source)
   {
     name: 'FiraCode-Regular.woff2',
-    url: 'https://cdn.jsdelivr.net/gh/tonsky/FiraCode@6.2/distr/woff2/FiraCode-Regular.woff2',
+    url: 'https://unpkg.com/@fontsource/fira-code@5.0.0/files/fira-code-latin-400-normal.woff2',
   },
   {
     name: 'FiraCode-Medium.woff2',
-    url: 'https://cdn.jsdelivr.net/gh/tonsky/FiraCode@6.2/distr/woff2/FiraCode-Medium.woff2',
+    url: 'https://unpkg.com/@fontsource/fira-code@5.0.0/files/fira-code-latin-500-normal.woff2',
   },
   {
     name: 'FiraCode-SemiBold.woff2',
-    url: 'https://cdn.jsdelivr.net/gh/tonsky/FiraCode@6.2/distr/woff2/FiraCode-SemiBold.woff2',
+    url: 'https://unpkg.com/@fontsource/fira-code@5.0.0/files/fira-code-latin-600-normal.woff2',
   },
   {
     name: 'FiraCode-Bold.woff2',
-    url: 'https://cdn.jsdelivr.net/gh/tonsky/FiraCode@6.2/distr/woff2/FiraCode-Bold.woff2',
+    url: 'https://unpkg.com/@fontsource/fira-code@5.0.0/files/fira-code-latin-700-normal.woff2',
   },
   // Inter fonts
   {
