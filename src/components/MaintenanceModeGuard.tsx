@@ -16,6 +16,28 @@ export function MaintenanceModeGuard({ children }: { children: React.ReactNode }
     const checkMaintenanceMode = async () => {
       try {
         const response = await fetch('/api/admin/system/settings')
+        
+        if (!response.ok) {
+          // Try to parse as JSON, but handle HTML errors gracefully
+          let data;
+          const contentType = response.headers.get('content-type')
+          if (contentType?.includes('application/json')) {
+            data = await response.json()
+          } else {
+            // If not JSON, read as text to see what we got
+            const text = await response.text()
+            console.error('Non-JSON response from settings API:', text.substring(0, 200))
+            setIsMaintenanceMode(false)
+            setIsLoading(false)
+            return
+          }
+          
+          console.error('Settings API error:', data)
+          setIsMaintenanceMode(false)
+          setIsLoading(false)
+          return
+        }
+        
         const data = await response.json()
         
         if (data.success && data.settings) {

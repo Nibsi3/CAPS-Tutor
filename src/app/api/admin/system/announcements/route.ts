@@ -4,7 +4,23 @@ import { appwriteConfig } from '@/appwrite/config';
 
 export async function GET(request: NextRequest) {
   try {
-    const databases = getServerDatabases();
+    let databases;
+    try {
+      databases = getServerDatabases();
+    } catch (initError: any) {
+      console.error('Failed to initialize Appwrite client:', initError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: initError.message || 'Failed to initialize database connection',
+          details: initError.message?.includes('APPWRITE_API_KEY')
+            ? 'APPWRITE_API_KEY environment variable is required. Please set it in .env.local and restart the server.'
+            : undefined,
+        },
+        { status: 500 }
+      );
+    }
+    
     const searchParams = request.nextUrl.searchParams;
     const active = searchParams.get('active');
     const targetAudience = searchParams.get('targetAudience');

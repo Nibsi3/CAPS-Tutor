@@ -5,6 +5,9 @@ import { processPDFWithWorker } from '@/lib/pdf-worker';
 
 const PAST_PAPER_BUCKET_ID = '690dafea0021f232399e';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
