@@ -36,6 +36,7 @@ const isAppwriteFontRequest = (url: string): boolean => {
 };
 
 // Set up interceptors immediately when module loads (before React mounts)
+// This must run before any other scripts that might load fonts
 if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
   // Intercept fetch requests
   const originalFetch = window.fetch;

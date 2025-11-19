@@ -68,6 +68,25 @@ export default function RootLayout({
               (function() {
                 try {
                   if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+                  // Add CSS to block font loading immediately
+                  const style = document.createElement('style');
+                  style.id = 'block-appwrite-fonts-css';
+                  style.textContent = \`
+                    @font-face {
+                      font-family: 'Inter';
+                      src: local('Arial'), local('Helvetica'), local('sans-serif');
+                    }
+                    @font-face {
+                      font-family: 'Fira Code';
+                      src: local('Monaco'), local('Menlo'), local('Courier New'), local('monospace');
+                    }
+                    /* Block any attempts to load fonts from assets.appwrite.io */
+                    @import url('data:text/css,');
+                  \`;
+                  if (document.head) {
+                    document.head.appendChild(style);
+                  }
                   
                   // Block font requests from Appwrite assets CDN - comprehensive patterns
                   const patterns = [
@@ -76,19 +95,96 @@ export default function RootLayout({
                     'assets.appwrite.io/fonts/inter',
                     'https://assets.appwrite.io/fonts/inter',
                     'https://assets.appwrite.io/fonts/fira-code',
+                    'http://assets.appwrite.io/fonts/inter',
+                    'http://assets.appwrite.io/fonts/fira-code',
                     'Inter-Regular.woff2',
+                    'Inter-Regular.woff',
                     'FiraCode-Regular.woff2',
+                    'FiraCode-Regular.woff',
                     '/fonts/fira-code/',
-                    '/fonts/inter/'
+                    '/fonts/inter/',
+                    'fonts/fira-code/',
+                    'fonts/inter/'
                   ];
                   const isBlocked = (url) => {
                     try {
                       if (!url || typeof url !== 'string') return false;
-                      return patterns.some(p => url.includes && url.includes(p));
+                      const urlLower = url.toLowerCase();
+                      return patterns.some(p => urlLower.includes(p.toLowerCase()));
                     } catch (e) {
                       return false; // Fail open - don't block if we can't check
                     }
                   };
+                  
+                  // Block ALL font loading through CSS @font-face rules
+                  const blockFontFace = () => {
+                    try {
+                      if (!document.styleSheets) return;
+                      
+                      // Intercept @font-face rules in all stylesheets
+                      const processStyleSheet = (sheet) => {
+                        try {
+                          if (!sheet.cssRules && !sheet.rules) return;
+                          const rules = sheet.cssRules || sheet.rules || [];
+                          for (let i = rules.length - 1; i >= 0; i--) {
+                            const rule = rules[i];
+                            if (rule.type === CSSRule.FONT_FACE_RULE) {
+                              const src = rule.style.src || '';
+                              if (isBlocked(src)) {
+                                try {
+                                  sheet.deleteRule ? sheet.deleteRule(i) : sheet.removeRule(i);
+                                  console.debug('[FontBlocker] Removed @font-face rule:', src);
+                                } catch (e) {
+                                  // Ignore deletion errors
+                                }
+                              }
+                            }
+                          }
+                        } catch (e) {
+                          // Cross-origin stylesheets throw errors, ignore
+                        }
+                      };
+                      
+                      // Process existing stylesheets
+                      for (let i = 0; i < document.styleSheets.length; i++) {
+                        processStyleSheet(document.styleSheets[i]);
+                      }
+                      
+                      // Monitor for new stylesheets
+                      const originalInsertRule = CSSStyleSheet.prototype.insertRule;
+                      CSSStyleSheet.prototype.insertRule = function(rule, index) {
+                        if (typeof rule === 'string' && rule.toLowerCase().includes('@font-face')) {
+                          const srcMatch = rule.match(/src:\s*url\\(['"]?([^'"]+)['"]?\\)/i);
+                          if (srcMatch && isBlocked(srcMatch[1])) {
+                            console.debug('[FontBlocker] Blocked @font-face rule insertion:', srcMatch[1]);
+                            return 0; // Return success but don't insert
+                          }
+                        }
+                        return originalInsertRule.call(this, rule, index);
+                      };
+                      
+                      // Also intercept CSS.supports if used for font detection
+                      if (typeof CSS !== 'undefined' && CSS.supports) {
+                        const originalSupports = CSS.supports;
+                        CSS.supports = function(...args) {
+                          const prop = args[0];
+                          if (typeof prop === 'string' && prop.toLowerCase().includes('font')) {
+                            // Allow but don't fail on font detection
+                          }
+                          return originalSupports.apply(this, args);
+                        };
+                      }
+                    } catch (e) {
+                      // Ignore errors
+                    }
+                  };
+                  
+                  // Run font-face blocking immediately
+                  if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', blockFontFace);
+                  } else {
+                    blockFontFace();
+                  }
                   
                   // Remove existing font link tags immediately (synchronous)
                   const removeExistingFontLinks = () => {
@@ -232,60 +328,116 @@ export default function RootLayout({
                   }
                   
                   // Watch for dynamically added link tags via MutationObserver
-                  // Delay this until DOM is ready to avoid blocking initialization
+                  // Start immediately - don't wait for DOM ready
                   if (!window.__fontBlockerObserver && typeof MutationObserver !== 'undefined') {
                     const setupObserver = () => {
                       try {
-                        if (!document.head) {
-                          setTimeout(setupObserver, 100);
-                          return;
-                        }
-                        
-                        const observer = new MutationObserver((mutations) => {
-                          try {
-                            mutations.forEach((mutation) => {
-                              mutation.addedNodes.forEach((node) => {
-                                if (node instanceof HTMLLinkElement) {
-                                  const href = node.href || node.getAttribute('href') || '';
-                                  const rel = node.getAttribute('rel') || '';
-                                  const as = node.getAttribute('as') || '';
-                                  
-                                  // Block font preloads and Appwrite font links
-                                  if ((rel === 'preload' && as === 'font') || isBlocked(href)) {
-                                    console.debug('[FontBlocker] Blocked dynamically added link:', href);
-                                    node.remove();
+                        if (!document.head && document.documentElement) {
+                          // Observe documentElement if head doesn't exist yet
+                          const observer = new MutationObserver((mutations) => {
+                            try {
+                              mutations.forEach((mutation) => {
+                                mutation.addedNodes.forEach((node) => {
+                                  if (node instanceof HTMLLinkElement) {
+                                    const href = node.href || node.getAttribute('href') || '';
+                                    const rel = node.getAttribute('rel') || '';
+                                    const as = node.getAttribute('as') || '';
+                                    
+                                    // Block font preloads and Appwrite font links
+                                    if ((rel === 'preload' && as === 'font') || isBlocked(href)) {
+                                      console.debug('[FontBlocker] Blocked dynamically added link:', href);
+                                      node.remove();
+                                    }
                                   }
-                                }
-                                if (node instanceof HTMLStyleElement) {
-                                  const textContent = node.textContent || node.innerHTML || '';
-                                  if (isBlocked(textContent)) {
-                                    console.debug('[FontBlocker] Blocked dynamically added style');
-                                    node.remove();
+                                  if (node instanceof HTMLStyleElement) {
+                                    const textContent = node.textContent || node.innerHTML || '';
+                                    if (isBlocked(textContent)) {
+                                      console.debug('[FontBlocker] Blocked dynamically added style');
+                                      node.remove();
+                                    }
                                   }
-                                }
+                                  // Also check if head was added
+                                  if (node.nodeName === 'HEAD' && !window.__fontBlockerObserverHead) {
+                                    setTimeout(() => {
+                                      if (document.head) {
+                                        observer.observe(document.head, {
+                                          childList: true,
+                                          subtree: false
+                                        });
+                                        window.__fontBlockerObserverHead = true;
+                                      }
+                                    }, 0);
+                                  }
+                                });
                               });
+                            } catch (e) {
+                              // Ignore observer errors
+                            }
+                          });
+                          
+                          observer.observe(document.documentElement, {
+                            childList: true,
+                            subtree: true
+                          });
+                          
+                          window.__fontBlockerObserver = observer;
+                          
+                          // If head exists, also observe it
+                          if (document.head) {
+                            observer.observe(document.head, {
+                              childList: true,
+                              subtree: false
                             });
-                          } catch (e) {
-                            // Ignore observer errors
+                            window.__fontBlockerObserverHead = true;
                           }
-                        });
-                        
-                        observer.observe(document.head, {
-                          childList: true,
-                          subtree: false
-                        });
-                        
-                        window.__fontBlockerObserver = observer;
+                        } else if (document.head) {
+                          const observer = new MutationObserver((mutations) => {
+                            try {
+                              mutations.forEach((mutation) => {
+                                mutation.addedNodes.forEach((node) => {
+                                  if (node instanceof HTMLLinkElement) {
+                                    const href = node.href || node.getAttribute('href') || '';
+                                    const rel = node.getAttribute('rel') || '';
+                                    const as = node.getAttribute('as') || '';
+                                    
+                                    // Block font preloads and Appwrite font links
+                                    if ((rel === 'preload' && as === 'font') || isBlocked(href)) {
+                                      console.debug('[FontBlocker] Blocked dynamically added link:', href);
+                                      node.remove();
+                                    }
+                                  }
+                                  if (node instanceof HTMLStyleElement) {
+                                    const textContent = node.textContent || node.innerHTML || '';
+                                    if (isBlocked(textContent)) {
+                                      console.debug('[FontBlocker] Blocked dynamically added style');
+                                      node.remove();
+                                    }
+                                  }
+                                });
+                              });
+                            } catch (e) {
+                              // Ignore observer errors
+                            }
+                          });
+                          
+                          observer.observe(document.head, {
+                            childList: true,
+                            subtree: false
+                          });
+                          
+                          window.__fontBlockerObserver = observer;
+                          window.__fontBlockerObserverHead = true;
+                        } else {
+                          // Retry after a short delay
+                          setTimeout(setupObserver, 10);
+                        }
                       } catch (e) {
                         console.warn('[FontBlocker] Failed to setup observer:', e);
                       }
                     };
                     
-                    if (document.readyState === 'loading') {
-                      document.addEventListener('DOMContentLoaded', setupObserver);
-                    } else {
-                      setTimeout(setupObserver, 0);
-                    }
+                    // Start immediately
+                    setupObserver();
                   }
                 } catch (e) {
                   console.warn('[FontBlocker] Initialization error:', e);
