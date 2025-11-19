@@ -61,6 +61,15 @@ export default function RootLayout({
         className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
       >
         <Script
+          id="block-appwrite-fonts-inline"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){var f=window.fetch;window.fetch=function(){var u=arguments[0];var s=typeof u==='string'?u:(u?.url||u?.toString()||'');if(s&&(s.includes('assets.appwrite.io/fonts')||s.includes('FiraCode-Regular.woff2')||s.includes('Inter-Regular.woff2')))return Promise.reject(new Error('Blocked'));return f.apply(this,arguments);};var x=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){var s=typeof u==='string'?u:(u?.toString()||'');if(s&&(s.includes('assets.appwrite.io/fonts')||s.includes('FiraCode-Regular.woff2')||s.includes('Inter-Regular.woff2')))throw new Error('Blocked');return x.call(this,m,u);};})();
+            `,
+          }}
+        />
+        <Script
           id="block-appwrite-fonts"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
@@ -272,52 +281,110 @@ export default function RootLayout({
                     setTimeout(() => clearInterval(checkHead), 1000);
                   }
                   
-                  // Intercept fetch early - must be first
+                  // Intercept fetch IMMEDIATELY - must be FIRST, before anything else
                   if (window.fetch && !window.__fontBlockerFetch) {
                     try {
                       const originalFetch = window.fetch;
+                      // Block fetch at the earliest possible moment
                       window.fetch = function(...args) {
                         try {
-                          const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || args[0]?.toString() || '');
-                          if (isBlocked(url)) {
+                          let url = '';
+                          if (typeof args[0] === 'string') {
+                            url = args[0];
+                          } else if (args[0] instanceof Request) {
+                            url = args[0].url;
+                          } else if (args[0] instanceof URL) {
+                            url = args[0].toString();
+                          } else if (args[0] && typeof args[0] === 'object') {
+                            url = args[0].url || args[0].toString() || '';
+                          }
+                          
+                          if (url && isBlocked(url)) {
                             console.debug('[FontBlocker] Blocked fetch request to:', url);
                             return Promise.reject(new Error('Blocked Appwrite font request'));
                           }
                           return originalFetch.apply(this, args);
                         } catch (e) {
-                          // If anything fails, just call original fetch
-                          return originalFetch.apply(this, args);
+                          // If it's our blocking error, re-throw it
+                          if (e.message === 'Blocked Appwrite font request') throw e;
+                          // For other errors, try to proceed
+                          try {
+                            return originalFetch.apply(this, args);
+                          } catch {
+                            return Promise.reject(e);
+                          }
                         }
                       };
+                      // Mark as done immediately
                       window.__fontBlockerFetch = true;
+                      // Also set a flag to prevent re-initialization
+                      Object.defineProperty(window, '__fontBlockerFetch', {
+                        value: true,
+                        writable: false,
+                        configurable: false
+                      });
                     } catch (e) {
                       console.warn('[FontBlocker] Failed to intercept fetch:', e);
                     }
                   }
                   
-                  // Intercept XHR early
+                  // Intercept XHR IMMEDIATELY - must be early
                   if (typeof XMLHttpRequest !== 'undefined' && !window.__fontBlockerXHR) {
                     try {
                       const originalOpen = XMLHttpRequest.prototype.open;
-                      XMLHttpRequest.prototype.open = function(method, url) {
+                      XMLHttpRequest.prototype.open = function(method, url, async, username, password) {
                         try {
                           const urlString = typeof url === 'string' ? url : (url?.toString() || '');
-                          if (isBlocked(urlString)) {
+                          if (urlString && isBlocked(urlString)) {
                             console.debug('[FontBlocker] Blocked XHR request to:', urlString);
                             throw new Error('Blocked Appwrite font request');
                           }
-                          return originalOpen.apply(this, arguments);
+                          return originalOpen.call(this, method, url, async ?? true, username, password);
                         } catch (e) {
                           // If it's our blocking error, re-throw; otherwise allow the request
                           if (e.message === 'Blocked Appwrite font request') throw e;
-                          return originalOpen.apply(this, arguments);
+                          return originalOpen.call(this, method, url, async ?? true, username, password);
                         }
                       };
                       window.__fontBlockerXHR = true;
+                      Object.defineProperty(window, '__fontBlockerXHR', {
+                        value: true,
+                        writable: false,
+                        configurable: false
+                      });
                     } catch (e) {
                       console.warn('[FontBlocker] Failed to intercept XHR:', e);
                     }
                   }
+                  
+                  // Also intercept before the script finishes - run interceptors synchronously
+                  (function setupInterceptorsImmediately() {
+                    // This runs immediately, not waiting for anything
+                    if (window.fetch && !window.__fontBlockerFetchSet) {
+                      const originalFetch = window.fetch;
+                      window.fetch = function(...args) {
+                        try {
+                          let url = typeof args[0] === 'string' ? args[0] : 
+                                   (args[0]?.url || args[0]?.toString() || '');
+                          if (url && (
+                            url.includes('assets.appwrite.io/fonts') ||
+                            url.includes('FiraCode-Regular.woff2') ||
+                            url.includes('Inter-Regular.woff2') ||
+                            url.includes('fonts/fira-code/') ||
+                            url.includes('fonts/inter/')
+                          )) {
+                            console.debug('[FontBlocker-Early] Blocked early fetch:', url);
+                            return Promise.reject(new Error('Blocked Appwrite font request'));
+                          }
+                          return originalFetch.apply(this, args);
+                        } catch (e) {
+                          if (e.message === 'Blocked Appwrite font request') throw e;
+                          return originalFetch.apply(this, args);
+                        }
+                      };
+                      window.__fontBlockerFetchSet = true;
+                    }
+                  })();
                   
                   // Intercept link tag creation to block preloads and font links
                   if (!window.__fontBlockerLink) {

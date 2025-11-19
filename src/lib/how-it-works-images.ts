@@ -1,4 +1,7 @@
-import manifest from "@/data/how-it-works-images.json";
+import manifestData from "@/data/how-it-works-images.json";
+
+// Ensure manifest is always an array (handle webpack edge cases)
+const manifest = Array.isArray(manifestData) ? manifestData : [];
 
 export type HowItWorksImage = (typeof manifest)[number];
 

@@ -53,6 +53,17 @@ export async function GET(request: NextRequest) {
     let databases;
     try {
       databases = getServerDatabases();
+      if (!databases) {
+        return NextResponse.json(
+          { 
+            isAdmin: false, 
+            error: 'Database connection failed',
+            message: 'Appwrite client initialization returned null. Please check your environment variables.',
+            hint: 'Check that APPWRITE_API_KEY is set correctly and has databases.read scope'
+          },
+          { status: 500 }
+        );
+      }
     } catch (error: any) {
       console.error('❌ Failed to get server databases:', error);
       return NextResponse.json(
