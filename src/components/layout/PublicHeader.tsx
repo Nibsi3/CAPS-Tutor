@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { useUser } from '@/appwrite';
@@ -9,16 +10,28 @@ import { appLanguages } from '@/lib/data';
 import { translations } from '@/lib/translations';
 import { Globe } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useIsAdmin } from '@/hooks/use-is-admin';
 
 export function PublicHeader() {
   // Get user from Appwrite
   const { user } = useUser();
+  const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
+  const router = useRouter();
   const currentLang = useLanguage();
   const setLanguage = useSetLanguage();
   const t = translations[currentLang] || translations.en;
   
   // Get current language label
   const currentLanguageLabel = appLanguages.find(l => l.value === currentLang)?.label || 'English';
+
+  const handleDashboardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!isAdminLoading && isAdmin) {
+      router.push('/admin');
+    } else {
+      router.push('/dashboard');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -74,7 +87,9 @@ export function PublicHeader() {
           
           <ThemeToggle />
           {user ? (
-            <Button asChild size="sm"><Link href="/dashboard">Go to dashboard</Link></Button>
+            <Button size="sm" onClick={handleDashboardClick}>
+              Go to dashboard
+            </Button>
           ) : (
             <>
               <Button asChild variant="ghost" size="sm"><Link href="/login">Log in</Link></Button>

@@ -38,7 +38,7 @@ export default function TermsPage() {
               <section className="mb-12">
                 <h2 className="text-2xl font-bold mb-4">2. Description of Service</h2>
                 <p>
-                  CAPS Tutor is an AI-powered educational platform designed to provide personalized tutoring aligned with the South African Curriculum and Assessment Policy Statement (CAPS) for Grades 8-12.
+                  CAPS Tutor is an AI-powered educational platform designed to provide personalized tutoring aligned with the South African Curriculum and Assessment Policy Statement (CAPS) for Grades 10-12.
                 </p>
                 <p>The Service includes:</p>
                 <ul className="list-disc pl-6 space-y-2">
@@ -58,7 +58,7 @@ export default function TermsPage() {
                 <h2 className="text-2xl font-bold mb-4">3. Eligibility and User Accounts</h2>
                 <h3 className="text-xl font-semibold mt-6 mb-3">3.1 Age Requirements</h3>
                 <p>
-                  The Service is intended for learners in Grades 8-12. If you are under 18 years of age, you must have your parent's or guardian's permission to use the Service. By creating an account, you represent that you meet the age requirements or have obtained necessary parental consent.
+                  The Service is intended for learners in Grades 10-12. If you are under 18 years of age, you must have your parent's or guardian's permission to use the Service. By creating an account, you represent that you meet the age requirements or have obtained necessary parental consent.
                 </p>
 
                 <h3 className="text-xl font-semibold mt-6 mb-3">3.2 Account Creation</h3>

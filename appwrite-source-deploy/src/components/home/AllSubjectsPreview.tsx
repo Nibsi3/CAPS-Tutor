@@ -90,7 +90,7 @@ export function AllSubjectsPreview() {
         <div className="mt-8 text-center">
           <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
             <GraduationCap className="h-4 w-4" />
-            <span>Browse subjects for Grades 1-12 with our interactive grade selector</span>
+            <span>Browse subjects for Grades 10-12 with our interactive grade selector</span>
           </div>
         </div>
       </div>

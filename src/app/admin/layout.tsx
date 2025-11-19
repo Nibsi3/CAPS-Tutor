@@ -3,31 +3,25 @@
 
 import { useEffect } from 'react';
 import Link from "next/link"
+import { usePathname } from "next/navigation";
 import {
-  FileUp,
-  Home,
   Users,
   Settings,
-  FileText,
   Loader,
-  Play,
+  BarChart3,
+  Settings2,
+  FileText,
 } from "lucide-react"
 import { useUser } from '@/appwrite';
 import { useRouter } from 'next/navigation';
 
 import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { cn } from "@/lib/utils";
 
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
+import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { AppwriteClientProvider } from '@/appwrite/client-provider';
-
-const ADMIN_EMAIL = 'cameronfalck03@gmail.com';
+import { useIsAdmin } from '@/hooks/use-is-admin';
 
 function AdminLayoutContent({
   children,
@@ -35,17 +29,19 @@ function AdminLayoutContent({
   children: React.ReactNode
 }) {
   const { user, isUserLoading } = useUser();
+  const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!isUserLoading) {
-      if (!user || user.email !== ADMIN_EMAIL) {
+    if (!isUserLoading && !isAdminLoading) {
+      if (!user || !isAdmin) {
         router.push('/forbidden');
       }
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, isAdmin, isAdminLoading, router]);
 
-  if (isUserLoading || !user || user.email !== ADMIN_EMAIL) {
+  if (isUserLoading || isAdminLoading || !user || !isAdmin) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader className="h-16 w-16 animate-spin" />
@@ -56,7 +52,7 @@ function AdminLayoutContent({
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <div className="hidden border-r bg-muted/40 md:block">
-        <div className="flex h-full max-h-screen flex-col gap-2">
+        <div className="flex h-full max-h-screen flex-col gap-2 sticky top-0">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href="/" className="flex items-center gap-2 font-semibold">
               <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
@@ -66,69 +62,91 @@ function AdminLayoutContent({
               </svg>
               <span className="font-headline">CAPS Tutor Admin</span>
             </Link>
+            <div className="ml-auto">
+              <NotificationBell />
+            </div>
           </div>
           <div className="flex-1">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
               <Link
-                href="/dashboard"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                href="/admin/monitor"
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition",
+                  pathname === "/admin/monitor"
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-transparent text-muted-foreground hover:border-muted hover:bg-muted/50"
+                )}
               >
-                <Home className="h-4 w-4" />
-                Student Dashboard
+                <BarChart3 className="h-4 w-4" />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold">Monitor Dashboard</span>
+                  <span className="text-xs text-muted-foreground">View analytics and metrics</span>
+                </div>
               </Link>
               <Link
-                href="/admin/syllabus"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                href="/admin/content-control"
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition",
+                  (pathname === "/admin/content-control" || pathname?.startsWith("/admin/content-control"))
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-transparent text-muted-foreground hover:border-muted hover:bg-muted/50"
+                )}
               >
-                <FileUp className="h-4 w-4" />
-                Syllabus Uploader
+                <Settings2 className="h-4 w-4" />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold">Content Control</span>
+                  <span className="text-xs text-muted-foreground">Manage content and features</span>
+                </div>
               </Link>
               <Link
                 href="/admin/past-papers"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition",
+                  (pathname === "/admin/past-papers" || pathname?.startsWith("/admin/past-papers"))
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-transparent text-muted-foreground hover:border-muted hover:bg-muted/50"
+                )}
               >
                 <FileText className="h-4 w-4" />
-                Past Paper Uploader
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold">Past Papers</span>
+                  <span className="text-xs text-muted-foreground">Manage exam papers</span>
+                </div>
               </Link>
               <Link
-                href="/admin/process-papers"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-              >
-                <Play className="h-4 w-4" />
-                Process All Papers
-              </Link>
-              <Link
-                href="#"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                href="/admin/students"
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition",
+                  pathname === "/admin/students"
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-transparent text-muted-foreground hover:border-muted hover:bg-muted/50"
+                )}
               >
                 <Users className="h-4 w-4" />
-                Students
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold">Students</span>
+                  <span className="text-xs text-muted-foreground">Manage student accounts</span>
+                </div>
                 <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
                   6
                 </Badge>
               </Link>
               <Link
-                href="/dashboard/settings"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                href="/admin/settings"
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition",
+                  pathname === "/admin/settings"
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-transparent text-muted-foreground hover:border-muted hover:bg-muted/50"
+                )}
               >
                 <Settings className="h-4 w-4" />
-                Settings
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold">Settings</span>
+                  <span className="text-xs text-muted-foreground">System configuration</span>
+                </div>
               </Link>
             </nav>
-          </div>
-          <div className="mt-auto p-4">
-            <Card>
-              <CardHeader className="p-2 pt-0 md:p-4">
-                <CardTitle>Upgrade to Pro</CardTitle>
-                <CardDescription>
-                  Unlock all features and get unlimited access to our support
-                  team.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-2 pt-0 md:p-4 md:pt-0">
-                <button className="w-full text-sm font-medium py-2 px-4 rounded-lg bg-primary text-primary-foreground">Upgrade</button>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>

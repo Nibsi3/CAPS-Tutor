@@ -21,7 +21,10 @@ import { appwriteConfig } from '@/appwrite/config';
 import { ID, Query } from 'appwrite';
 import { filterQuestionsByLiterature, UserLiteratureSelection } from '@/lib/literature-filter';
 import { useAdminMode } from '@/hooks/use-admin-mode';
+import { useIsAdmin } from '@/hooks/use-is-admin';
 import { getSubjectsForGrade } from '@/components/home/AllSubjectsSection';
+import { useScrollRestore } from '@/hooks/use-scroll-restore';
+import { useFeature } from '@/hooks/use-features';
 
 interface QuestionWithFeedback extends Question {
   studentAnswer?: string;
@@ -33,8 +36,6 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
-
-const ADMIN_EMAIL = 'cameronfalck03@gmail.com';
 
 interface StudentProgress {
   learningObjectiveId: string;
@@ -60,10 +61,15 @@ export default function PracticePage() {
   const router = useRouter();
   const { user } = useUser();
   const databases = useDatabases();
+  const { enabled: practiceQuestionsEnabled, isLoading: featuresLoading } = useFeature('practiceQuestions');
   
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const { isAdmin } = useIsAdmin();
   const { adminModeEnabled } = useAdminMode(isAdmin);
-
+  
+  // Restore scroll position on reload
+  useScrollRestore("practice-page");
+  
+  // All state hooks must be called before any conditional returns
   const [isLoading, setIsLoading] = useState(false);
   const [exam, setExam] = useState<{ examQuestions: QuestionWithFeedback[] } | null>(null);
   const [topic, setTopic] = useState<string | null>(null);
@@ -79,7 +85,7 @@ export default function PracticePage() {
   const [tutorPrompt, setTutorPrompt] = useState('');
   const [isTutorLoading, setIsTutorLoading] = useState(false);
   const tutorChatEndRef = useRef<HTMLDivElement>(null);
-
+  
   // Fetch user profile to get literature selections
   const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
@@ -92,15 +98,16 @@ export default function PracticePage() {
   const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
 
   // Query user progress to find struggling topics
+  // Note: Appwrite indexes are limited to 2 attributes, so we filter by userID and masteryLevel,
+  // then filter by gradeLevel in the application code
   const progressQuery = useMemoAppwrite(() => {
-    if (!user || !userProfile?.gradeLevel) return null;
+    if (!user) return null;
     
     const queries = [
       Query.equal('userID', user.$id),
-      Query.equal('gradeLevel', userProfile.gradeLevel),
       Query.lessThan('masteryLevel', 70), // Only topics with mastery < 70%
       Query.orderAsc('masteryLevel'), // Sort by lowest mastery first
-      Query.limit(10), // Get top 10 struggling topics
+      Query.limit(50), // Get more records since we'll filter by gradeLevel client-side
     ];
     
     return {
@@ -108,14 +115,19 @@ export default function PracticePage() {
       collectionId: 'userprogress',
       queries,
     };
-  }, [user, userProfile?.gradeLevel]);
+  }, [user]);
 
   const { data: progressData, isLoading: isProgressLoading } = useCollection<StudentProgress>(progressQuery);
-
+  
   // Process progress data to get struggling topics
   const strugglingTopics = useMemo(() => {
     if (!progressData || progressData.length === 0) return [];
     if (!userProfile?.gradeLevel) return [];
+
+    // Filter by gradeLevel first (since we can't filter in the database query due to index limitations)
+    const filteredByGrade = progressData.filter(item => 
+      item.gradeLevel === userProfile.gradeLevel
+    );
 
     const isSeniorGrade = userProfile.gradeLevel >= 10;
     const availableSubjects = isSeniorGrade 
@@ -125,7 +137,7 @@ export default function PracticePage() {
     // Group by topic and calculate average mastery
     const topicMap = new Map<string, { mastery: number; subject: string; count: number }>();
     
-    progressData.forEach(item => {
+    filteredByGrade.forEach(item => {
       if (!item.topic || !item.subject) return;
       
       // Filter by available subjects
@@ -259,7 +271,6 @@ export default function PracticePage() {
     setIsInitialLoading(false);
   }, [toast, userProfile?.gradeLevel, userProfile?.subjects, userProfile?.literature]);
 
-
   useEffect(() => {
     const topicParam = searchParams.get('topic');
     const gradeParam = searchParams.get('grade');
@@ -280,6 +291,30 @@ export default function PracticePage() {
   useEffect(() => {
     tutorChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [tutorMessages]);
+  
+  // Redirect if feature is disabled
+  useEffect(() => {
+    if (!featuresLoading && !practiceQuestionsEnabled) {
+      toast({
+        title: "Feature Disabled",
+        description: "Practice Questions are currently disabled. Please contact an administrator.",
+        variant: "destructive",
+      });
+      router.push('/dashboard');
+    }
+  }, [practiceQuestionsEnabled, featuresLoading, router, toast]);
+  
+  if (featuresLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin" />
+      </div>
+    );
+  }
+  
+  if (!practiceQuestionsEnabled) {
+    return null; // Will redirect via useEffect
+  }
 
 
   const handleAnswerChange = (index: number, answer: string) => {

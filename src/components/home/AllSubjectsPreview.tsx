@@ -10,12 +10,12 @@ import { cn } from "@/lib/utils";
 
 // Sample subjects from different grades to show variety
 const sampleSubjects = [
-  { name: "Mathematics", grade: "All Grades" },
+  { name: "Mathematics", grade: "Grades 10-12" },
   { name: "Physical Sciences", grade: "Grades 10-12" },
   { name: "Life Sciences", grade: "Grades 10-12" },
-  { name: "English Home Language", grade: "All Grades" },
-  { name: "Natural Sciences", grade: "Grades 7-9" },
+  { name: "English Home Language", grade: "Grades 10-12" },
   { name: "Accounting", grade: "Grades 10-12" },
+  { name: "Geography", grade: "Grades 10-12" },
 ];
 
 export function AllSubjectsPreview() {
@@ -90,7 +90,7 @@ export function AllSubjectsPreview() {
         <div className="mt-8 text-center">
           <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
             <GraduationCap className="h-4 w-4" />
-            <span>Browse subjects for Grades 1-12 with our interactive grade selector</span>
+            <span>Browse subjects for Grades 10-12 with our interactive grade selector</span>
           </div>
         </div>
       </div>

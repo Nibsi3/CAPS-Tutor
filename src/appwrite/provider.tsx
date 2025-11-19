@@ -113,30 +113,47 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
         // Check if this is a "no session" error (user is not authenticated)
         // This includes:
         // - 401 Unauthorized
-        // - Missing scopes (guests don't have account scope)
+        // - Missing scopes (guests don't have account scope) - this is EXPECTED for logged-out users
         // - Timeout errors
-        const errorMessage = error?.message || String(error || '');
-        const isMissingScopeError = 
-          typeof errorMessage === 'string' && (
-            errorMessage.includes('missing scopes') ||
-            errorMessage.includes('missing scope') ||
-            (errorMessage.includes('guests') && errorMessage.includes('account'))
-          );
+        // - AppwriteException with missing scopes
+        const errorMessage = String(error?.message || error || '').toLowerCase();
+        const errorType = String(error?.type || '').toLowerCase();
+        const errorName = String(error?.name || '').toLowerCase();
+        const errorCode = error?.code;
         
+        // Check for missing scope errors (guests don't have account scope - this is normal)
+        const isMissingScopeError = 
+          errorMessage.includes('missing scope') ||
+          errorMessage.includes('missing scopes') ||
+          (errorMessage.includes('guests') && errorMessage.includes('account')) ||
+          (errorMessage.includes('role: guests') && errorMessage.includes('account')) ||
+          errorType.includes('unauthorized_scope') ||
+          errorType.includes('missing_scope') ||
+          errorName.includes('appwriteexception') && errorMessage.includes('scope');
+        
+        // Check for no session / unauthorized errors
         const isNoSessionError = 
-          error.code === 401 || 
-          error.type === 'general_unauthorized_scope' || 
-          error.message === 'Timeout' ||
+          errorCode === 401 || 
+          errorCode === 403 ||
+          errorType === 'general_unauthorized_scope' || 
+          errorType === 'general_unauthorized' ||
+          errorMessage === 'timeout' ||
+          errorMessage.includes('unauthorized') ||
           isMissingScopeError;
         
         if (isNoSessionError) {
-          appwriteLogger.debug('auth', 'No active session found (user not logged in)', {
-            errorType: error?.type,
-            errorCode: error?.code,
-            errorMessage: typeof errorMessage === 'string' ? errorMessage.substring(0, 100) : 'unknown'
-          });
+          // This is expected - user is not logged in (guest user)
+          // Don't log as error, just debug log
+          // Suppress the console error for missing scopes (it's normal for guests)
+          if (process.env.NODE_ENV === 'development' && !isMissingScopeError) {
+            appwriteLogger.debug('auth', 'No active session found (user not logged in)', {
+              errorType: error?.type,
+              errorCode: error?.code,
+            });
+          }
           setUserAuthState({ user: null, isUserLoading: false, userError: null });
         } else {
+          // This is an actual error (not just "user not logged in")
           appwriteLogger.error('auth', 'Failed to get account', error);
           appwriteLogger.logApiCall(
             'auth',
@@ -153,6 +170,17 @@ export const AppwriteProvider: React.FC<AppwriteProviderProps> = ({
 
   const contextValue = useMemo((): AppwriteContextState => {
     const servicesAvailable = !!(client && account && databases);
+    
+    // Expose diagnostics to window object in development mode
+    if (typeof window !== 'undefined' && servicesAvailable && databases && process.env.NODE_ENV === 'development') {
+      // Dynamically import and expose diagnostics
+      import('@/lib/browser-console-diagnostics').then(({ exposeDiagnosticsToWindow }) => {
+        exposeDiagnosticsToWindow(databases);
+      }).catch(() => {
+        // Silently fail if diagnostics can't be loaded
+      });
+    }
+    
     return {
       areServicesAvailable: servicesAvailable,
       client: servicesAvailable ? client : null,

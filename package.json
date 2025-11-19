@@ -11,7 +11,10 @@
     "typecheck": "tsc --noEmit",
     "logs:appwrite": "node scripts/monitor-appwrite-logs.js",
     "logs:appwrite:ps": "powershell -ExecutionPolicy Bypass -File scripts/appwrite-logs.ps1",
-    "kill-port": "powershell -ExecutionPolicy Bypass -File scripts/kill-port.ps1 -Port 9002"
+    "kill-port": "powershell -ExecutionPolicy Bypass -File scripts/kill-port.ps1 -Port 9002",
+    "generate-questions": "node scripts/generate-questions-by-topic.mjs",
+    "add-presets": "node scripts/add-presets-to-appwrite.mjs",
+    "add-dateofbirth-attribute": "node scripts/add-dateofbirth-attribute.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
@@ -50,6 +53,7 @@
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
+    "react-easy-crop": "^5.5.3",
     "react-hook-form": "^7.51.5",
     "react-markdown": "^9.0.1",
     "recharts": "^2.12.7",

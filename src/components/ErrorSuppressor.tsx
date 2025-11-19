@@ -38,6 +38,16 @@ if (typeof window !== 'undefined' && !(window as any).__errorSuppressorSetup) {
       return; // Suppress the error
     }
     
+    // Suppress Appwrite permission errors for collections handled gracefully
+    if (
+      (message.includes('not authorized') || message.includes('unauthorized')) &&
+      (message.includes('userprogress') || 
+       message.includes('pastPaperProgress') ||
+       message.includes('listDocuments'))
+    ) {
+      return; // Suppress the error
+    }
+    
     originalError.apply(console, args);
   };
 
@@ -78,7 +88,7 @@ export function ErrorSuppressor() {
     const originalWarn = (window as any).__errorSuppressorOriginals?.originalWarn || console.warn;
     const originalLog = console.log;
 
-    // Suppress Appwrite font CORS errors, Chrome extension errors, and localization errors
+    // Suppress Appwrite font CORS errors, Chrome extension errors, localization errors, and handled permission errors
     const shouldSuppressError = (message: string): boolean => {
       // Appwrite font CORS errors and blocked font request errors
       if (
@@ -101,6 +111,18 @@ export function ErrorSuppressor() {
         message.includes('RegisterClientLocalizationsError') ||
         (message.includes('translations') && message.includes('Cannot read properties of undefined')) ||
         (message.includes('translations') && message.includes('undefined'))
+      ) {
+        return true;
+      }
+      
+      // Appwrite permission errors for collections that are handled gracefully
+      // These errors are caught and handled by use-collection.tsx, returning empty arrays
+      // They're logged as warnings but still show up in console.error, so we suppress them
+      if (
+        (message.includes('not authorized') || message.includes('unauthorized')) &&
+        (message.includes('userprogress') || 
+         message.includes('pastPaperProgress') ||
+         message.includes('listDocuments'))
       ) {
         return true;
       }

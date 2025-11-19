@@ -31,7 +31,7 @@ export default function AllSubjectsPage() {
                 Explore All Subjects We Offer
               </h1>
               <p className="max-w-[800px] mx-auto text-muted-foreground md:text-xl">
-                Browse our comprehensive subject offerings by grade level. From Foundation Phase to FET Phase, we cover all subjects aligned with the CAPS curriculum.
+                Browse our comprehensive subject offerings for Grades 10-12. All subjects are aligned with the CAPS curriculum.
               </p>
             </div>
           </div>

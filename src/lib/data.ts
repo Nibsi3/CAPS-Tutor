@@ -82,15 +82,6 @@ export const appLanguages = [
 
 
 export const grades = [
-    { value: "1", label: "Grade 1" },
-    { value: "2", label: "Grade 2" },
-    { value: "3", label: "Grade 3" },
-    { value: "4", label: "Grade 4" },
-    { value: "5", label: "Grade 5" },
-    { value: "6", label: "Grade 6" },
-    { value: "7", label: "Grade 7" },
-    { value: "8", label: "Grade 8" },
-    { value: "9", label: "Grade 9" },
     { value: "10", label: "Grade 10" },
     { value: "11", label: "Grade 11" },
     { value: "12", label: "Grade 12" },
@@ -106,6 +97,16 @@ export const languageSubjects = {
         { value: "Afrikaans Eerste Addisionele Taal", label: "Afrikaans Eerste Addisionele Taal" },
     ]
 };
+
+export const languages = [
+    { value: 'english', label: 'English' },
+    { value: 'afrikaans', label: 'Afrikaans' },
+    { value: 'sepedi', label: 'Sepedi' },
+    { value: 'setswana', label: 'Setswana' },
+    { value: 'siswati', label: 'Siswati' },
+    { value: 'tshivenda', label: 'Tshivenda' },
+    { value: 'xitsonga', label: 'Xitsonga' },
+];
 
 export const contentSubjects = [
     { value: "Mathematics", label: "Mathematics" },
@@ -745,32 +746,6 @@ function expandLessons(lessons: any[]): Lesson[] {
 export const lessons: Lesson[] = expandLessons(rawLessons);
 
 export const placeholderLessons: Lesson[] = [
-  {
-    id: "lesson-math-8-1",
-    gradeLevel: "8",
-    subject: "Mathematics",
-    topics: [
-      "Algebraic Expressions",
-      "Exponents",
-      "Geometric constructions",
-      "Geometry of 2D shapes",
-      "Number system",
-      "Problem solving"
-    ],
-  },
-  {
-    id: "lesson-math-9-1",
-    gradeLevel: "9",
-    subject: "Mathematics",
-    topics: [
-        "Number system & real numbers",
-        "Algebraic expressions & equations",
-        "Functions & relationships",
-        "Geometry of straight lines & 2D shapes",
-        "Trigonometry basics",
-        "Area and perimeter"
-    ],
-  },
   // Mathematical Literacy
   {
     id: "lesson-mathematical-literacy-10",
@@ -1897,47 +1872,11 @@ export const literatureOptions = {
 
 /**
  * Compulsory subjects for each grade based on CAPS curriculum
- * Grades 1-9 have fixed compulsory subjects, Grade 10-12 have subject selection
+ * Grades 10-12 have subject selection - no compulsory subjects defined here
  */
 export const compulsorySubjectsByGrade: Record<string, {
   contentSubjects: string[];
   languageSubjects: string[];
 }> = {
-  "1": {
-    contentSubjects: ["Mathematics", "Life Skills"],
-    languageSubjects: ["English Home Language"], // User chooses their home language
-  },
-  "2": {
-    contentSubjects: ["Mathematics", "Life Skills"],
-    languageSubjects: ["English Home Language"],
-  },
-  "3": {
-    contentSubjects: ["Mathematics", "Life Skills"],
-    languageSubjects: ["English Home Language"],
-  },
-  "4": {
-    contentSubjects: ["Mathematics", "Life Skills", "Natural Sciences and Technology", "Social Sciences"],
-    languageSubjects: ["English Home Language"],
-  },
-  "5": {
-    contentSubjects: ["Mathematics", "Life Skills", "Natural Sciences and Technology", "Social Sciences"],
-    languageSubjects: ["English Home Language"],
-  },
-  "6": {
-    contentSubjects: ["Mathematics", "Life Skills", "Natural Sciences and Technology", "Social Sciences"],
-    languageSubjects: ["English Home Language"],
-  },
-  "7": {
-    contentSubjects: ["Mathematics", "Natural Sciences", "Social Sciences", "Technology", "Economic & Management Sciences", "Life Orientation", "Creative Arts"],
-    languageSubjects: ["English Home Language"],
-  },
-  "8": {
-    contentSubjects: ["Mathematics", "Natural Sciences", "Social Sciences", "Technology", "Economic & Management Sciences", "Life Orientation", "Creative Arts"],
-    languageSubjects: ["English Home Language"],
-  },
-  "9": {
-    contentSubjects: ["Mathematics", "Natural Sciences", "Social Sciences", "Technology", "Economic & Management Sciences", "Life Orientation", "Creative Arts"],
-    languageSubjects: ["English Home Language"],
-  },
   // Grades 10-12 have no compulsory subjects - users select their subjects
 };

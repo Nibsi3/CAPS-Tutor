@@ -175,7 +175,7 @@ export default function PrivacyPage() {
               <section className="mb-12">
                 <h2 className="text-2xl font-bold mb-4">10. Children's Privacy</h2>
                 <p>
-                  Our Service is designed for learners in Grades 8-12. If you are under 18, please ensure you have your parent's or guardian's consent before providing any personal information to us.
+                  Our Service is designed for learners in Grades 10-12. If you are under 18, please ensure you have your parent's or guardian's consent before providing any personal information to us.
                 </p>
                 <p className="mt-4">
                   We take special care to protect the privacy of minors. We do not knowingly collect personal information from children without appropriate consent. If you believe we have inadvertently collected information from a minor without proper consent, please contact us immediately.

@@ -95,25 +95,59 @@ export function useCollection<T = any>(
           errorMessage.includes('unauthorized');
 
         // Check if collection doesn't exist
+        // Note: Appwrite sometimes returns 404 for query errors too, so we need to be more specific
         const isCollectionNotFound = 
           errorCode === 404 && 
-          (errorMessage.includes('collection') || errorMessage.includes('could not be found'));
+          (errorMessage.includes('collection') || errorMessage.includes('could not be found')) &&
+          !errorMessage.includes('attribute') &&
+          !errorMessage.includes('index') &&
+          !errorMessage.includes('query');
         
         if (isCollectionNotFound) {
-          const helpfulMessage = `Collection "${collectionId}" not found in database "${databaseId}". ` +
-            `Please create it in Appwrite Console. ` +
-            `See docs/APPWRITE_COLLECTIONS_SETUP.md for instructions.`;
-          
-          console.error(`❌ ${helpfulMessage}`);
-          console.error('Collection details:', {
-            collectionId: collectionId || 'MISSING',
-            databaseId: databaseId || 'MISSING',
-            errorCode: errorCode || 'MISSING',
-            errorMessage: (err as any).message || 'MISSING',
-            config: {
-              databaseId: appwriteConfig.databaseId || 'MISSING',
-              projectId: appwriteConfig.projectId || 'MISSING',
-            }
+          // Import diagnostic utilities (dynamic import to avoid circular dependencies)
+          import('@/lib/collection-diagnostics').then(({ getCollectionNotFoundMessage, generateDiagnosticCode }) => {
+            const helpfulMessage = getCollectionNotFoundMessage(collectionId, databaseId, err);
+            
+            console.error(`❌ Collection "${collectionId}" not found in database "${databaseId}"`);
+            console.error('\n' + '='.repeat(80));
+            console.error('DIAGNOSTIC INFORMATION');
+            console.error('='.repeat(80));
+            console.error('Collection details:', {
+              collectionId: collectionId || 'MISSING',
+              databaseId: databaseId || 'MISSING',
+              errorCode: errorCode || 'MISSING',
+              errorMessage: (err as any).message || 'MISSING',
+              config: {
+                databaseId: appwriteConfig.databaseId || 'MISSING',
+                projectId: appwriteConfig.projectId || 'MISSING',
+              }
+            });
+            
+            console.error('\n' + '='.repeat(80));
+            console.error('QUICK FIX - Run this diagnostic code:');
+            console.error('='.repeat(80));
+            console.log(generateDiagnosticCode());
+            console.error('\n' + '='.repeat(80));
+            console.error('Or visit: http://localhost:9002/api/admin/debug/check-all-collections');
+            console.error('Or run: node scripts/check-collections.js');
+            console.error('='.repeat(80) + '\n');
+            
+            // Also log the full helpful message
+            console.error(helpfulMessage);
+          }).catch(() => {
+            // Fallback if diagnostic import fails
+            const helpfulMessage = `Collection "${collectionId}" not found in database "${databaseId}". ` +
+              `Please create it in Appwrite Console. ` +
+              `See docs/APPWRITE_COLLECTIONS_SETUP.md for instructions. ` +
+              `Run diagnostics: Visit /api/admin/debug/check-collections or run: node scripts/check-collections.js`;
+            
+            console.error(`❌ ${helpfulMessage}`);
+            console.error('Collection details:', {
+              collectionId: collectionId || 'MISSING',
+              databaseId: databaseId || 'MISSING',
+              errorCode: errorCode || 'MISSING',
+              errorMessage: (err as any).message || 'MISSING',
+            });
           });
           
           appwriteLogger.error(
@@ -125,7 +159,8 @@ export function useCollection<T = any>(
           
           // Return empty array instead of null to prevent app crashes
           // The error is still set so components can show a message if needed
-          setError(new Error(helpfulMessage));
+          const errorMessage = `Collection "${collectionId}" not found. See console for diagnostic instructions.`;
+          setError(new Error(errorMessage));
           setData([]);
         } else if (isNetworkError) {
           // Handle network errors gracefully - often temporary issues
@@ -150,11 +185,30 @@ export function useCollection<T = any>(
           setData([]);
           setError(null);
         } else {
+          // Log detailed error information for debugging
+          const errorDetails = {
+            collectionId,
+            databaseId,
+            errorCode,
+            errorMessage: (err as any).message,
+            errorType: (err as any).type,
+            queries: queries?.map(q => String(q)) || 'none'
+          };
+          
+          // Check for common query errors that might be misreported as collection not found
+          if (errorMessage.includes('attribute') || errorMessage.includes('index')) {
+            console.error('❌ Query Error (not collection error):', {
+              ...errorDetails,
+              hint: 'This might be a missing attribute or index issue, not a collection not found error',
+              suggestion: 'Visit /api/admin/debug/debug-userprogress to diagnose the issue'
+            });
+          }
+          
           appwriteLogger.error(
             'database',
             `Failed to list documents from collection: ${collectionId}`,
             err,
-            { collectionId, databaseId }
+            errorDetails
           );
           setError(err);
           setData(null);

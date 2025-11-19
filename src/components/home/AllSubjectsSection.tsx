@@ -53,53 +53,10 @@ const subjectDescriptions: Record<string, string> = {
 /**
  * Maps subjects to grades based on CAPS curriculum
  * This is a comprehensive mapping of all subjects available per grade
+ * Only supports Grades 10-12
  */
 export function getSubjectsForGrade(grade: string): string[] {
   const gradeNum = parseInt(grade);
-  
-  // Foundation Phase (Grades 1-3)
-  if (gradeNum >= 1 && gradeNum <= 3) {
-    return [
-      "Mathematics",
-      "English Home Language",
-      "English First Additional Language",
-      "Afrikaans Huistaal",
-      "Afrikaans Eerste Addisionele Taal",
-      "Life Skills",
-    ];
-  }
-  
-  // Intermediate Phase (Grades 4-6)
-  if (gradeNum >= 4 && gradeNum <= 6) {
-    return [
-      "Mathematics",
-      "English Home Language",
-      "English First Additional Language",
-      "Afrikaans Huistaal",
-      "Afrikaans Eerste Addisionele Taal",
-      "Life Skills",
-      "Natural Sciences and Technology",
-      "Social Sciences",
-    ];
-  }
-  
-  // Senior Phase (Grades 7-9)
-  if (gradeNum >= 7 && gradeNum <= 9) {
-    return [
-      "Mathematics",
-      "Mathematical Literacy",
-      "English Home Language",
-      "English First Additional Language",
-      "Afrikaans Huistaal",
-      "Afrikaans Eerste Addisionele Taal",
-      "Natural Sciences",
-      "Social Sciences",
-      "Technology",
-      "Economic & Management Sciences",
-      "Life Orientation",
-      "Creative Arts",
-    ];
-  }
   
   // FET Phase (Grades 10-12) - All subjects available
   if (gradeNum >= 10 && gradeNum <= 12) {
@@ -167,15 +124,6 @@ export function AllSubjectsSection() {
 
   const getPhaseDescription = (grade: string) => {
     const gradeNum = parseInt(grade);
-    if (gradeNum >= 1 && gradeNum <= 3) {
-      return "Foundation Phase - Building fundamental skills and knowledge";
-    }
-    if (gradeNum >= 4 && gradeNum <= 6) {
-      return "Intermediate Phase - Expanding knowledge and critical thinking";
-    }
-    if (gradeNum >= 7 && gradeNum <= 9) {
-      return "Senior Phase - Preparing for subject specialization";
-    }
     if (gradeNum >= 10 && gradeNum <= 12) {
       return "FET Phase - Specialized subjects for career preparation";
     }

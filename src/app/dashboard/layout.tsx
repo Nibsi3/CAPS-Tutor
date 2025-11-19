@@ -1,23 +1,23 @@
 'use client';
 
 import Link from "next/link"
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Bell,
   BookOpen,
   Home,
-  Settings,
   Target,
   Bot,
   Award,
   FileText,
   BarChart,
-  Gamepad2,
+  User,
+  Languages,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
+import { NotificationBell } from "@/components/notifications/NotificationBell"
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/language-provider";
 import { translations } from "@/lib/translations";
@@ -27,6 +27,10 @@ import { Loader } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { trackLogin } from '@/lib/achievement-tracking';
+import { useFeatures } from '@/hooks/use-features';
+import { ScrollToTop } from '@/components/ScrollToTop';
+import { useIsAdmin } from '@/hooks/use-is-admin';
+import { useAdminMode } from '@/hooks/use-admin-mode';
 
 
 export default function DashboardLayout({
@@ -35,12 +39,18 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const lang = useLanguage();
   const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
   const router = useRouter();
   
+  const isSettingsPage = pathname === '/dashboard/settings';
+  const activeSection = searchParams?.get('section') || 'personal';
+  
   const { user, isUserLoading } = useUser();
   const databases = useDatabases();
+  const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
+  const { adminModeEnabled } = useAdminMode(isAdmin || false);
   
   // Redirect unauthenticated users to login
   useEffect(() => {
@@ -48,6 +58,13 @@ export default function DashboardLayout({
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
+
+  // Redirect admins to admin dashboard if they're not in student mode
+  useEffect(() => {
+    if (!isUserLoading && !isAdminLoading && user && isAdmin && !adminModeEnabled) {
+      router.push('/admin');
+    }
+  }, [user, isUserLoading, isAdmin, isAdminLoading, adminModeEnabled, router]);
 
   // Track login when user is authenticated
   useEffect(() => {
@@ -66,9 +83,10 @@ export default function DashboardLayout({
   }, [user]);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<{ gradeLevel?: number }>(userProfileRef);
+  const { features } = useFeatures();
   
-  // Show loading state while checking auth or loading profile
-  if (isUserLoading || !user || isProfileLoading) {
+  // Show loading state while checking auth, loading profile, or checking admin status
+  if (isUserLoading || !user || isProfileLoading || isAdminLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader className="h-16 w-16 animate-spin" />
@@ -79,27 +97,45 @@ export default function DashboardLayout({
   
   // Only show past papers for Grade 12
   const showPastPapers = userGrade === 12;
-  // Only show games for grades 1-3
-  const showGames = userGrade >= 1 && userGrade <= 3;
 
   const allNavItems = [
-    { href: "/dashboard", icon: Home, label: t.dashboard },
-    { href: "/dashboard/lessons", icon: BookOpen, label: t.lessons },
-    { href: "/dashboard/practice", icon: Target, label: t.practice },
-    { href: "/dashboard/games", icon: Gamepad2, label: (t as any).games || "Games", requireGrade1to3: true },
-    { href: "/dashboard/past-papers", icon: FileText, label: t.pastPapers, requireGrade10: true },
-    { href: "/dashboard/tutor", icon: Bot, label: t.aiTutor, badge: "New" },
-    { href: "/dashboard/achievements", icon: Award, label: t.achievements },
-    { href: "/dashboard/progress", icon: BarChart, label: t.progress },
-    { href: "/dashboard/settings", icon: Settings, label: t.settings },
+    { href: "/dashboard", icon: Home, label: t.dashboard, description: "View your overview" },
+    { href: "/dashboard/lessons", icon: BookOpen, label: t.lessons, description: "Browse and study lessons" },
+    { href: "/dashboard/practice", icon: Target, label: t.practice, description: "Practice with questions", requireFeature: 'practiceQuestions' as const },
+    { href: "/dashboard/past-papers", icon: FileText, label: t.pastPapers, description: "Grade 12 exam papers", requireGrade12: true, requireFeature: 'pastPapers' as const },
+    { href: "/dashboard/tutor", icon: Bot, label: t.aiTutor, description: "Get AI-powered help", badge: "New", requireFeature: 'aiTutor' as const },
+    { href: "/dashboard/achievements", icon: Award, label: t.achievements, description: "View your achievements", requireFeature: 'achievements' as const },
+    { href: "/dashboard/progress", icon: BarChart, label: t.progress, description: "Track your progress", requireFeature: 'progressTracking' as const },
   ];
 
-  // Filter nav items based on user's grade
+  // Filter nav items based on user's grade and feature flags
   const navItems = allNavItems.filter(item => {
-    if (item.requireGrade10 && !showPastPapers) return false;
-    if (item.requireGrade1to3 && !showGames) return false;
+    if (item.requireGrade12 && !showPastPapers) return false;
+    if (item.requireFeature && !features[item.requireFeature]) return false;
     return true;
   });
+
+  // Settings navigation items
+  const settingsNavItems = [
+    {
+      id: 'personal',
+      label: t.personalInformation,
+      description: t.personalInformationDescription,
+      icon: User,
+    },
+    {
+      id: 'subjects',
+      label: 'My Subjects',
+      description: 'Choose CAPS subjects',
+      icon: BookOpen,
+    },
+    {
+      id: 'languages',
+      label: t.languageSubjects,
+      description: 'Manage language preferences',
+      icon: Languages,
+    },
+  ];
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -114,36 +150,87 @@ export default function DashboardLayout({
               </svg>
               <span className="font-headline">CAPS Tutor</span>
             </Link>
-            <Button variant="outline" size="icon" className="ml-auto h-8 w-8">
-              <Bell className="h-4 w-4" />
-              <span className="sr-only">Toggle notifications</span>
-            </Button>
+            <div className="ml-auto">
+              <NotificationBell />
+            </div>
           </div>
           <div className="flex-1">
-            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch={true}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                      isActive && "bg-accent text-primary"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                    {item.badge && (
-                       <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
-                         {item.badge}
-                       </Badge>
-                    )}
-                  </Link>
-                )
-              })}
-            </nav>
+            {isSettingsPage ? (
+              <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                <Link
+                  href={isAdmin && !adminModeEnabled ? "/admin" : "/dashboard"}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                  )}
+                >
+                  <Home className="h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold">{t.dashboard}</span>
+                    <span className="text-xs font-normal text-muted-foreground">Back to overview</span>
+                  </div>
+                </Link>
+                {settingsNavItems.map((item) => {
+                  const isActive = activeSection === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        const params = new URLSearchParams(searchParams?.toString());
+                        params.set('section', item.id);
+                        router.push(`/dashboard/settings?${params.toString()}`);
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition",
+                        isActive
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-transparent text-muted-foreground hover:border-muted hover:bg-muted/50"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold">{item.label}</span>
+                        {item.description && (
+                          <span className="text-xs text-muted-foreground">{item.description}</span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </nav>
+            ) : (
+              <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+                {navItems.map((item) => {
+                  const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      prefetch={true}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition",
+                        isActive
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-transparent text-muted-foreground hover:border-muted hover:bg-muted/50"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold">{item.label}</span>
+                        {item.description && (
+                          <span className="text-xs text-muted-foreground">{item.description}</span>
+                        )}
+                      </div>
+                      {item.badge && (
+                         <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+                           {item.badge}
+                         </Badge>
+                      )}
+                    </Link>
+                  )
+                })}
+              </nav>
+            )}
           </div>
           <div className="mt-auto p-4">
             
@@ -194,6 +281,7 @@ export default function DashboardLayout({
         </div>
 
         <DashboardHeader />
+        <ScrollToTop />
         <main className="flex flex-1 flex-col overflow-y-auto p-4 lg:p-6 bg-muted/40">
           {children}
         </main>

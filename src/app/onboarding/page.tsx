@@ -59,20 +59,7 @@ const profileFormSchema = z.object({
   gradeLevel: z.string({
     required_error: 'Please select a grade level.',
   }),
-  subjects: z.array(z.string()).optional(),
-}).superRefine((data, ctx) => {
-  // Only require subjects for grades 10, 11, and 12
-  const isSeniorGrade = data.gradeLevel === "10" || data.gradeLevel === "11" || data.gradeLevel === "12";
-  
-  if (isSeniorGrade) {
-    if (!data.subjects || data.subjects.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'You have to select at least one subject for your grade level.',
-        path: ['subjects'],
-      });
-    }
-  }
+  subjects: z.array(z.string()).min(1, { message: 'You have to select at least one subject for your grade level.' }),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -126,9 +113,6 @@ export default function OnboardingPage() {
   const { formState, reset, watch } = form;
   const selectedGrade = watch('gradeLevel');
 
-  // Check if selected grade is 10, 11, or 12
-  const isSeniorGrade = selectedGrade === "10" || selectedGrade === "11" || selectedGrade === "12";
-
   useEffect(() => {
     if (userProfile && !formState.isDirty) {
       reset({
@@ -141,13 +125,6 @@ export default function OnboardingPage() {
       });
     }
   }, [userProfile, reset, formState.isDirty]);
-
-  // Clear subjects when grade changes to below 10
-  useEffect(() => {
-    if (selectedGrade && !isSeniorGrade) {
-      form.setValue('subjects', []);
-    }
-  }, [selectedGrade, isSeniorGrade, form]);
 
   async function onSubmit(data: ProfileFormValues) {
     if (!userProfileRef) {
@@ -187,9 +164,8 @@ export default function OnboardingPage() {
         return;
     }
 
-    // Validate subjects for senior grades (10, 11, 12)
-    const isSeniorGrade = data.gradeLevel === "10" || data.gradeLevel === "11" || data.gradeLevel === "12";
-    if (isSeniorGrade && (!data.subjects || data.subjects.length === 0)) {
+    // Validate subjects are selected
+    if (!data.subjects || data.subjects.length === 0) {
         toast({
             variant: "destructive",
             title: "Validation Error",
@@ -248,11 +224,33 @@ export default function OnboardingPage() {
         );
 
     savePromise
-      .then(() => {
+      .then(async () => {
         toast({
           title: 'Profile Saved!',
           description: 'Your learning preferences have been set up.',
         });
+        
+        // Check if user is an admin before redirecting
+        if (user.email) {
+          try {
+            const adminCheckResponse = await fetch(`/api/admin/debug/check-admin?email=${encodeURIComponent(user.email)}`, {
+              method: 'GET',
+              credentials: 'include',
+            });
+            const adminCheckData = await adminCheckResponse.json();
+            
+            if (adminCheckData.isAdmin) {
+              // User is an admin, redirect to admin panel
+              router.push('/admin');
+              return;
+            }
+          } catch (adminError) {
+            // If admin check fails, continue with normal flow
+            console.error('Error checking admin status:', adminError);
+          }
+        }
+        
+        // Not an admin, redirect to dashboard
         router.push('/dashboard');
       })
       .catch((serverError: any) => {
@@ -267,11 +265,33 @@ export default function OnboardingPage() {
             userProfileRef.documentId,
             dataToSave
           )
-            .then(() => {
+            .then(async () => {
               toast({
                 title: 'Profile Saved!',
                 description: 'Your learning preferences have been set up.',
               });
+              
+              // Check if user is an admin before redirecting
+              if (user.email) {
+                try {
+                  const adminCheckResponse = await fetch(`/api/admin/debug/check-admin?email=${encodeURIComponent(user.email)}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                  });
+                  const adminCheckData = await adminCheckResponse.json();
+                  
+                  if (adminCheckData.isAdmin) {
+                    // User is an admin, redirect to admin panel
+                    router.push('/admin');
+                    return;
+                  }
+                } catch (adminError) {
+                  // If admin check fails, continue with normal flow
+                  console.error('Error checking admin status:', adminError);
+                }
+              }
+              
+              // Not an admin, redirect to dashboard
               router.push('/dashboard');
             })
             .catch((createError: any) => {
@@ -427,13 +447,7 @@ export default function OnboardingPage() {
                             <FormItem>
                                 <FormLabel>What grade are you in?</FormLabel>
                                 <Select 
-                                  onValueChange={(value) => {
-                                    field.onChange(value);
-                                    // Clear subjects if switching to a grade below 10
-                                    if (value !== "10" && value !== "11" && value !== "12") {
-                                      form.setValue('subjects', []);
-                                    }
-                                  }} 
+                                  onValueChange={field.onChange} 
                                   value={field.value}
                                 >
                                 <FormControl>
@@ -495,72 +509,60 @@ export default function OnboardingPage() {
                         />
                     </div>
                     
-                    {/* Only show subjects selection for grades 10, 11, and 12 */}
-                    {isSeniorGrade && (
-                        <FormField
-                            control={form.control}
-                            name="subjects"
-                            render={() => (
-                            <FormItem>
-                                <div className="mb-4">
-                                <FormLabel className="text-base">Which subjects do you want to study?</FormLabel>
-                                <FormDescription>
-                                    Select all the subjects you are currently taking.
-                                </FormDescription>
-                                </div>
-                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-                                {subjects.map((item) => (
-                                    <FormField
-                                    key={item.value}
-                                    control={form.control}
-                                    name="subjects"
-                                    render={({ field }) => {
-                                        return (
-                                        <FormItem
-                                            key={item.value}
-                                            className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
-                                        >
-                                            <FormControl>
-                                            <Checkbox
-                                                checked={field.value?.includes(item.value)}
-                                                onCheckedChange={(checked) => {
-                                                    return checked
-                                                        ? field.onChange([
-                                                            ...(field.value || []),
-                                                            item.value,
-                                                        ])
-                                                        : field.onChange(
-                                                            field.value?.filter(
-                                                            (value) => value !== item.value
-                                                            )
-                                                        );
-                                                }}
-                                            />
-                                            </FormControl>
-                                            <FormLabel className="font-normal">
-                                            {item.label}
-                                            </FormLabel>
-                                        </FormItem>
-                                        );
-                                    }}
-                                    />
-                                ))}
-                                </div>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    )}
-                    
-                    {/* Show informational message for grades below 10 */}
-                    {selectedGrade && !isSeniorGrade && (
-                        <div className="rounded-lg border bg-muted/50 p-4">
-                            <p className="text-sm text-muted-foreground">
-                                <strong>Note:</strong> Subject selection is available for Grade 10, 11, and 12 students. 
-                                For lower grades, you'll have access to general learning content.
-                            </p>
-                        </div>
-                    )}
+                    {/* Subjects selection */}
+                    <FormField
+                        control={form.control}
+                        name="subjects"
+                        render={() => (
+                        <FormItem>
+                            <div className="mb-4">
+                            <FormLabel className="text-base">Which subjects do you want to study?</FormLabel>
+                            <FormDescription>
+                                Select all the subjects you are currently taking.
+                            </FormDescription>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+                            {subjects.map((item) => (
+                                <FormField
+                                key={item.value}
+                                control={form.control}
+                                name="subjects"
+                                render={({ field }) => {
+                                    return (
+                                    <FormItem
+                                        key={item.value}
+                                        className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
+                                    >
+                                        <FormControl>
+                                        <Checkbox
+                                            checked={field.value?.includes(item.value)}
+                                            onCheckedChange={(checked) => {
+                                                return checked
+                                                    ? field.onChange([
+                                                        ...(field.value || []),
+                                                        item.value,
+                                                    ])
+                                                    : field.onChange(
+                                                        field.value?.filter(
+                                                        (value) => value !== item.value
+                                                        )
+                                                    );
+                                            }}
+                                        />
+                                        </FormControl>
+                                        <FormLabel className="font-normal">
+                                        {item.label}
+                                        </FormLabel>
+                                    </FormItem>
+                                    );
+                                }}
+                                />
+                            ))}
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
                     <Button type="submit" disabled={formState.isSubmitting} className="w-full">
                         {formState.isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                         Save and Go to Dashboard

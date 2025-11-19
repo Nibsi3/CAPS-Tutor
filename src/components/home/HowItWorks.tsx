@@ -2,58 +2,73 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Bot, Target, MessageSquare, TrendingUp, GraduationCap, Brain } from "lucide-react";
 import { SafeImage } from "@/components/ui/safe-image";
+import { getHowItWorksImageOrFallback } from "@/lib/how-it-works-images";
 import Link from "next/link";
 
-const steps = [
+const baseSteps = [
   {
     id: 1,
     title: "Intelligent Content Generation",
     description: "Our AI analyzes the CAPS curriculum to generate personalized practice questions tailored to your grade and subject. Every question is carefully crafted to match the exact requirements and difficulty level of your syllabus.",
     icon: Brain,
-    imageUrl: "https://images.pexels.com/photos/3760868/pexels-photo-3760868.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "AI-generated educational content"
+    imageKey: "intelligent-content",
+    fallbackAlt: "AI-generated educational content",
   },
   {
     id: 2,
     title: "Adaptive Learning",
     description: "The system learns from your performance and adjusts the difficulty and topics accordingly. Weak areas get more practice, while mastered topics are reviewed less frequently—optimizing your study time.",
     icon: Target,
-    imageUrl: "https://images.pexels.com/photos/3760826/pexels-photo-3760826.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "Adaptive learning visualization"
+    imageKey: "adaptive-learning",
+    fallbackAlt: "Adaptive learning visualization",
   },
   {
     id: 3,
     title: "Instant AI Feedback",
     description: "Get immediate, detailed explanations for every answer you submit. Our AI doesn't just tell you if you're right or wrong—it provides step-by-step solutions and helps you understand the concepts behind each problem.",
     icon: MessageSquare,
-    imageUrl: "https://images.pexels.com/photos/3760864/pexels-photo-3760864.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "Interactive feedback and explanations"
+    imageKey: "ai-feedback",
+    fallbackAlt: "Interactive feedback and explanations",
   },
   {
     id: 4,
     title: "Progress Tracking",
     description: "Visualize your learning journey with detailed analytics. Track topic mastery, time spent studying, and improvement over time. See exactly where you excel and where you need more practice.",
     icon: TrendingUp,
-    imageUrl: "https://images.pexels.com/photos/3760863/pexels-photo-3760863.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "Progress tracking and analytics"
+    imageKey: "progress-tracking",
+    fallbackAlt: "Progress tracking and analytics",
   },
   {
     id: 5,
     title: "CAPS Alignment",
     description: "Every lesson, practice question, and assessment is meticulously aligned with the South African CAPS curriculum. Our AI understands the specific requirements, terminology, and assessment standards used in South African schools.",
     icon: GraduationCap,
-    imageUrl: "https://images.pexels.com/photos/3760852/pexels-photo-3760852.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "CAPS curriculum alignment"
+    imageKey: "caps-alignment",
+    fallbackAlt: "CAPS curriculum alignment",
   },
   {
     id: 6,
     title: "Interactive Tutoring",
     description: "Have a conversation with our AI tutor whenever you're stuck. Ask questions, request examples, or get help breaking down complex problems into manageable steps—just like having a personal tutor available 24/7.",
     icon: Bot,
-    imageUrl: "https://images.pexels.com/photos/3760861/pexels-photo-3760861.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "Interactive AI tutoring"
+    imageKey: "interactive-tutoring",
+    fallbackAlt: "Interactive AI tutoring",
   }
 ];
+
+const steps = baseSteps.map((step) => {
+  const image = getHowItWorksImageOrFallback(
+    step.imageKey,
+    `/images/how-it-works/${step.imageKey}.jpg`,
+    step.fallbackAlt
+  );
+
+  return {
+    ...step,
+    imageUrl: image.imageUrl,
+    imageAlt: image.imageAlt,
+  };
+});
 
 export function HowItWorks() {
   return (

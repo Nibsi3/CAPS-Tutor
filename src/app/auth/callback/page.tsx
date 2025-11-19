@@ -66,9 +66,26 @@ export default function AuthCallbackPage() {
             const userEmail = user.email || `user-${user.$id}@oauth.local`;
             const userName = user.name || 'New User';
             
+            // Extract photo URL from user prefs (Google OAuth stores it here)
+            // Check multiple possible locations where Appwrite might store the photo
+            const prefs = (user as any).prefs || {};
+            const photoURL = prefs.avatar || 
+                           prefs.picture || 
+                           prefs.photoURL ||
+                           prefs['https://www.googleapis.com/auth/userinfo.profile']?.picture ||
+                           null;
+            
+            console.log('🔍 Checking for Google photo URL...');
+            console.log('User prefs keys:', Object.keys(prefs));
+            if (photoURL) {
+              console.log('✅ Found photo URL:', photoURL.substring(0, 50) + '...');
+            } else {
+              console.log('⚠️ No photo URL found in user prefs');
+            }
+            
             try {
-              // Create user profile with basic info from OAuth
-              await ensureUserProfile(databases, user.$id, userEmail, userName);
+              // Create user profile with basic info from OAuth including photo
+              await ensureUserProfile(databases, user.$id, userEmail, userName, photoURL || undefined);
               
               // After creating profile, redirect to onboarding
               router.push('/onboarding');
@@ -132,6 +149,48 @@ export default function AuthCallbackPage() {
 
         // User exists in database, check if profile is complete
         if (userProfile) {
+          // Update photoURL from Google OAuth if available and different
+          const prefs = (user as any).prefs || {};
+          const photoURL = prefs.avatar || 
+                         prefs.picture || 
+                         prefs.photoURL ||
+                         prefs['https://www.googleapis.com/auth/userinfo.profile']?.picture ||
+                         null;
+          
+          // Update photoURL if we have one from Google and it's different from what's stored
+          if (photoURL && (!userProfile.photoURL || userProfile.photoURL !== photoURL)) {
+            try {
+              const userEmail = user.email || `user-${user.$id}@oauth.local`;
+              const userName = user.name || 'User';
+              await ensureUserProfile(databases, user.$id, userEmail, userName, photoURL);
+              console.log('✅ Updated existing user photoURL from Google OAuth');
+            } catch (updateError: any) {
+              // Log but don't block the flow if photo update fails
+              console.warn('⚠️ Could not update photoURL for existing user:', updateError);
+            }
+          }
+          
+          // First check if user is an admin
+          if (user.email) {
+            try {
+              const adminCheckResponse = await fetch(`/api/admin/debug/check-admin?email=${encodeURIComponent(user.email)}`, {
+                method: 'GET',
+                credentials: 'include',
+              });
+              const adminCheckData = await adminCheckResponse.json();
+              
+              if (adminCheckData.isAdmin) {
+                // User is an admin, redirect to admin panel
+                router.push('/admin');
+                setIsChecking(false);
+                return;
+              }
+            } catch (adminError) {
+              // If admin check fails, continue with normal flow
+              console.error('Error checking admin status:', adminError);
+            }
+          }
+          
           // Check if user has completed onboarding (has subjects)
           if (userProfile.subjects && Array.isArray(userProfile.subjects) && userProfile.subjects.length > 0) {
             // Profile is complete, redirect to dashboard

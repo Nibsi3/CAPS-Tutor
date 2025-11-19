@@ -10,10 +10,12 @@ import { Target, Bot, BarChart } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useLanguage } from "@/components/language-provider";
 import { translations } from "@/lib/translations";
+import { useUser } from "@/appwrite";
 
 export default function HomePageContent() {
   const currentLang = useLanguage();
   const t = translations[currentLang] || translations.en;
+  const { user } = useUser();
   
   // Debug: Log language changes
   console.log("HomePageContent - Current language:", currentLang);
@@ -81,11 +83,13 @@ export default function HomePageContent() {
                <AITryOut />
             </div>
 
-            <div className="flex items-center justify-center gap-4 pt-8">
-                <Button asChild size="lg">
-                    <Link href="/register">{t.getStartedForFree}</Link>
-                </Button>
-            </div>
+            {!user && (
+              <div className="flex items-center justify-center gap-4 pt-8">
+                  <Button asChild size="lg">
+                      <Link href="/register">{t.getStartedForFree}</Link>
+                  </Button>
+              </div>
+            )}
           </section>
 
         </div>

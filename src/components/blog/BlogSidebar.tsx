@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { blogPosts } from '@/lib/blog-posts';
+import { publishedBlogPosts } from '@/lib/blog-posts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
@@ -11,13 +11,13 @@ interface BlogSidebarProps {
 
 export function BlogSidebar({ currentPostSlug, currentPostCategory }: BlogSidebarProps) {
   // Get recent posts (excluding current post and coming soon posts)
-  const recentPosts = blogPosts
+  const recentPosts = publishedBlogPosts
     .filter((post) => post.slug !== currentPostSlug && !post.comingSoon)
     .sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime())
     .slice(0, 5);
 
   // Get related posts by category (excluding current post and coming soon posts)
-  const relatedByCategory = blogPosts
+  const relatedByCategory = publishedBlogPosts
     .filter(
       (post) =>
         post.slug !== currentPostSlug &&
@@ -29,12 +29,12 @@ export function BlogSidebar({ currentPostSlug, currentPostCategory }: BlogSideba
 
   // Get all unique categories
   const categories = Array.from(
-    new Set(blogPosts.map((post) => post.category))
+    new Set(publishedBlogPosts.map((post) => post.category))
   ).sort();
 
   // Get posts count by category
   const categoryCounts = categories.reduce((acc, category) => {
-    acc[category] = blogPosts.filter((post) => post.category === category).length;
+    acc[category] = publishedBlogPosts.filter((post) => post.category === category).length;
     return acc;
   }, {} as Record<string, number>);
 

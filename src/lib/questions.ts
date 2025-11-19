@@ -1461,7 +1461,7 @@ const allQuestions: Record<string, Question[]> = {
   // History (Grades 10-12)
 
   // =================================
-  // English Home Language (Grades 1-12)
+  // English Home Language (Grades 10-12)
   // =================================
   "English Home Language": [
     // --- Grade 1 Questions ---

@@ -1,0 +1,56 @@
+[
+  {
+    "slug": "intelligent-content",
+    "photoId": 3760868,
+    "photographer": "Sound On",
+    "photographer_url": "https://www.pexels.com/@sound-on",
+    "alt": "Charming portrait of a young woman with a joyful smile against a blue backdrop.",
+    "localPath": "/images/how-it-works/intelligent-content.jpg",
+    "originalUrl": "https://www.pexels.com/photo/smiling-woman-in-yellow-crew-neck-t-shirt-3760868/"
+  },
+  {
+    "slug": "adaptive-learning",
+    "photoId": 3760826,
+    "photographer": "Sound On",
+    "photographer_url": "https://www.pexels.com/@sound-on",
+    "alt": "Young woman posing playfully against a vibrant red and yellow backdrop.",
+    "localPath": "/images/how-it-works/adaptive-learning.jpg",
+    "originalUrl": "https://www.pexels.com/photo/photo-of-woman-posing-for-camera-3760826/"
+  },
+  {
+    "slug": "ai-feedback",
+    "photoId": 3760864,
+    "photographer": "Sound On",
+    "photographer_url": "https://www.pexels.com/@sound-on",
+    "alt": "Cheerful woman posing in a yellow top, smiling against a turquoise backdrop.",
+    "localPath": "/images/how-it-works/ai-feedback.jpg",
+    "originalUrl": "https://www.pexels.com/photo/photo-of-woman-in-yellow-shirt-3760864/"
+  },
+  {
+    "slug": "progress-tracking",
+    "photoId": 4560140,
+    "photographer": "Ketut Subiyanto",
+    "photographer_url": "https://www.pexels.com/@ketut-subiyanto",
+    "alt": "Side view of young African American guy with dreadlocks in casual outfit drinking coffee from disposable cup and typing on laptop while chilling on bench in city park",
+    "localPath": "/images/how-it-works/progress-tracking.jpg",
+    "originalUrl": "https://www.pexels.com/photo/pensive-black-man-with-takeaway-coffee-entertaining-with-laptop-in-park-4560140/"
+  },
+  {
+    "slug": "caps-alignment",
+    "photoId": 3760852,
+    "photographer": "Sound On",
+    "photographer_url": "https://www.pexels.com/@sound-on",
+    "alt": "Happy woman in yellow t-shirt and red sweatshirt posing against a blue background.",
+    "localPath": "/images/how-it-works/caps-alignment.jpg",
+    "originalUrl": "https://www.pexels.com/photo/photo-of-woman-in-yellow-t-shirt-blue-jeans-and-red-sweatshirt-posing-in-front-of-blue-background-3760852/"
+  },
+  {
+    "slug": "interactive-tutoring",
+    "photoId": 3760861,
+    "photographer": "T. O.",
+    "photographer_url": "https://www.pexels.com/@t-o-1009111",
+    "alt": "Free stock photo of cornflower, cornflowers, flower",
+    "localPath": "/images/how-it-works/interactive-tutoring.jpg",
+    "originalUrl": "https://www.pexels.com/photo/summer-flower-retro-flower-field-3760861/"
+  }
+]

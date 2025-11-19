@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUser, useDoc, useCollection, useMemoAppwrite } from "@/appwrite";
 import { appwriteConfig } from "@/appwrite/config";
@@ -10,6 +10,9 @@ import { Loader, BarChart2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFeature } from '@/hooks/use-features';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 interface StudentProgress {
   learningObjectiveId: string;
@@ -22,16 +25,49 @@ interface StudentProgress {
   type?: string;
 }
 
-const topicColors = [
-  "bg-chart-1",
-  "bg-chart-2",
-  "bg-chart-3",
-  "bg-chart-4",
-  "bg-chart-5",
+// Beautiful gradient colors that match the app's aesthetic
+const topicGradients = [
+  "bg-gradient-to-r from-blue-500 via-blue-600 to-cyan-500",           // Primary blue gradient
+  "bg-gradient-to-r from-purple-500 via-purple-600 to-pink-500",        // Rich purple-pink gradient
+  "bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500",            // Teal-cyan gradient
+  "bg-gradient-to-r from-orange-500 via-orange-600 to-red-500",          // Warm coral-orange gradient
+  "bg-gradient-to-r from-pink-500 via-rose-500 to-fuchsia-500",          // Vibrant pink gradient
+  "bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500",            // Sky blue gradient
+  "bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-500",      // Periwinkle gradient
+  "bg-gradient-to-r from-yellow-400 via-orange-500 to-amber-500",        // Golden yellow gradient
 ];
 
 export default function ProgressPage() {
   const { user, isUserLoading } = useUser();
+  const router = useRouter();
+  const { toast } = useToast();
+  const { enabled: progressTrackingEnabled, isLoading: featuresLoading } = useFeature('progressTracking');
+  const [isMounted, setIsMounted] = useState(false);
+  const hasAnimatedRef = useRef(false);
+  
+  // Redirect if feature is disabled
+  useEffect(() => {
+    if (!featuresLoading && !progressTrackingEnabled) {
+      toast({
+        title: "Feature Disabled",
+        description: "Progress Tracking is currently disabled. Please contact an administrator.",
+        variant: "destructive",
+      });
+      router.push('/dashboard');
+    }
+  }, [progressTrackingEnabled, featuresLoading, router, toast]);
+  
+  if (featuresLoading || isUserLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin" />
+      </div>
+    );
+  }
+  
+  if (!progressTrackingEnabled) {
+    return null; // Will redirect via useEffect
+  }
 
   const userProfileRef = useMemoAppwrite(() => {
     if (!user) return null;
@@ -63,6 +99,17 @@ export default function ProgressPage() {
   }, [user, selectedSubject]);
 
   const { data: progressData, isLoading: isProgressLoading } = useCollection<StudentProgress>(progressQuery);
+
+  // Trigger animation when data is loaded
+  useEffect(() => {
+    if (!isProgressLoading && progressData && progressData.length > 0 && !hasAnimatedRef.current) {
+      setIsMounted(true);
+      hasAnimatedRef.current = true;
+    } else if (isProgressLoading) {
+      setIsMounted(false);
+      hasAnimatedRef.current = false;
+    }
+  }, [isProgressLoading, progressData]);
 
   const processedProgress = useMemo(() => {
     if (!progressData || progressData.length === 0) return {};
@@ -200,12 +247,29 @@ export default function ProgressPage() {
               ) : Object.keys(processedProgress).length > 0 ? (
                 <div className="space-y-6">
                   {Object.entries(processedProgress).map(([topic, masteryLevel], index) => (
-                    <div key={topic} className="space-y-2">
+                    <div 
+                      key={topic} 
+                      className={cn(
+                        "space-y-2 transition-all duration-700 ease-out",
+                        isMounted 
+                          ? "opacity-100 translate-y-0" 
+                          : "opacity-0 translate-y-4"
+                      )}
+                      style={{
+                        transitionDelay: `${index * 100}ms`
+                      }}
+                    >
                       <div className="flex justify-between font-medium">
                         <span>{topic}</span>
                         <span>{Math.round(masteryLevel)}%</span>
                       </div>
-                      <Progress value={masteryLevel} indicatorClassName={cn(topicColors[index % topicColors.length])} />
+                      <Progress 
+                        value={masteryLevel} 
+                        indicatorClassName={cn(
+                          topicGradients[index % topicGradients.length],
+                          "shadow-lg shadow-black/20"
+                        )}
+                      />
                     </div>
                   ))}
                 </div>

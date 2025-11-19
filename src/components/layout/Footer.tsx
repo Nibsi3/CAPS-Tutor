@@ -4,7 +4,7 @@ export function Footer() {
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-6 py-10 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="mb-2 font-headline text-lg font-semibold">CAPS Tutor</div>
-          <p className="text-muted-foreground text-sm">AI tutor aligned to South Africa's CAPS curriculum for Grades 8–12.</p>
+          <p className="text-muted-foreground text-sm">AI tutor aligned to South Africa's CAPS curriculum for Grades 10–12.</p>
         </div>
         <div>
           <div className="mb-2 text-sm font-semibold">Product</div>
@@ -19,9 +19,9 @@ export function Footer() {
         <div>
           <div className="mb-2 text-sm font-semibold">Resources</div>
           <ul className="space-y-1 text-sm text-muted-foreground">
-            <li><a className="hover:text-primary" href="/dashboard/lessons">Study Guides</a></li>
+            <li><a className="hover:text-primary" href="/study-guidelines">Study Guidelines</a></li>
             <li><a className="hover:text-primary" href="/dashboard/practice">Practice Questions</a></li>
-            <li><a className="hover:text-primary" href="/blog">Exam Tips</a></li>
+            <li><a className="hover:text-primary" href="/exam-tips">Exam Tips</a></li>
             <li>
               <a 
                 className="hover:text-primary" 

@@ -62,10 +62,42 @@ export default function LoginPage() {
   useEffect(() => {
     // This effect is now only for users who are ALREADY logged in when they visit the page.
     if (user && !isUserLoading && !isProfileLoading) {
-      if (userProfile && userProfile.subjects && userProfile.subjects.length > 0) {
-        router.push('/dashboard');
-      } else if (userProfile) {
-        router.push('/onboarding');
+      // Check if user is an admin first
+      if (user.email) {
+        fetch(`/api/admin/debug/check-admin?email=${encodeURIComponent(user.email)}`, {
+          method: 'GET',
+          credentials: 'include',
+        })
+          .then(async (response) => {
+            const data = await response.json();
+            if (response.ok && data.isAdmin) {
+              // User is an admin, redirect to admin panel
+              router.push('/admin');
+              return;
+            }
+            // Not an admin, continue with normal flow
+            if (userProfile && userProfile.subjects && userProfile.subjects.length > 0) {
+              router.push('/dashboard');
+            } else if (userProfile) {
+              router.push('/onboarding');
+            }
+          })
+          .catch((error) => {
+            // If admin check fails, continue with normal flow
+            console.error('Error checking admin status:', error);
+            if (userProfile && userProfile.subjects && userProfile.subjects.length > 0) {
+              router.push('/dashboard');
+            } else if (userProfile) {
+              router.push('/onboarding');
+            }
+          });
+      } else {
+        // No email, continue with normal flow
+        if (userProfile && userProfile.subjects && userProfile.subjects.length > 0) {
+          router.push('/dashboard');
+        } else if (userProfile) {
+          router.push('/onboarding');
+        }
       }
     }
   }, [user, userProfile, isUserLoading, isProfileLoading, router]);
@@ -110,6 +142,29 @@ export default function LoginPage() {
             'user',
             currentUser.$id
           );
+          
+          // Check if user is an admin first
+          if (currentUser.email) {
+            try {
+              const adminCheckResponse = await fetch(`/api/admin/debug/check-admin?email=${encodeURIComponent(currentUser.email)}`, {
+                method: 'GET',
+                credentials: 'include',
+              });
+              const adminCheckData = await adminCheckResponse.json();
+              
+              if (adminCheckData.isAdmin) {
+                // User is an admin, redirect to admin panel
+                router.push('/admin');
+                setIsSubmitting(false);
+                return;
+              }
+            } catch (adminError) {
+              // If admin check fails, continue with normal flow
+              console.error('Error checking admin status:', adminError);
+            }
+          }
+          
+          // Not an admin, continue with normal flow
           if (profile && (profile as any).subjects?.length > 0) {
             router.push('/dashboard');
           } else {
@@ -293,15 +348,15 @@ export default function LoginPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="flex items-center justify-between">
-                        <FormLabel>Password</FormLabel>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <div className="flex justify-end">
                         <Link href="/forgot-password" className="text-sm text-primary hover:underline">
                           Forgot password?
                         </Link>
                       </div>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

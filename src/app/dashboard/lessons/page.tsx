@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { lessons, grades, placeholderLessons, subjectColors } from "@/lib/data";
-import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator, Loader, UserCheck, Settings, MessageSquare, Heart, Sparkles, Users, TrendingUp, Clock, Cpu, Laptop, Plane, ShoppingBag, UtensilsCrossed, Ruler } from "lucide-react";
+import { BookOpen, BarChart, FileText, FlaskConical, Globe, Landmark, Calculator, Loader, UserCheck, Settings, MessageSquare, Heart, Sparkles, Users, TrendingUp, Clock, Cpu, Laptop, Plane, ShoppingBag, UtensilsCrossed, Ruler, Search } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { useDoc, useUser, useDatabases, useMemoAppwrite } from '@/appwrite';
 import { appwriteConfig } from '@/appwrite/config';
@@ -27,6 +28,8 @@ import {
 } from "@/components/ui/tooltip"
 import { useLanguage } from '@/components/language-provider';
 import { translations } from '@/lib/translations';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useScrollRestore } from '@/hooks/use-scroll-restore';
 
   // Create a unique list of subjects from the available lessons
 const allLessons = [...lessons, ...placeholderLessons];
@@ -78,9 +81,13 @@ export default function LessonsPage() {
   }, [user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<{gradeLevel: number, subjects: string[]}>(userProfileRef);
 
-  // Manual filters state
-  const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  // Manual filters state - persist across reloads
+  const [selectedGrade, setSelectedGrade] = useLocalStorage<string | null>("lessons-selected-grade", null);
+  const [selectedSubject, setSelectedSubject] = useLocalStorage<string | null>("lessons-selected-subject", null);
+  const [searchTerm, setSearchTerm] = useLocalStorage<string>("lessons-search-term", '');
+  
+  // Restore scroll position on reload
+  useScrollRestore("lessons-page");
 
   // Determine the effective grade to use for filtering
   const effectiveGrade = selectedGrade || (userProfile?.gradeLevel ? userProfile.gradeLevel.toString() : null);
@@ -92,35 +99,44 @@ export default function LessonsPage() {
 
   // Determine if profile filters should be used (only if no manual filters are active)
   const hasManualFilters = selectedGrade !== null || selectedSubject !== null;
-  const isSeniorGrade = userProfile?.gradeLevel ? userProfile.gradeLevel >= 10 : false;
   
   // Use profile filters if:
   // 1. No manual filters are active
   // 2. User has a grade level
-  // 3. For grades 10-12: must have subjects selected
-  // 4. For grades 1-9: grade level is enough (subjects are auto-set)
+  // 3. User has subjects selected (required for all grades 10-12)
   const useProfileFilters = !hasManualFilters && userProfile && userProfile.gradeLevel && 
-    (isSeniorGrade ? (userProfile.subjects && userProfile.subjects.length > 0) : true);
+    (userProfile.subjects && userProfile.subjects.length > 0);
+
+  // Check if user is in senior grade (10-12)
+  const isSeniorGrade = userProfile && userProfile.gradeLevel >= 10;
 
   const filteredLessons = allLessons.filter(lesson => {
+    // First apply grade/subject filters
+    let matchesFilters = false;
     if (useProfileFilters) {
       // Filter based on user profile settings
+      // For grades 10-12: filter by both grade and selected subjects
       const gradeMatch = lesson.gradeLevel === userProfile.gradeLevel.toString();
-      
-      if (isSeniorGrade) {
-        // For grades 10-12: filter by both grade and selected subjects
-        const subjectMatch = userProfile.subjects && userProfile.subjects.includes(lesson.subject);
-        return gradeMatch && subjectMatch;
-      } else {
-        // For grades 1-9: filter by grade only (all subjects for that grade are available)
-        return gradeMatch;
-      }
+      const subjectMatch = userProfile.subjects && userProfile.subjects.includes(lesson.subject);
+      matchesFilters = gradeMatch && subjectMatch;
     } else {
       // Filter based on manual dropdowns
       const gradeMatch = !selectedGrade || lesson.gradeLevel === selectedGrade;
       const subjectMatch = !selectedSubject || lesson.subject === selectedSubject;
-      return gradeMatch && subjectMatch;
+      matchesFilters = gradeMatch && subjectMatch;
     }
+
+    // Then apply search filter
+    if (!matchesFilters) return false;
+    
+    if (searchTerm.trim() === '') return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      lesson.subject.toLowerCase().includes(searchLower) ||
+      lesson.topics.some(topic => topic.toLowerCase().includes(searchLower)) ||
+      lesson.gradeLevel.toString().includes(searchLower)
+    );
   });
   
   if (isProfileLoading) {
@@ -193,6 +209,17 @@ export default function LessonsPage() {
             </div>
           )}
 
+          {/* Search Bar */}
+          <div className="relative mb-6">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder={t.searchLessons}
+              className="pl-10 w-full md:w-1/2 lg:w-1/3"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
           {filteredLessons.length > 0 ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

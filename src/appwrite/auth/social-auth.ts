@@ -108,7 +108,7 @@ Please ensure:
 /**
  * Create or update user profile after OAuth sign-in
  */
-export async function ensureUserProfile(databases: Databases, userId: string, email: string, name?: string): Promise<void> {
+export async function ensureUserProfile(databases: Databases, userId: string, email: string, name?: string, photoURL?: string): Promise<void> {
   try {
     const databaseId = appwriteConfig.databaseId;
     
@@ -118,20 +118,48 @@ export async function ensureUserProfile(databases: Databases, userId: string, em
     
     // Check if user document exists
     try {
-      await databases.getDocument(databaseId, 'user', userId);
-      // Document exists, no need to create
+      const existingDoc = await databases.getDocument(databaseId, 'user', userId);
+      // Document exists, update photoURL if provided and different (or if user doesn't have one)
+      const currentPhotoURL = existingDoc.photoURL || null;
+      if (photoURL && (currentPhotoURL !== photoURL || !currentPhotoURL)) {
+        try {
+          await databases.updateDocument(databaseId, 'user', userId, {
+            photoURL,
+          });
+          console.log('✅ Updated photoURL for user:', userId);
+          console.log('📸 Photo URL:', photoURL.substring(0, 50) + '...');
+        } catch (updateError: any) {
+          // If photoURL attribute doesn't exist (400 or 422 error), that's okay - we'll just skip it
+          if (updateError.code === 400 || updateError.code === 422) {
+            console.warn('⚠️ photoURL attribute does not exist in collection. Please add it to the user collection:', updateError.message);
+          } else {
+            console.error('❌ Could not update photoURL:', updateError);
+          }
+        }
+      } else if (photoURL) {
+        console.log('ℹ️ Photo URL already matches stored value, skipping update');
+      }
     } catch (error: any) {
       // Document doesn't exist, create it
       if (error.code === 404) {
         const firstName = name?.split(' ')[0] || 'New';
         const lastName = name?.split(' ').slice(1).join(' ') || 'User';
         
-        try {
-          await databases.createDocument(databaseId, 'user', userId, {
+        const profileData: any = {
           firstName,
           lastName,
           email,
-        });
+        };
+        
+        // Add photoURL if provided (only if attribute exists in collection)
+        if (photoURL) {
+          profileData.photoURL = photoURL;
+          console.log('📸 Creating profile with photoURL:', photoURL.substring(0, 50) + '...');
+        }
+        
+        try {
+          await databases.createDocument(databaseId, 'user', userId, profileData);
+          console.log('✅ Created user profile with photoURL');
         } catch (createError: any) {
           // Handle collection not found error
           if (createError.code === 404 && createError.message?.includes('Collection')) {

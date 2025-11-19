@@ -16,7 +16,7 @@ import { storeQuestions, updatePaperQuestionCount } from '@/lib/question-storage
 import { listStorageFilesServer, getStorageFileMetadataServer, downloadStorageFileAsDataUriServer } from '@/appwrite/storage-server';
 import { isLifeSciencePaper1, isLifeSciencePaper1Memo } from '@/lib/past-paper-processor';
 import { appwriteConfig } from '@/appwrite/config';
-import { ID, Client, Databases } from 'appwrite';
+import { ID, getServerDatabases } from '@/lib/appwrite-server';
 
 const PAST_PAPER_BUCKET_ID = '690dafea0021f232399e';
 
@@ -127,16 +127,13 @@ export async function POST(request: NextRequest) {
       };
     });
     
-    // Create server-side databases instance
-    const client = new Client()
-      .setEndpoint(appwriteConfig.endpoint)
-      .setProject(appwriteConfig.projectId);
-    const databases = new Databases(client);
+    // Create server-side databases instance using node-appwrite
+    const databases = getServerDatabases();
     
     // Check if paper already exists
     const existingPapers = await databases.listDocuments(
       appwriteConfig.databaseId,
-      'pastPapers',
+      'pastpapers',
       [
         // Query by subject, year, and paper
         // Note: Appwrite queries are case-sensitive, so we'll search broadly
@@ -160,7 +157,7 @@ export async function POST(request: NextRequest) {
       // Update existing paper
       await databases.updateDocument(
         appwriteConfig.databaseId,
-        'pastPapers',
+        'pastpapers',
         paperId,
         {
           paperName: paperFilename,
@@ -173,7 +170,7 @@ export async function POST(request: NextRequest) {
       paperId = ID.unique();
       await databases.createDocument(
         appwriteConfig.databaseId,
-        'pastPapers',
+        'pastpapers',
         paperId,
         {
           teacherId: userId,

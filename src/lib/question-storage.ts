@@ -73,6 +73,27 @@ export async function storeQuestions(
       const imageFileId = question.imageFileId;
       const imageDataUri = question.imageDataUri || imageMap.get(question.questionNumber);
       
+      // Validate and truncate fields to prevent size limit errors
+      // Appwrite string fields typically have a 10,000 character limit for large text fields
+      const MAX_TEXT_LENGTH = 10000; // Safe limit for Appwrite text fields
+      const MAX_ANSWER_LENGTH = 5000; // Answers are usually shorter
+      
+      const questionText = question.questionText 
+        ? (question.questionText.length > MAX_TEXT_LENGTH 
+            ? question.questionText.substring(0, MAX_TEXT_LENGTH) + '... [truncated]'
+            : question.questionText)
+        : '';
+      
+      const answer = question.answer 
+        ? (question.answer.length > MAX_ANSWER_LENGTH 
+            ? question.answer.substring(0, MAX_ANSWER_LENGTH) + '... [truncated]'
+            : question.answer)
+        : '';
+      
+      // NEW ARCHITECTURE: Never store base64 image data URIs - only use imageFileId
+      // All images are uploaded to Appwrite Storage and referenced by file ID
+      // This prevents large base64 strings in the database and improves performance
+      
       // Check if question already exists
       const existing = await databases.listDocuments(
         appwriteConfig.databaseId,
@@ -83,41 +104,121 @@ export async function storeQuestions(
         ]
       );
       
-      const questionData = {
-        paperId,
-        number: question.questionNumber,
-        question: question.questionText,
-        questionText: question.questionText, // Support both field names
-        answer: question.answer || '',
-        marks: question.marks || 0,
+      // Ensure order is a valid number (convert to integer if needed for collection schema)
+      // Some Appwrite collections require integer types for numeric fields
+      const orderValue = Math.round(order * 1000); // Multiply by 1000 to preserve 3 decimal places as integer
+      
+      // Ensure answer is not empty (use placeholder if empty, as some schemas require non-empty answer)
+      const finalAnswer = answer && answer.trim().length > 0 
+        ? answer 
+        : '(No answer provided)'; // Placeholder for empty answers
+      
+      // Build question data object, only including fields that have values
+      const questionData: Record<string, any> = {
+        paperId: paperId,
+        number: question.questionNumber || '0',
+        question: questionText || '(No question text)',
+        answer: finalAnswer,
+        marks: Math.round(question.marks || 0), // Ensure integer
         type: question.type || 'free-text',
-        imageFileId: imageFileId || null, // Store Appwrite file ID (small string, < 255 chars)
-        image: imageDataUri || null, // Deprecated: kept for backward compatibility
-        hasImage: !!imageFileId || !!imageDataUri,
-        order,
+        hasImage: !!imageFileId, // Only true if we have a file ID
+        order: orderValue, // Use integer value
       };
       
-      if (existing.documents.length > 0) {
-        // Update existing question
-        await databases.updateDocument(
-          appwriteConfig.databaseId,
-          'questions',
-          existing.documents[0].$id,
-          questionData
-        );
-      } else {
-        // Create new question
-        await databases.createDocument(
-          appwriteConfig.databaseId,
-          'questions',
-          ID.unique(),
-          questionData
-        );
+      // Only include imageFileId if it exists (never store base64)
+      if (imageFileId) {
+        questionData.imageFileId = imageFileId;
       }
       
-      stored++;
-    } catch (error) {
-      console.error(`Error storing question ${question.questionNumber}:`, error);
+      // Note: imageDataUri is no longer stored - all images use file IDs from Appwrite Storage
+      
+      // Validate required fields before attempting to save
+      if (!questionData.paperId || !questionData.number) {
+        throw new Error(`Missing required fields: paperId=${questionData.paperId}, number=${questionData.number}`);
+      }
+      
+      try {
+        if (existing.documents.length > 0) {
+          // Update existing question
+          await databases.updateDocument(
+            appwriteConfig.databaseId,
+            'questions',
+            existing.documents[0].$id,
+            questionData
+          );
+        } else {
+          // Create new question - log the data being sent for debugging
+          console.log(`Creating question ${question.questionNumber} with data:`, {
+            paperId: questionData.paperId,
+            number: questionData.number,
+            questionLength: questionData.question?.length || 0,
+            answerLength: questionData.answer?.length || 0,
+            marks: questionData.marks,
+            type: questionData.type,
+            hasImage: questionData.hasImage,
+            order: questionData.order,
+            hasImageFileId: !!questionData.imageFileId,
+          });
+          
+          await databases.createDocument(
+            appwriteConfig.databaseId,
+            'questions',
+            ID.unique(),
+            questionData
+          );
+        }
+        
+        stored++;
+      } catch (createError: any) {
+        // Log detailed error information
+        console.error(`Failed to save question ${question.questionNumber}:`, {
+          error: createError.message || createError,
+          errorCode: createError.code,
+          errorResponse: createError.response,
+          questionData: {
+            paperId: questionData.paperId,
+            number: questionData.number,
+            questionPreview: questionData.question?.substring(0, 50),
+            answerPreview: questionData.answer?.substring(0, 50),
+            marks: questionData.marks,
+            type: questionData.type,
+            order: questionData.order,
+            hasImage: questionData.hasImage,
+            imageFileId: questionData.imageFileId || 'none',
+          },
+        });
+        throw createError; // Re-throw to be caught by outer catch
+      }
+    } catch (error: any) {
+      // Enhanced error logging
+      const errorDetails: any = {
+        error: error.message || error,
+        errorType: error.constructor?.name,
+        questionNumber: question.questionNumber,
+        questionTextLength: question.questionText?.length || 0,
+        answerLength: question.answer?.length || 0,
+        hasImageFileId: !!question.imageFileId,
+        paperId,
+      };
+      
+      // Try to extract more details from Appwrite error
+      if (error.code) {
+        errorDetails.errorCode = error.code;
+      }
+      if (error.response) {
+        errorDetails.errorResponse = error.response;
+      }
+      if (error.type) {
+        errorDetails.errorType = error.type;
+      }
+      
+      console.error(`Error storing question ${question.questionNumber}:`, errorDetails);
+      
+      // Log the full error stack for debugging
+      if (error.stack) {
+        console.error('Error stack:', error.stack);
+      }
+      
       errors++;
     }
   }
@@ -136,7 +237,7 @@ export async function updatePaperQuestionCount(
   try {
     await databases.updateDocument(
       appwriteConfig.databaseId,
-      'pastPapers',
+      'pastpapers',
       paperId,
       {
         questionCount,

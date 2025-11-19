@@ -10,27 +10,35 @@ import { PROVINCES, type Province, type NewsArticle, getProvinceTabLabel } from 
 import { Search, Calendar, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useScrollRestore } from "@/hooks/use-scroll-restore";
 
 const ITEMS_PER_PAGE = 12;
 const SEARCH_DEBOUNCE_MS = 500;
 
 export default function NewsPage() {
   const searchParams = useSearchParams();
-  const [selectedProvince, setSelectedProvince] = useState<Province | "All South Africa">("All South Africa");
-  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Persist state across reloads
+  const [selectedProvince, setSelectedProvince] = useLocalStorage<Province | "All South Africa">("news-selected-province", "All South Africa");
+  const [searchQuery, setSearchQuery] = useLocalStorage<string>("news-search-query", "");
+  
+  // Restore scroll position on reload
+  useScrollRestore("news-page");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize search query from URL parameters
+  // Initialize search query from URL parameters (URL takes precedence)
   useEffect(() => {
     const searchParam = searchParams.get('search');
     if (searchParam) {
       setSearchQuery(searchParam);
     }
-  }, [searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]); // Only run when URL params change - URL params take precedence over localStorage
 
   // Debounce search query
   useEffect(() => {

@@ -20,6 +20,14 @@ See [User Collection Schema](./APPWRITE_USERS_COLLECTION_SCHEMA.md) for detailed
 
 See [Student Progress Collection Setup](./APPWRITE_STUDENT_PROGRESS_COLLECTION.md) for detailed setup instructions.
 
+### 3. System Settings Collection
+
+**Collection ID:** `systemSettings`
+
+**Note:** This collection is required for admin panel functionality, subject availability configuration, and system-wide settings.
+
+See [System Settings Collection Setup](./APPWRITE_SYSTEM_SETTINGS_COLLECTION.md) for detailed setup instructions.
+
 ---
 
 ## Quick Reference

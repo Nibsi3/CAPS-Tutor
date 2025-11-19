@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { StatCards } from "@/components/dashboard/StatCards";
 import { ProgressChart } from "@/components/dashboard/ProgressChart";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
@@ -10,12 +12,24 @@ import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { useLanguage } from '@/components/language-provider';
 import { translations } from '@/lib/translations';
+import { useIsAdmin } from '@/hooks/use-is-admin';
+import { useAdminMode } from '@/hooks/use-admin-mode';
 
 
 export default function DashboardPage() {
     const { user } = useUser();
+    const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
+    const { adminModeEnabled } = useAdminMode(isAdmin || false);
+    const router = useRouter();
     const lang = useLanguage();
     const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
+
+    // Redirect admins to admin dashboard if they're not in student mode
+    useEffect(() => {
+        if (!isAdminLoading && isAdmin && !adminModeEnabled) {
+            router.push('/admin');
+        }
+    }, [isAdmin, isAdminLoading, adminModeEnabled, router]);
 
     const userProfileRef = useMemoAppwrite(() => {
         if (!user) return null;

@@ -25,6 +25,11 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useScrollRestore } from '@/hooks/use-scroll-restore';
+import { useFeature } from '@/hooks/use-features';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProcessedPaper {
     id: string;
@@ -166,61 +171,23 @@ function getBaseSubject(paperTitle: string): string {
     return normalizedTitle;
 }
 
-const STORAGE_KEY = 'past-papers-filters';
-
-interface SavedFilters {
-    searchTerm: string;
-    selectedSubjects: string[];
-}
-
 export default function PastPapersPage() {
     const databases = useDatabases();
     const { user, isUserLoading: isAuthLoading } = useUser();
+    const router = useRouter();
+    const { toast } = useToast();
+    const { enabled: pastPapersEnabled, isLoading: featuresLoading } = useFeature('pastPapers');
 
-    // Load saved filters from localStorage on mount
-    const [searchTerm, setSearchTerm] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    const parsed: SavedFilters = JSON.parse(saved);
-                    return parsed.searchTerm || '';
-                } catch {
-                    return '';
-                }
-            }
-        }
-        return '';
-    });
-
-    const [selectedSubjects, setSelectedSubjects] = useState<string[]>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    const parsed: SavedFilters = JSON.parse(saved);
-                    return parsed.selectedSubjects || [];
-                } catch {
-                    return [];
-                }
-            }
-        }
-        return [];
-    });
-
+    // Persist filters across reloads using new hooks
+    const [searchTerm, setSearchTerm] = useLocalStorage<string>('dashboard-past-papers-search', '');
+    const [selectedSubjects, setSelectedSubjects] = useLocalStorage<string[]>('dashboard-past-papers-subjects', []);
+    
+    // Restore scroll position on reload
+    useScrollRestore('dashboard-past-papers-page');
+    
+    // All state hooks must be called before any conditional returns
     const [showAddSubjectDialog, setShowAddSubjectDialog] = useState(false);
     const [tempSelectedSubjects, setTempSelectedSubjects] = useState<string[]>([]);
-    
-    // Save filters to localStorage whenever they change
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const filters: SavedFilters = {
-                searchTerm,
-                selectedSubjects,
-            };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
-        }
-    }, [searchTerm, selectedSubjects]);
     
     // Get user profile to access grade from settings
     const userProfileRef = useMemoAppwrite(() => {
@@ -240,7 +207,7 @@ export default function PastPapersPage() {
         
         return {
             databaseId: appwriteConfig.databaseId,
-            collectionId: 'pastPaperProgress',
+            collectionId: 'pastpaperprogress',
             queries: [
                 Query.equal('userId', user.$id),
                 Query.orderDesc('lastAccessed'),
@@ -308,7 +275,7 @@ export default function PastPapersPage() {
         // Query for all papers regardless of status, we'll filter out "Unknown" in the client
         return {
             databaseId: appwriteConfig.databaseId,
-            collectionId: 'pastPapers',
+            collectionId: 'pastpapers',
         };
     }, [isAuthLoading]);
 
@@ -409,6 +376,30 @@ export default function PastPapersPage() {
             return searchTermMatch && subjectMatch && gradeMatch;
         });
     }, [processedPapers, searchTerm, selectedSubjects, userProfile?.gradeLevel]);
+    
+    // Redirect if feature is disabled
+    useEffect(() => {
+        if (!featuresLoading && !pastPapersEnabled) {
+            toast({
+                title: "Feature Disabled",
+                description: "Past Papers are currently disabled. Please contact an administrator.",
+                variant: "destructive",
+            });
+            router.push('/dashboard');
+        }
+    }, [pastPapersEnabled, featuresLoading, router, toast]);
+    
+    if (featuresLoading || isAuthLoading) {
+        return (
+            <div className="flex h-full items-center justify-center">
+                <Loader className="h-12 w-12 animate-spin" />
+            </div>
+        );
+    }
+    
+    if (!pastPapersEnabled) {
+        return null; // Will redirect via useEffect
+    }
 
     const handleClearFilters = () => {
         setSearchTerm('');

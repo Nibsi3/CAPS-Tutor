@@ -20,6 +20,7 @@ import { askAiTutor } from '@/ai/flows/ai-tutor-flow';
 import { filterQuestionsByLiterature, shouldShowPaper2Questions, UserLiteratureSelection } from '@/lib/literature-filter';
 import { TypingText } from '@/components/ui/typing-text';
 import Image from 'next/image';
+import { useScrollRestore } from '@/hooks/use-scroll-restore';
 
 interface GeneratedQuestion {
     questionNumber: string;
@@ -45,6 +46,7 @@ interface QuestionWithFeedback extends Question {
   feedback?: InteractiveFeedbackOutput | null;
   isChecking?: boolean;
   questionNumber?: string;
+  imageFileId?: string; // Appwrite Storage file ID
 }
 
 interface Message {
@@ -62,34 +64,94 @@ function getBaseSubject(paperTitle: string): string | undefined {
 }
 
 /**
- * Checks if this is the first sub-question with a shared diagram.
- * For example, in "1.1", "1.2", "1.3" all with imageUrl, only 1.1 should show large.
+ * Checks if this question should show a large diagram or a small thumbnail.
+ * All follow-up questions that share a diagram should show small thumbnails.
+ * Only the first question with a diagram shows large.
  */
-function isFirstSubQuestionWithSharedDiagram(
+function shouldShowLargeDiagram(
     index: number, 
     currentQuestion: QuestionWithFeedback & { questionNumber?: string },
     allQuestions: QuestionWithFeedback[]
 ): boolean {
     if (!currentQuestion.imageUrl) return false;
-    if (!currentQuestion.questionNumber) return true; // Show large if no question number
     
-    // Parse question number like "1.1", "2.3.1"
-    const parts = currentQuestion.questionNumber.split('.');
-    if (parts.length < 2) return true; // Not a sub-question format
+    // Parse question number to check if it's a subquestion
+    const parts = currentQuestion.questionNumber ? currentQuestion.questionNumber.split('.') : [];
     
-    const mainQuestion = parts[0];
+    // If it's a subquestion (has 3+ parts like "1.3.1", "1.3.2"), always show small thumbnail
+    if (parts.length >= 3) {
+        return false; // Subquestion - show small thumbnail
+    }
     
-    // Check if there's a previous question with the same main question number and same image
+    // Check if there's ANY previous question with the same diagram
+    // If so, this is a follow-up question and should show small thumbnail
     for (let i = 0; i < index; i++) {
         const prevQ = allQuestions[i];
-        if (!prevQ.questionNumber) continue;
-        const prevParts = prevQ.questionNumber.split('.');
-        if (prevParts.length >= 2 && prevParts[0] === mainQuestion && prevQ.imageUrl === currentQuestion.imageUrl) {
-            return false; // This is not the first one with this diagram
+        if (prevQ.imageUrl && prevQ.imageUrl === currentQuestion.imageUrl) {
+            return false; // Follow-up question with same diagram - show small thumbnail
         }
     }
     
-    return true; // This is the first sub-question with this diagram
+    // This is the first question with this diagram - show large
+    return true;
+}
+
+/**
+ * Detects if a question is asking for a true/false answer
+ */
+function isTrueFalseQuestion(questionText: string): boolean {
+    const text = questionText.toLowerCase();
+    // Check for explicit true/false patterns
+    const trueFalsePatterns = [
+        /true\s+or\s+false/i,
+        /true\/false/i,
+        /^true\s*$/i,
+        /^false\s*$/i,
+        /state\s+(whether|if).*(true|false)/i,
+        /indicate\s+(whether|if).*(true|false)/i,
+        /write\s+(true|false)/i,
+        /circle\s+(true|false)/i,
+        /tick\s+(true|false)/i,
+        /mark\s+(true|false)/i,
+        /select\s+(true|false)/i,
+        /choose\s+(true|false)/i,
+    ];
+    
+    return trueFalsePatterns.some(pattern => pattern.test(text));
+}
+
+/**
+ * Checks if the question text references a diagram/graph/table below.
+ * If so, the text should appear above the image.
+ */
+function referencesVisualBelow(questionText: string): boolean {
+    const lowerText = questionText.toLowerCase();
+    return lowerText.includes('diagram below') ||
+           lowerText.includes('graph below') ||
+           lowerText.includes('table below') ||
+           lowerText.includes('chart below') ||
+           lowerText.includes('figure below') ||
+           lowerText.includes('picture below') ||
+           lowerText.includes('image below') ||
+           lowerText.includes('the diagram') ||
+           lowerText.includes('the graph') ||
+           lowerText.includes('the table') ||
+           lowerText.includes('the chart') ||
+           lowerText.includes('the figure');
+}
+
+/**
+ * Checks if this is a parent question (e.g., "1.1", "1.2") or a subquestion (e.g., "1.1.1", "1.2.2").
+ * Parent questions (2 parts) should not have answer boxes, only subquestions (3+ parts) should.
+ * Exception: Multiple choice questions always show answer boxes.
+ */
+function isSubquestion(questionNumber: string | undefined): boolean {
+    if (!questionNumber) return true; // Default to showing answer box if no number
+    
+    const parts = questionNumber.split('.');
+    // If it has 3+ parts (like "1.1.1", "1.2.2"), it's a subquestion
+    // If it has 2 parts (like "1.1", "1.2"), it's a parent question
+    return parts.length >= 3;
 }
 
 
@@ -102,6 +164,9 @@ export default function PastPaperPracticePage() {
     
     const { user } = useUser();
     const databases = useDatabases();
+
+    // Restore scroll position on reload (use paperId to make it unique per paper)
+    useScrollRestore(`past-paper-practice-${paperId || 'default'}`);
 
     // Get initial question from query parameter (0-indexed, so subtract 1)
     const initialQuestionParam = searchParams.get('question');
@@ -124,7 +189,7 @@ export default function PastPaperPracticePage() {
         if (!paperId) return null;
         return {
             databaseId: appwriteConfig.databaseId,
-            collectionId: 'pastPapers',
+            collectionId: 'pastpapers',
             documentId: paperId as string,
         };
     }, [paperId]);
@@ -297,8 +362,9 @@ export default function PastPaperPracticePage() {
       if (!fileId) return undefined;
       
       // Appwrite Storage preview URL format
-      const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
-      const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || '';
+      // Use appwriteConfig instead of environment variables (which may not be set)
+      const endpoint = appwriteConfig.endpoint; // Already includes /v1
+      const projectId = appwriteConfig.projectId;
       const bucketId = '690dafea0021f232399e'; // QUESTION_IMAGES_BUCKET_ID
       
       return `${endpoint}/storage/buckets/${bucketId}/files/${fileId}/view?project=${projectId}`;
@@ -379,63 +445,296 @@ export default function PastPaperPracticePage() {
                     const questionsSnapshot = await databases.listDocuments(
                         appwriteConfig.databaseId,
                         'questions',
-                        [Query.equal('paperId', paperId as string)]
+                        [
+                            Query.equal('paperId', paperId as string),
+                            Query.orderAsc('order') // Sort by order field to maintain correct question sequence
+                        ]
                     );
                     
                     if (questionsSnapshot.documents.length > 0) {
+                        // DEBUG: Log order values and question text as they come from database (before any processing)
+                        if (process.env.NODE_ENV === 'development') {
+                            console.log('[Question Ordering] ========================================');
+                            console.log('[Question Ordering] RAW DATABASE QUERY RESULTS (sorted by Query.orderAsc):');
+                            questionsSnapshot.documents.forEach((doc, idx) => {
+                                const order = (doc as any).order;
+                                const orderStr = order !== undefined ? String(order) : 'MISSING';
+                                const qNum = (doc as any).questionNumber || (doc as any).number || 'unknown';
+                                const qText = (doc as any).question || (doc as any).questionText || '';
+                                const textPreview = qText.length > 100 ? qText.substring(0, 100) + '...' : qText;
+                                console.log(`  [${idx}] Q${qNum}:`);
+                                console.log(`    - order: ${orderStr}`);
+                                console.log(`    - text: "${textPreview}"`);
+                                console.log(`    - full text length: ${qText.length}`);
+                                console.log(`    - type: ${(doc as any).type || 'unknown'}`);
+                                console.log(`    - hasImage: ${!!(doc as any).imageFileId}`);
+                            });
+                        }
+                        
                         questionsFromSubcollection = questionsSnapshot.documents
                             .map(doc => {
-                                const q = doc;
+                                const q = doc as any; // Type assertion to access all fields
                                 const questionText = q.question || q.questionText || '';
                                 
-                                // Check if it's MCQ by type field or by parsing questionText
+                                // DEBUG: Log all fields in the document to see what's available
+                                if (process.env.NODE_ENV === 'development' && q.number === '2.2') {
+                                    console.log('[DB Document Fields] Q2.2 document:', {
+                                        allKeys: Object.keys(q),
+                                        imageFileId: q.imageFileId,
+                                        image_file_id: q.image_file_id,
+                                        hasImage: q.hasImage,
+                                        image: q.image,
+                                        imageDataUri: q.imageDataUri ? 'present' : 'missing',
+                                        type: q.type,
+                                        number: q.number
+                                    });
+                                }
+                                
+                                // Check if it's MCQ by type field
                                 const dbType = q.type || '';
-                                const parsedMCQ = parseMCQOptions(questionText);
-                                const isMCQ = dbType === 'multiple-choice' || parsedMCQ !== null;
+                                const isMCQ = dbType === 'multiple-choice' || dbType === 'multiple_choice';
+                                
+                                // Check if it's true/false by type field OR by question text
+                                const isTrueFalse = dbType === 'true-false' || dbType === 'true_false' || isTrueFalseQuestion(questionText);
+                                
+                                // Try to get options from database (stored as JSON string)
+                                let options: Array<{ value: string; label: string }> | undefined = undefined;
+                                if (isMCQ && q.options) {
+                                    try {
+                                        // Options are stored as JSON string in database
+                                        const parsedOptions = typeof q.options === 'string' 
+                                            ? JSON.parse(q.options) 
+                                            : q.options;
+                                        
+                                        if (Array.isArray(parsedOptions)) {
+                                            // Convert array of strings to { value, label } format
+                                            options = parsedOptions.map((opt, idx) => ({
+                                                value: String.fromCharCode(65 + idx), // A, B, C, D...
+                                                label: typeof opt === 'string' ? opt : String(opt)
+                                            }));
+                                        }
+                                    } catch (e) {
+                                        console.warn(`Failed to parse options for question ${q.number}:`, e);
+                                    }
+                                }
+                                
+                                // Fallback: try parsing from question text if no options found in DB
+                                const parsedMCQ = !options ? parseMCQOptions(questionText) : null;
+                                
+                                // Get imageFileId - try multiple possible field names
+                                const imageFileId = q.imageFileId || q.image_file_id || (q as any).imageFileId;
                                 
                                 // Get image URL from file ID (preferred) or data URI (fallback)
-                                const imageUrl = q.imageFileId 
-                                    ? getImageUrlFromFileId(q.imageFileId)
+                                // CRITICAL: Always generate URL from imageFileId if it exists
+                                const imageUrl = imageFileId 
+                                    ? getImageUrlFromFileId(imageFileId)
                                     : (q.image || q.imageDataUri || (q.hasImage && q.imageDataUri ? q.imageDataUri : undefined));
                                 
-                                // If MCQ, extract options and use question stem only
-                                if (isMCQ && parsedMCQ) {
+                                // DEBUG: Log image loading
+                                if (process.env.NODE_ENV === 'development') {
+                                    if (imageFileId) {
+                                        console.log(`[Image Load] Q${q.number}: imageFileId=${imageFileId}, generatedUrl=${imageUrl || 'FAILED'}`);
+                                    } else if (q.hasImage) {
+                                        console.warn(`[Image Load] Q${q.number}: hasImage=true but no imageFileId found!`, {
+                                            allFields: Object.keys(q).filter(k => k.toLowerCase().includes('image'))
+                                        });
+                                    }
+                                }
+                                
+                                // DEBUG: Log question text being loaded from database
+                                if (process.env.NODE_ENV === 'development') {
+                                    console.log(`[Question Text Load] Q${q.number}:`, {
+                                        questionText: questionText.substring(0, 100),
+                                        fullLength: questionText.length,
+                                        dbField: q.question || q.questionText || 'MISSING',
+                                        hasImage: !!imageFileId,
+                                        imageFileId: imageFileId || 'none',
+                                        rawImageFileId: q.imageFileId || 'none',
+                                        rawImage_file_id: q.image_file_id || 'none'
+                                    });
+                                }
+                                
+                                // DEBUG: Log image information
+                                if (process.env.NODE_ENV === 'development' && (imageFileId || imageUrl)) {
+                                    const imageInfo = {
+                                        questionNumber: q.number,
+                                        imageFileId: imageFileId || 'none',
+                                        imageUrl: imageUrl || 'none',
+                                        hasImage: q.hasImage,
+                                        generatedUrl: imageFileId ? getImageUrlFromFileId(imageFileId) : 'N/A'
+                                    };
+                                    console.log(`[Image Loading] Q${q.number}:`, imageInfo);
+                                    // Also log individual fields for easier reading
+                                    console.log(`  - imageFileId: ${imageInfo.imageFileId}`);
+                                    console.log(`  - imageUrl: ${imageInfo.imageUrl}`);
+                                    console.log(`  - generatedUrl: ${imageInfo.generatedUrl}`);
+                                }
+                                
+                                
+                                // If MCQ, use options from DB or parsed from text
+                                if (isMCQ && (options || parsedMCQ)) {
                                     return {
                                         id: `question-${q.number}`,
-                                        question: parsedMCQ.questionStem,
-                                        topic: extractTopicFromQuestion(parsedMCQ.questionStem, baseSubject),
+                                        question: parsedMCQ ? parsedMCQ.questionStem : questionText,
+                                        topic: extractTopicFromQuestion(parsedMCQ ? parsedMCQ.questionStem : questionText, baseSubject),
                                         answer: q.answer || null,
                                         type: 'multiple-choice' as const,
-                                        options: parsedMCQ.options,
+                                        options: options || parsedMCQ!.options,
                                         imageUrl,
+                                        imageFileId: imageFileId, // Include imageFileId (using the resolved value)
                                         questionNumber: q.number || q.questionNumber || '',
                                         marks: q.marks || 0,
+                                        order: q.order || 0, // Include order field for sorting
                                     };
                                 }
                                 
-                                // Free-text question
-                                return {
+                                // Free-text or true-false question
+                                const freeTextQuestion = {
                                     id: `question-${q.number}`,
                                     question: questionText,
                                     topic: extractTopicFromQuestion(questionText, baseSubject),
                                     answer: q.answer || null,
-                                    type: 'free-text' as const,
-                                    imageUrl,
+                                    type: (isTrueFalse ? 'true-false' : 'free-text') as const,
+                                    imageUrl, // CRITICAL: This must be set from imageFileId
+                                    imageFileId: imageFileId, // Include imageFileId (using the resolved value)
                                     questionNumber: q.number || q.questionNumber || '',
                                     marks: q.marks || 0,
+                                    order: q.order || 0, // Include order field for sorting
                                 };
+                                
+                                // DEBUG: Log question text being loaded
+                                if (process.env.NODE_ENV === 'development') {
+                                    console.log(`[Question Text Load] Q${q.number}:`, {
+                                        questionText: questionText.substring(0, 100),
+                                        fullLength: questionText.length,
+                                        dbField: q.question || q.questionText || 'MISSING',
+                                        hasImage: !!imageUrl,
+                                        imageFileId: imageFileId || 'none'
+                                    });
+                                }
+                                
+                                return freeTextQuestion;
                             })
-                            .sort((a, b) => {
-                                // Sort by question number (handle "1.1", "1.2", "2.1", etc.)
-                                const aParts = a.questionNumber.split('.').map(Number);
-                                const bParts = b.questionNumber.split('.').map(Number);
+                            .map(q => {
+                                // Include order field for MCQ questions too
+                                const qWithOrder = q as any;
+                                if (q.type === 'multiple-choice' && !qWithOrder.order) {
+                                    qWithOrder.order = 0;
+                                }
+                                return q;
+                            });
+                        
+                        // DEBUG: Log BEFORE sorting with question text
+                        if (process.env.NODE_ENV === 'development') {
+                            console.log('[Question Ordering] ========================================');
+                            console.log('[Question Ordering] BEFORE SORT - Loaded from database:');
+                            questionsFromSubcollection.forEach((q, idx) => {
+                                const order = (q as any).order;
+                                const orderStr = order !== undefined ? String(order) : 'MISSING';
+                                const qText = q.question || '';
+                                const textPreview = qText.length > 50 ? qText.substring(0, 50) + '...' : qText;
+                                console.log(`  [${idx}] Q${(q as any).questionNumber}: order=${orderStr}, type=${q.type || 'unknown'}, hasImage=${!!q.imageUrl}, text="${textPreview}"`);
+                            });
+                        }
+                        
+                        // Now sort the questions
+                        questionsFromSubcollection = questionsFromSubcollection.sort((a, b) => {
+                                // PRIMARY: Sort by order field from database (most reliable)
+                                const aOrder = (a as any).order || 0;
+                                const bOrder = (b as any).order || 0;
+                                
+                                // DEBUG: Only log when order values are equal (potential issue)
+                                if (process.env.NODE_ENV === 'development' && aOrder === bOrder && aOrder !== 0) {
+                                    console.warn(`[Sort Compare] ⚠️ Q${(a as any).questionNumber} and Q${(b as any).questionNumber} have same order (${aOrder}), using question number fallback`);
+                                }
+                                
+                                if (aOrder !== bOrder) {
+                                    return aOrder - bOrder;
+                                }
+                                
+                                // FALLBACK: If order is missing or equal, sort by question number
+                                const aParts = (a as any).questionNumber.split('.').map(Number);
+                                const bParts = (b as any).questionNumber.split('.').map(Number);
                                 for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
                                     const aVal = aParts[i] || 0;
                                     const bVal = bParts[i] || 0;
-                                    if (aVal !== bVal) return aVal - bVal;
+                                    if (aVal !== bVal) {
+                                        return aVal - bVal;
+                                    }
                                 }
                                 return 0;
                             });
+                        
+                        // DEBUG: Log AFTER sorting with validation and question text
+                        if (process.env.NODE_ENV === 'development') {
+                            console.log('[Question Ordering] AFTER SORT - Final sequence:');
+                            let hasOrderIssue = false;
+                            questionsFromSubcollection.forEach((q, idx) => {
+                                const order = (q as any).order;
+                                const orderStr = order !== undefined ? String(order) : 'MISSING';
+                                const prevOrder = idx > 0 ? (questionsFromSubcollection[idx - 1] as any).order : null;
+                                let orderCheck = '';
+                                if (prevOrder !== null && order !== undefined) {
+                                    if (order < prevOrder) {
+                                        orderCheck = '✗ INVALID ORDER (decreasing!)';
+                                        hasOrderIssue = true;
+                                    } else if (order === prevOrder) {
+                                        orderCheck = '⚠ SAME ORDER (using fallback)';
+                                    } else {
+                                        orderCheck = '✓';
+                                    }
+                                }
+                                const qText = q.question || '';
+                                const textPreview = qText.length > 50 ? qText.substring(0, 50) + '...' : qText;
+                                console.log(`  [${idx}] Q${(q as any).questionNumber}: order=${orderStr} ${orderCheck}, text="${textPreview}"`);
+                            });
+                            if (hasOrderIssue) {
+                                console.error('[Question Ordering] ⚠️ WARNING: Detected decreasing order values! Sorting may be incorrect.');
+                            }
+                            console.log('[Question Ordering] ========================================');
+                        }
+                        
+                        // After sorting, inherit diagrams from parent questions to subquestions
+                        // If a subquestion doesn't have an imageUrl, check if its parent has one
+                        const questionMap = new Map<string, Question>();
+                        questionsFromSubcollection.forEach(q => {
+                            if (q.questionNumber) {
+                                questionMap.set(q.questionNumber, q);
+                            }
+                        });
+                        
+                        // Second pass: inherit diagrams from parents
+                        questionsFromSubcollection = questionsFromSubcollection.map(q => {
+                            // If this question already has an imageUrl, keep it
+                            if (q.imageUrl) {
+                                return q;
+                            }
+                            
+                            // If no question number, can't find parent
+                            if (!q.questionNumber) {
+                                return q;
+                            }
+                            
+                            // Parse question number to find parent
+                            const parts = q.questionNumber.split('.');
+                            
+                            // Try to find parent questions at different levels
+                            // e.g., for "1.3.1", try "1.3" then "1"
+                            for (let i = parts.length - 1; i > 0; i--) {
+                                const parentNumber = parts.slice(0, i).join('.');
+                                const parentQ = questionMap.get(parentNumber);
+                                
+                                if (parentQ && parentQ.imageUrl) {
+                                    // Found parent with diagram - inherit it
+                                    return {
+                                        ...q,
+                                        imageUrl: parentQ.imageUrl
+                                    };
+                                }
+                            }
+                            
+                            return q;
+                        });
                     }
                 } catch (e: any) {
                     // Collection doesn't exist, unauthorized, or other error - this is fine, we'll use fallback
@@ -495,6 +794,47 @@ export default function PastPaperPracticePage() {
                         marks: gq.marks,
                     };
                 });
+                
+                // Also inherit diagrams for old structure
+                const questionMap = new Map<string, Question>();
+                questions.forEach(q => {
+                    if (q.questionNumber) {
+                        questionMap.set(q.questionNumber, q);
+                    }
+                });
+                
+                // Second pass: inherit diagrams from parents
+                questions = questions.map(q => {
+                    // If this question already has an imageUrl, keep it
+                    if (q.imageUrl) {
+                        return q;
+                    }
+                    
+                    // If no question number, can't find parent
+                    if (!q.questionNumber) {
+                        return q;
+                    }
+                    
+                    // Parse question number to find parent
+                    const parts = q.questionNumber.split('.');
+                    
+                    // Try to find parent questions at different levels
+                    // e.g., for "1.3.1", try "1.3" then "1"
+                    for (let i = parts.length - 1; i > 0; i--) {
+                        const parentNumber = parts.slice(0, i).join('.');
+                        const parentQ = questionMap.get(parentNumber);
+                        
+                        if (parentQ && parentQ.imageUrl) {
+                            // Found parent with diagram - inherit it
+                            return {
+                                ...q,
+                                imageUrl: parentQ.imageUrl
+                            };
+                        }
+                    }
+                    
+                    return q;
+                });
             }
             
             // Filter questions by literature selections
@@ -540,34 +880,45 @@ export default function PastPaperPracticePage() {
         
         const currentQuestion = currentQuestionIndex + 1; // Convert to 1-indexed
         
-        // Check if progress document exists, then update or create
-        databases.getDocument(appwriteConfig.databaseId, 'pastPaperProgress', paperId)
-            .then(() => {
-                // Document exists, update it
-                return databases.updateDocument(
-                    appwriteConfig.databaseId,
-                    'pastPaperProgress',
-                    paperId,
-                    {
-                        paperId,
-                        currentQuestion,
-                        lastAccessed: new Date().toISOString(),
-                    }
-                );
-            })
-            .catch(() => {
-                // Document doesn't exist, create it
-                return databases.createDocument(
-                    appwriteConfig.databaseId,
-                    'pastPaperProgress',
-                    paperId,
-                    {
-                        paperId,
-                        currentQuestion,
-                        lastAccessed: new Date().toISOString(),
-                        userId: user.$id,
-                    }
-                );
+        // Query for existing progress by userId and paperId
+        databases.listDocuments(
+            appwriteConfig.databaseId,
+            'pastpaperprogress',
+            [
+                Query.equal('userId', user.$id),
+                Query.equal('paperId', paperId),
+                Query.limit(1),
+            ]
+        )
+            .then((result) => {
+                if (result.documents.length > 0) {
+                    // Document exists, update it
+                    const existingDoc = result.documents[0];
+                    return databases.updateDocument(
+                        appwriteConfig.databaseId,
+                        'pastpaperprogress',
+                        existingDoc.$id,
+                        {
+                            paperId,
+                            currentQuestion,
+                            lastAccessed: new Date().toISOString(),
+                            userId: user.$id,
+                        }
+                    );
+                } else {
+                    // Document doesn't exist, create it with unique ID
+                    return databases.createDocument(
+                        appwriteConfig.databaseId,
+                        'pastpaperprogress',
+                        ID.unique(),
+                        {
+                            paperId,
+                            currentQuestion,
+                            lastAccessed: new Date().toISOString(),
+                            userId: user.$id,
+                        }
+                    );
+                }
             })
             .catch((error) => {
                 console.error('Error saving progress:', error);
@@ -769,8 +1120,61 @@ export default function PastPaperPracticePage() {
                                     const questionNumber = qWithMarks.questionNumber || `${index + 1}`;
                                     const isMultipleChoice = q.type === 'multiple-choice' || q.type === 'picture-multiple-choice';
                                     
-                                    // Check if this is the first sub-question with a shared diagram
-                                    const isFirstWithSharedDiagram = isFirstSubQuestionWithSharedDiagram(index, q, session.examQuestions);
+                                    // Check if this should show large diagram or small thumbnail
+                                    // All subquestions (follow-up questions) show small thumbnails
+                                    const showLargeDiagram = shouldShowLargeDiagram(index, q, session.examQuestions);
+                                    
+                                    // DEBUG: Log rendering decisions with full question text comparison
+                                    if (process.env.NODE_ENV === 'development') {
+                                        console.log(`[Rendering Debug] Q${questionNumber}:`, {
+                                            hasImageUrl: !!q.imageUrl,
+                                            imageUrl: q.imageUrl?.substring(0, 80) || 'none',
+                                            showLargeDiagram,
+                                            questionText: q.question.substring(0, 100),
+                                            fullQuestionText: q.question,
+                                            questionTextLength: q.question.length,
+                                            isSubquestion: isSubquestion(questionNumber),
+                                            index: index,
+                                            order: (q as any).order || 'MISSING'
+                                        });
+                                        
+                                        // Compare with expected text from database
+                                        const expectedText = session.examQuestions.find((eq, idx) => {
+                                            const eqNum = (eq as Question & { questionNumber?: string }).questionNumber || `${idx + 1}`;
+                                            return eqNum === questionNumber;
+                                        })?.question || 'NOT FOUND';
+                                        
+                                        if (q.question !== expectedText) {
+                                            console.error(`[TEXT MISMATCH] Q${questionNumber}:`);
+                                            console.error(`  Current: "${q.question.substring(0, 100)}..."`);
+                                            console.error(`  Expected: "${expectedText.substring(0, 100)}..."`);
+                                        }
+                                    }
+                                    
+                                    // Check if question text should appear above the image
+                                    // Get image URL from imageFileId if imageUrl is not set
+                                    // CRITICAL: Always check imageFileId first, then fall back to imageUrl
+                                    const effectiveImageUrl = (q.imageFileId ? getImageUrlFromFileId(q.imageFileId) : undefined) || q.imageUrl;
+                                    
+                                    // DEBUG: Log image resolution
+                                    if (process.env.NODE_ENV === 'development' && (q.imageFileId || q.imageUrl)) {
+                                        console.log(`[Image Render] Q${questionNumber}:`, {
+                                            hasImageFileId: !!q.imageFileId,
+                                            imageFileId: q.imageFileId || 'none',
+                                            hasImageUrl: !!q.imageUrl,
+                                            imageUrl: q.imageUrl?.substring(0, 80) || 'none',
+                                            effectiveImageUrl: effectiveImageUrl?.substring(0, 80) || 'none',
+                                        });
+                                    }
+                                    
+                                    const textAboveImage = effectiveImageUrl && referencesVisualBelow(q.question);
+                                    
+                                    // Check if this is a subquestion (should show answer box) or parent question (should not)
+                                    // Parent questions (1.1, 1.2, etc.) should NEVER show answer boxes, even if multiple choice
+                                    // Only subquestions (1.1.1, 1.2.1, etc.) should show answer boxes
+                                    const isSubQ = isSubquestion(questionNumber);
+                                    const shouldShowAnswerBox = isSubQ; // Only subquestions show answer boxes
+                                    const isTrueFalse = q.type === 'true-false';
                                     
                                     return (
                                     <div key={q.id} className={currentQuestionIndex === index ? 'block' : 'hidden'}>
@@ -782,56 +1186,157 @@ export default function PastPaperPracticePage() {
                                                 )}
                                             </div>
                                             
+                                            {/* Display question text above image if it references diagram/graph/table below */}
+                                            {textAboveImage && (
+                                                <div className="text-base prose max-w-none"><ReactMarkdown rehypePlugins={[rehypeRaw]}>{q.question.replace(/\\n/g, '<br>')}</ReactMarkdown></div>
+                                            )}
+                                            
                                             {/* Display question image if available */}
-                                            {q.imageUrl && (
-                                                <div className={`${isFirstWithSharedDiagram ? 'my-4' : 'mb-3'}`}>
-                                                    {isFirstWithSharedDiagram ? (
+                                            {effectiveImageUrl ? (
+                                                <div className={`${showLargeDiagram ? 'my-4' : 'mb-3'}`} data-question-number={questionNumber}>
+                                                    {showLargeDiagram ? (
                                                         // First sub-question: show large image
                                                         <div className="flex justify-center">
-                                                            {q.imageUrl && (q.imageUrl.startsWith('data:image') || q.imageUrl.startsWith('data:application/pdf')) ? (
+                                                            {effectiveImageUrl && (effectiveImageUrl.startsWith('data:image') || effectiveImageUrl.startsWith('data:application/pdf')) ? (
                                                                 <img 
-                                                                    src={q.imageUrl} 
+                                                                    src={effectiveImageUrl} 
                                                                     alt="Question reference image" 
                                                                     className="max-w-full h-auto rounded-lg border border-border shadow-sm"
                                                                     style={{ maxHeight: '500px' }}
+                                                                    onError={(e) => {
+                                                                        console.error('[Image Error] Failed to load image for Q' + questionNumber + ':', {
+                                                                            imageUrl: effectiveImageUrl,
+                                                                            questionNumber: questionNumber,
+                                                                            error: e
+                                                                        });
+                                                                        if (process.env.NODE_ENV === 'development') {
+                                                                            console.error('[Image Error] Full image URL:', effectiveImageUrl);
+                                                                        }
+                                                                    }}
+                                                                    onLoad={() => {
+                                                                        if (process.env.NODE_ENV === 'development') {
+                                                                            console.log('[Image Success] Loaded image for Q' + questionNumber + ':', effectiveImageUrl);
+                                                                        }
+                                                                    }}
                                                                 />
-                                                            ) : q.imageUrl && q.imageUrl.startsWith('<svg') ? (
-                                                                <div dangerouslySetInnerHTML={{ __html: q.imageUrl }} />
-                                                            ) : q.imageUrl && (q.imageUrl.startsWith('http://') || q.imageUrl.startsWith('https://')) ? (
-                                                                <Image 
-                                                                    src={q.imageUrl} 
+                                                            ) : effectiveImageUrl && effectiveImageUrl.startsWith('<svg') ? (
+                                                                <div dangerouslySetInnerHTML={{ __html: effectiveImageUrl }} />
+                                                            ) : effectiveImageUrl && (effectiveImageUrl.startsWith('http://') || effectiveImageUrl.startsWith('https://')) ? (
+                                                                // Use regular img tag for Appwrite URLs to avoid Next.js Image optimization issues
+                                                                <img 
+                                                                    src={effectiveImageUrl} 
                                                                     alt="Question reference image" 
-                                                                    width={800}
-                                                                    height={600}
-                                                                    className="rounded-lg border border-border shadow-sm"
+                                                                    className="max-w-full h-auto rounded-lg border border-border shadow-sm"
+                                                                    style={{ maxHeight: '500px', display: 'block' }}
+                                                                    data-question-number={questionNumber}
+                                                                    data-image-type="large"
+                                                                    onError={(e) => {
+                                                                        console.error('[Image Error] Failed to load image for Q' + questionNumber + ':', {
+                                                                            imageUrl: effectiveImageUrl,
+                                                                            questionNumber: questionNumber,
+                                                                            error: e,
+                                                                            target: e.currentTarget
+                                                                        });
+                                                                        if (process.env.NODE_ENV === 'development') {
+                                                                            console.error('[Image Error] Full image URL:', effectiveImageUrl);
+                                                                            // Add visual error indicator
+                                                                            const target = e.currentTarget as HTMLImageElement;
+                                                                            target.style.border = '3px solid red';
+                                                                            target.style.backgroundColor = '#fee';
+                                                                        }
+                                                                    }}
+                                                                    onLoad={(e) => {
+                                                                        if (process.env.NODE_ENV === 'development') {
+                                                                            console.log('[Image Success] Loaded image for Q' + questionNumber + ':', effectiveImageUrl);
+                                                                            const target = e.currentTarget as HTMLImageElement;
+                                                                            const dimensions = {
+                                                                                width: target.naturalWidth,
+                                                                                height: target.naturalHeight,
+                                                                                display: window.getComputedStyle(target).display,
+                                                                                visibility: window.getComputedStyle(target).visibility,
+                                                                                opacity: window.getComputedStyle(target).opacity
+                                                                            };
+                                                                            console.log('[Image Success] Image dimensions:', dimensions);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            ) : effectiveImageUrl ? (
+                                                                // Image URL exists but doesn't match expected formats - try to render anyway
+                                                                <img 
+                                                                    src={effectiveImageUrl} 
+                                                                    alt="Question reference image" 
+                                                                    className="max-w-full h-auto rounded-lg border border-border shadow-sm"
+                                                                    style={{ maxHeight: '500px' }}
+                                                                    onError={(e) => {
+                                                                        console.error('[Image Error] Failed to load image for Q' + questionNumber + ':', {
+                                                                            imageUrl: effectiveImageUrl,
+                                                                            questionNumber: questionNumber,
+                                                                            error: e
+                                                                        });
+                                                                        if (process.env.NODE_ENV === 'development') {
+                                                                            console.error('[Image Error] Full image URL:', effectiveImageUrl);
+                                                                        }
+                                                                    }}
+                                                                    onLoad={() => {
+                                                                        if (process.env.NODE_ENV === 'development') {
+                                                                            console.log('[Image Success] Loaded image for Q' + questionNumber + ':', effectiveImageUrl);
+                                                                        }
+                                                                    }}
                                                                 />
                                                             ) : null}
                                                         </div>
                                                     ) : (
-                                                        // Follow-up sub-question: show small clickable thumbnail at top
+                                                        // Subquestion or follow-up question: show small clickable thumbnail
                                                         <div className="border-b border-border pb-3">
                                                             <button
-                                                                onClick={() => setEnlargedImageUrl(q.imageUrl!)}
+                                                                onClick={() => setEnlargedImageUrl(effectiveImageUrl!)}
                                                                 className="flex items-center gap-3 w-full hover:opacity-80 transition-opacity text-left group"
                                                             >
-                                                                {q.imageUrl && (q.imageUrl.startsWith('data:image') || q.imageUrl.startsWith('data:application/pdf')) ? (
+                                                                {effectiveImageUrl && (effectiveImageUrl.startsWith('data:image') || effectiveImageUrl.startsWith('data:application/pdf')) ? (
                                                                     <img 
-                                                                        src={q.imageUrl} 
+                                                                        src={effectiveImageUrl} 
                                                                         alt="Click to enlarge diagram" 
                                                                         className="w-40 h-auto rounded-lg border border-border shadow-sm group-hover:border-primary transition-colors"
                                                                     />
-                                                                ) : q.imageUrl && q.imageUrl.startsWith('<svg') ? (
+                                                                ) : effectiveImageUrl && effectiveImageUrl.startsWith('<svg') ? (
                                                                     <div 
-                                                                        dangerouslySetInnerHTML={{ __html: q.imageUrl }} 
+                                                                        dangerouslySetInnerHTML={{ __html: effectiveImageUrl }} 
                                                                         className="w-40 h-auto rounded-lg border border-border shadow-sm group-hover:border-primary transition-colors"
                                                                     />
-                                                                ) : q.imageUrl && (q.imageUrl.startsWith('http://') || q.imageUrl.startsWith('https://')) ? (
-                                                                    <Image 
-                                                                        src={q.imageUrl} 
+                                                                ) : effectiveImageUrl && (effectiveImageUrl.startsWith('http://') || effectiveImageUrl.startsWith('https://')) ? (
+                                                                    <img 
+                                                                        src={effectiveImageUrl} 
                                                                         alt="Click to enlarge diagram" 
-                                                                        width={160}
-                                                                        height={120}
-                                                                        className="rounded-lg border border-border shadow-sm group-hover:border-primary transition-colors"
+                                                                        className="w-40 h-auto rounded-lg border border-border shadow-sm group-hover:border-primary transition-colors"
+                                                                        style={{ display: 'block' }}
+                                                                        data-question-number={questionNumber}
+                                                                        data-image-type="thumbnail"
+                                                                        onError={(e) => {
+                                                                            console.error('[Image Error] Failed to load thumbnail for Q' + questionNumber + ':', {
+                                                                                imageUrl: effectiveImageUrl,
+                                                                                questionNumber: questionNumber,
+                                                                                target: e.currentTarget
+                                                                            });
+                                                                            if (process.env.NODE_ENV === 'development') {
+                                                                                const target = e.currentTarget as HTMLImageElement;
+                                                                                target.style.border = '3px solid red';
+                                                                                target.style.backgroundColor = '#fee';
+                                                                            }
+                                                                        }}
+                                                                        onLoad={(e) => {
+                                                                            if (process.env.NODE_ENV === 'development') {
+                                                                                console.log('[Image Success] Loaded thumbnail for Q' + questionNumber);
+                                                                                const target = e.currentTarget as HTMLImageElement;
+                                                                                const dimensions = {
+                                                                                    width: target.naturalWidth,
+                                                                                    height: target.naturalHeight,
+                                                                                    display: window.getComputedStyle(target).display,
+                                                                                    visibility: window.getComputedStyle(target).visibility,
+                                                                                    opacity: window.getComputedStyle(target).opacity
+                                                                                };
+                                                                                console.log('[Image Success] Thumbnail dimensions:', dimensions);
+                                                                            }
+                                                                        }}
                                                                     />
                                                                 ) : null}
                                                                 <div className="flex-1">
@@ -842,44 +1347,81 @@ export default function PastPaperPracticePage() {
                                                         </div>
                                                     )}
                                                 </div>
+                                            ) : null}
+                                            
+                                            {/* Display question text below image if it doesn't reference diagram/graph/table below */}
+                                            {!textAboveImage && (
+                                                <div className="text-base prose max-w-none"><ReactMarkdown rehypePlugins={[rehypeRaw]}>{q.question.replace(/\\n/g, '<br>')}</ReactMarkdown></div>
                                             )}
                                             
-                                            <div className="text-base prose max-w-none"><ReactMarkdown rehypePlugins={[rehypeRaw]}>{q.question.replace(/\\n/g, '<br>')}</ReactMarkdown></div>
-                                            
-                                            {isMultipleChoice && q.options && q.options.length > 0 ? (
-                                                <div className="space-y-2">
-                                                    {q.options.map((option, optIdx) => (
-                                                        <button
-                                                            key={optIdx}
-                                                            onClick={() => handleAnswerChange(index, option.value)}
+                                            {/* Only show answer options/box for subquestions (1.1.1, 1.2.2, etc.) or multiple choice questions */}
+                                            {shouldShowAnswerBox && (
+                                                <>
+                                                    {isTrueFalse ? (
+                                                        <div className="space-y-2">
+                                                            <button
+                                                                onClick={() => handleAnswerChange(index, 'True')}
+                                                                disabled={!!q.feedback?.isCorrect}
+                                                                className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                                                                    q.studentAnswer === 'True'
+                                                                        ? 'border-primary bg-primary/10'
+                                                                        : 'border-muted hover:border-primary/50'
+                                                                } ${q.feedback?.isCorrect ? 'opacity-70' : ''}`}
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-semibold text-lg">True</span>
+                                                                </div>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleAnswerChange(index, 'False')}
+                                                                disabled={!!q.feedback?.isCorrect}
+                                                                className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                                                                    q.studentAnswer === 'False'
+                                                                        ? 'border-primary bg-primary/10'
+                                                                        : 'border-muted hover:border-primary/50'
+                                                                } ${q.feedback?.isCorrect ? 'opacity-70' : ''}`}
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-semibold text-lg">False</span>
+                                                                </div>
+                                                            </button>
+                                                        </div>
+                                                    ) : isMultipleChoice && q.options && q.options.length > 0 ? (
+                                                        <div className="space-y-2">
+                                                            {q.options.map((option, optIdx) => (
+                                                                <button
+                                                                    key={optIdx}
+                                                                    onClick={() => handleAnswerChange(index, option.value)}
+                                                                    disabled={!!q.feedback?.isCorrect}
+                                                                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+                                                                        q.studentAnswer === option.value
+                                                                            ? 'border-primary bg-primary/10'
+                                                                            : 'border-muted hover:border-primary/50'
+                                                                    } ${q.feedback?.isCorrect ? 'opacity-70' : ''}`}
+                                                                >
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-medium">{String.fromCharCode(65 + optIdx)}.</span>
+                                                                        <span>{option.label}</span>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <Textarea 
+                                                            placeholder="Your answer..."
+                                                            value={q.studentAnswer || ''}
+                                                            onChange={(e) => handleAnswerChange(index, e.target.value)}
                                                             disabled={!!q.feedback?.isCorrect}
-                                                            className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
-                                                                q.studentAnswer === option.value
-                                                                    ? 'border-primary bg-primary/10'
-                                                                    : 'border-muted hover:border-primary/50'
-                                                            } ${q.feedback?.isCorrect ? 'opacity-70' : ''}`}
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-medium">{String.fromCharCode(65 + optIdx)}.</span>
-                                                                <span>{option.label}</span>
-                                                            </div>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <Textarea 
-                                                    placeholder="Your answer..."
-                                                    value={q.studentAnswer || ''}
-                                                    onChange={(e) => handleAnswerChange(index, e.target.value)}
-                                                    disabled={!!q.feedback?.isCorrect}
-                                                    rows={4}
-                                                />
+                                                            rows={4}
+                                                        />
+                                                    )}
+                                                    
+                                                    <Button onClick={() => handleCheckAnswer(index)} disabled={!q.studentAnswer || q.isChecking || !!q.feedback?.isCorrect}>
+                                                        {q.isChecking && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                                                        {q.isChecking ? 'Checking...' : 'Check Answer'}
+                                                    </Button>
+                                                </>
                                             )}
-                                            
-                                            <Button onClick={() => handleCheckAnswer(index)} disabled={!q.studentAnswer || q.isChecking || !!q.feedback?.isCorrect}>
-                                                {q.isChecking && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                                                {q.isChecking ? 'Checking...' : 'Check Answer'}
-                                            </Button>
                                             
                                             {q.feedback && (
                                                 <div className="mt-4 space-y-4 rounded-lg border p-4 text-left bg-muted/50">

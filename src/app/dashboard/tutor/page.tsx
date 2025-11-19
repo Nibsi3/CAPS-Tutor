@@ -15,6 +15,9 @@ import rehypeRaw from 'rehype-raw';
 import Link from 'next/link';
 import { useLanguage } from '@/components/language-provider';
 import { TypingText } from '@/components/ui/typing-text';
+import { useScrollRestore } from '@/hooks/use-scroll-restore';
+import { useFeature } from '@/hooks/use-features';
+import { useRouter } from 'next/navigation';
 
 interface Attachment {
   type: 'image' | 'pdf';
@@ -34,116 +37,38 @@ const getExamplePrompts = (gradeLevel?: number, subjects?: string[]) => {
     const grade = gradeLevel || 10;
     const firstSubject = subjects && subjects.length > 0 ? subjects[0] : 'Mathematics';
     
-    // Grade ranges for CAPS curriculum
-    const isFoundationPhase = grade >= 1 && grade <= 3;  // Grades 1-3
-    const isIntermediatePhase = grade >= 4 && grade <= 7; // Grades 4-7
-    const isSeniorPhase = grade >= 8 && grade <= 9;       // Grades 8-9
-    const isFETPhase = grade >= 10 && grade <= 12;        // Grades 10-12
-    
-    // Different prompts for different grade phases
-    if (isFoundationPhase) {
-        // Foundation Phase (Grades 1-3): Focus on basic reading, simple math, stories
-        return [
-            {
-                icon: BookText,
-                title: "Help Me Read",
-                prompt: `Can you help me understand a story or read better? I'm in Grade ${grade}.`
-            },
-            {
-                icon: BrainCircuit,
-                title: "Explain Simply",
-                prompt: `Can you explain ${firstSubject} in very simple words for a Grade ${grade} student like me?`
-            },
-            {
-                icon: PencilRuler,
-                title: "Practice Writing",
-                prompt: `Help me practice writing simple sentences or a short story for Grade ${grade}.`
-            },
-            {
-                icon: BrainCircuit,
-                title: "Fun Quiz",
-                prompt: `Can you give me a fun and easy quiz about ${firstSubject} for Grade ${grade}?`
-            }
-        ];
-    } else if (isIntermediatePhase) {
-        // Intermediate Phase (Grades 4-7): Simple paragraphs, comprehension, basic concepts
-        return [
-            {
-                icon: BookText,
-                title: "Reading Comprehension",
-                prompt: `Help me understand what I'm reading better for Grade ${grade}. How do I answer comprehension questions?`
-            },
-            {
-                icon: PencilRuler,
-                title: "Write Paragraphs",
-                prompt: `Show me how to write a good paragraph for Grade ${grade}. Can you give me an example?`
-            },
-            {
-                icon: BrainCircuit,
-                title: "Explain a Concept",
-                prompt: `Explain a ${firstSubject} topic in simple terms for a Grade ${grade} student.`
-            },
-            {
-                icon: BrainCircuit,
-                title: "Practice Quiz",
-                prompt: `Give me a practice quiz on ${firstSubject} for Grade ${grade} level.`
-            }
-        ];
-    } else if (isSeniorPhase) {
-        // Senior Phase (Grades 8-9): Introduction to essays, summaries, more complex topics
-        return [
-            {
-                icon: PencilRuler,
-                title: "Write Better",
-                prompt: `Help me write better paragraphs and short essays for Grade ${grade}. Show me how to structure my writing.`
-            },
-            {
-                icon: BookText,
-                title: "Write Summaries",
-                prompt: `What are the key steps to writing a good summary for Grade ${grade}? Give me an example.`
-            },
-            {
-                icon: BrainCircuit,
-                title: "Explain Concepts",
-                prompt: `Explain a ${firstSubject} concept clearly for a Grade ${grade} student.`
-            },
-            {
-                icon: BrainCircuit,
-                title: "Quiz Me",
-                prompt: `Give me a practice quiz on ${firstSubject} at Grade ${grade} level.`
-            }
-        ];
-    } else {
-        // FET Phase (Grades 10-12): Advanced essays, exam prep, complex analysis
-        return [
-            {
-                icon: PencilRuler,
-                title: "Write Better Essays",
-                prompt: `How can I structure my essays better to get more marks for Grade ${grade}? Show me an example for a history essay at Grade ${grade} level.`
-            },
-            {
-                icon: BookText,
-                title: "Score Better in Summaries",
-                prompt: `What are the key steps to writing a good summary for Grade ${grade}? Give me an example appropriate for Grade ${grade} level.`
-            },
-            {
-                icon: BrainCircuit,
-                title: "Explain a Concept",
-                prompt: `Explain a ${firstSubject} concept in detail suitable for Grade ${grade} exam preparation.`
-            },
-            {
-                icon: BrainCircuit,
-                title: "Exam Practice Quiz",
-                prompt: `Give me a short, 3-question multiple-choice quiz on ${firstSubject} at Grade ${grade} exam level.`
-            }
-        ];
-    }
+    // FET Phase (Grades 10-12): Advanced essays, exam prep, complex analysis
+    return [
+        {
+            icon: PencilRuler,
+            title: "Write Better Essays",
+            prompt: `How can I structure my essays better to get more marks for Grade ${grade}? Show me an example for a history essay at Grade ${grade} level.`
+        },
+        {
+            icon: BookText,
+            title: "Score Better in Summaries",
+            prompt: `What are the key steps to writing a good summary for Grade ${grade}? Give me an example appropriate for Grade ${grade} level.`
+        },
+        {
+            icon: BrainCircuit,
+            title: "Explain a Concept",
+            prompt: `Explain a ${firstSubject} concept in detail suitable for Grade ${grade} exam preparation.`
+        },
+        {
+            icon: BrainCircuit,
+            title: "Exam Practice Quiz",
+            prompt: `Give me a short, 3-question multiple-choice quiz on ${firstSubject} at Grade ${grade} exam level.`
+        }
+    ];
 };
 
 export default function AiTutorPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { enabled: aiTutorEnabled, isLoading: featuresLoading } = useFeature('aiTutor');
+  
   const [isLoading, setIsLoading] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -152,6 +77,33 @@ export default function AiTutorPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const lang = useLanguage();
+  
+  // Restore scroll position on reload
+  useScrollRestore('tutor-page');
+  
+  // Redirect if feature is disabled
+  useEffect(() => {
+    if (!featuresLoading && !aiTutorEnabled) {
+      toast({
+        title: "Feature Disabled",
+        description: "AI Tutor is currently disabled. Please contact an administrator.",
+        variant: "destructive",
+      });
+      router.push('/dashboard');
+    }
+  }, [aiTutorEnabled, featuresLoading, router, toast]);
+  
+  if (featuresLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin" />
+      </div>
+    );
+  }
+  
+  if (!aiTutorEnabled) {
+    return null; // Will redirect via useEffect
+  }
 
 
   const userProfileRef = useMemoAppwrite(() => {
@@ -186,11 +138,27 @@ export default function AiTutorPage() {
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0) {
+      // Reset input even if no files selected
+      if (e.target) {
+        e.target.value = '';
+      }
+      return;
+    }
 
     try {
       const newAttachments: Attachment[] = [];
-      for (const file of Array.from(files)) {
+      const fileArray = Array.from(files);
+      
+      // Show loading toast for multiple files
+      if (fileArray.length > 1) {
+        toast({
+          title: "Processing files",
+          description: `Processing ${fileArray.length} file(s)...`,
+        });
+      }
+
+      for (const file of fileArray) {
         const isImage = file.type.startsWith('image/');
         const isPdf = file.type === 'application/pdf';
 
@@ -198,7 +166,7 @@ export default function AiTutorPage() {
           toast({
             variant: "destructive",
             title: "Unsupported file type",
-            description: "Please upload images (jpg, png, webp) or PDF files only.",
+            description: `${file.name}: Please upload images (jpg, png, webp, gif) or PDF files only.`,
           });
           continue;
         }
@@ -208,39 +176,65 @@ export default function AiTutorPage() {
           toast({
             variant: "destructive",
             title: "File too large",
-            description: "Please upload files smaller than 10MB.",
+            description: `${file.name} is too large. Please upload files smaller than 10MB.`,
           });
           continue;
         }
 
-        const dataUri = await fileToDataUri(file);
-        const attachment: Attachment = {
-          type: isImage ? 'image' : 'pdf',
-          dataUri,
-          name: file.name,
-          preview: isImage ? dataUri : undefined,
-        };
-        newAttachments.push(attachment);
+        try {
+          const dataUri = await fileToDataUri(file);
+          const attachment: Attachment = {
+            type: isImage ? 'image' : 'pdf',
+            dataUri,
+            name: file.name,
+            preview: isImage ? dataUri : undefined,
+          };
+          newAttachments.push(attachment);
+        } catch (fileError) {
+          console.error(`Error processing file ${file.name}:`, fileError);
+          toast({
+            variant: "destructive",
+            title: "File processing error",
+            description: `Failed to process ${file.name}. Please try again.`,
+          });
+        }
       }
 
-      setAttachments(prev => [...prev, ...newAttachments]);
+      if (newAttachments.length > 0) {
+        setAttachments(prev => [...prev, ...newAttachments]);
+        toast({
+          title: "Files added",
+          description: `Successfully added ${newAttachments.length} file(s).`,
+        });
+      }
     } catch (error) {
-      console.error('Error processing file:', error);
+      console.error('Error processing files:', error);
       toast({
         variant: "destructive",
         title: "Upload failed",
-        description: "Failed to process the selected file. Please try again.",
+        description: "Failed to process the selected files. Please try again.",
       });
-    }
-
-    // Reset input
-    if (e.target) {
-      e.target.value = '';
+    } finally {
+      // Reset input
+      if (e.target) {
+        e.target.value = '';
+      }
     }
   };
 
   const handleCameraClick = () => {
-    cameraInputRef.current?.click();
+    // Check if device supports camera
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      // Device likely supports camera, trigger camera input
+      cameraInputRef.current?.click();
+    } else {
+      // Fallback to regular file input if camera not available
+      toast({
+        title: "Camera not available",
+        description: "Opening file picker instead. You can select a photo from your device.",
+      });
+      fileInputRef.current?.click();
+    }
   };
 
   const handleFileUploadClick = () => {
@@ -431,18 +425,20 @@ export default function AiTutorPage() {
                       />
                       <button
                         onClick={() => removeAttachment(index)}
-                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                        title="Remove attachment"
                       >
                         <X className="w-3 h-3" />
                       </button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 p-2 rounded bg-muted border relative group">
-                      <FileText className="w-4 h-4" />
-                      <span className="text-xs truncate max-w-[120px]">{att.name}</span>
+                      <FileText className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-xs truncate max-w-[120px]" title={att.name}>{att.name}</span>
                       <button
                         onClick={() => removeAttachment(index)}
-                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                        title="Remove attachment"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -459,7 +455,7 @@ export default function AiTutorPage() {
               type="file"
               ref={fileInputRef}
               className="hidden"
-              accept="image/*,.pdf"
+              accept="image/*,.pdf,application/pdf"
               multiple
               onChange={handleFileSelect}
             />
@@ -470,6 +466,7 @@ export default function AiTutorPage() {
               accept="image/*"
               capture="environment"
               onChange={handleFileSelect}
+              // Fallback: if camera not available, still allow file selection
             />
             
             <div className="flex gap-2">

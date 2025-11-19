@@ -55,6 +55,83 @@ const nextConfig: NextConfig = {
         hostname: 'picsum.photos',
         pathname: '/**',
       },
+      // Google profile images (OAuth)
+      // Note: Next.js doesn't support wildcards in hostname, so we list all common subdomains
+      {
+        protocol: 'https',
+        hostname: 'lh1.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh2.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh4.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh5.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh6.googleusercontent.com',
+        pathname: '/**',
+      },
+      // Appwrite Storage endpoints - specific hostnames
+      // Note: Next.js doesn't support wildcards in remotePatterns, so we list common endpoints
+      {
+        protocol: 'https',
+        hostname: 'fra.cloud.appwrite.io',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'us-east-1.cloud.appwrite.io',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'us-west-1.cloud.appwrite.io',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'eu-central-1.cloud.appwrite.io',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ap-south-1.cloud.appwrite.io',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ap-southeast-1.cloud.appwrite.io',
+        pathname: '/**',
+      },
+      // Self-hosted Appwrite (if using custom domain)
+      {
+        protocol: 'https',
+        hostname: 'localhost',
+        pathname: '/**',
+        port: '443',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        pathname: '/**',
+        port: '80',
+      },
     ],
     formats: ['image/avif', 'image/webp'],
     // Ensure image optimization is enabled

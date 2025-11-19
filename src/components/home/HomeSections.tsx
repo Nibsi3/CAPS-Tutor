@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import Image from "next/image";
 import { GraduationCap, Newspaper, FileText, Mail, CheckCircle, ExternalLink } from "lucide-react";
-import { blogPosts } from "@/lib/blog-posts";
+import { publishedBlogPosts } from "@/lib/blog-posts";
 
 export function CapsSyllabusSection() {
   const features = [
@@ -114,8 +114,8 @@ export function NewsSection() {
 }
 
 export function BlogSection() {
-  // Defensive check: ensure blogPosts is defined and is an array
-  const recentPosts = (Array.isArray(blogPosts) ? blogPosts : []).filter(post => !post.comingSoon).slice(0, 3);
+  // Defensive check: ensure publishedBlogPosts is defined and is an array
+  const recentPosts = (Array.isArray(publishedBlogPosts) ? publishedBlogPosts : []).filter(post => !post.comingSoon).slice(0, 3);
 
   return (
     <section className="py-24 sm:py-32 bg-background">
@@ -200,7 +200,7 @@ export function ContactSection() {
             We'd Love to Hear From You
           </h2>
           <p className="mt-6 text-lg leading-8 text-muted-foreground">
-            Have questions about features, pricing, or anything else? Our team is ready to answer all your questions.
+            Have questions about features or anything else? Our team is ready to answer all your questions.
           </p>
         </div>
 

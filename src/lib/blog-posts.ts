@@ -718,7 +718,7 @@ export const blogPosts = [
 	  slug: 'building-study-habits-ai-coaching',
 	  title: 'Building Better Study Habits: How AI Acts as a Personal Learning Coach',
 	  description: 'Success in school isn\'t just about intelligence—it\'s about effective study habits. Learn how AI tutors can help students develop time management skills, create study schedules, and build the self-regulation abilities essential for academic success.',
-	  imageUrl: 'https://images.pexels.com/photos/6550158/pexels-photo-6550158.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905725/pexels-photo-5905725.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'June 16, 2025',
 	  datetime: '2025-06-16',
 	  category: 'Study Tips',
@@ -1593,7 +1593,7 @@ export const blogPosts = [
 	  slug: 'ai-tutor-vs-traditional-tutoring-comparison',
 	  title: 'AI Tutor vs. Traditional Tutoring: A Comprehensive Comparison',
 	  description: 'Is an AI tutor better than a human tutor? We examine the strengths and limitations of both approaches, helping students and parents make informed decisions about their educational support options.',
-	  imageUrl: 'https://images.pexels.com/photos/4974966/pexels-photo-4974966.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905726/pexels-photo-5905726.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'September 22, 2025',
 	  datetime: '2025-09-22',
 	  category: 'Technology',
@@ -1933,7 +1933,7 @@ export const blogPosts = [
 	  slug: 'remote-learning-success-strategies',
 	  title: 'Remote Learning Success: Strategies for Effective Online Education',
 	  description: 'The shift to online and hybrid learning models has transformed education. Learn evidence-based strategies that help students succeed in remote learning environments, and how AI tutors can provide the support and structure needed for effective online learning.',
-	  imageUrl: 'https://images.pexels.com/photos/4974922/pexels-photo-4974922.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905727/pexels-photo-5905727.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 1, 2025',
 	  datetime: '2025-11-01',
 	  category: 'Study Tips',
@@ -2499,7 +2499,7 @@ export const blogPosts = [
 	  slug: 'matric-results-2024-analysis-ai-impact',
 	  title: '2024 Matric Results Analysis: How Technology is Closing the Performance Gap',
 	  description: 'The 2024 National Senior Certificate (NSC) results were released last month, revealing interesting trends about student performance. We examine how schools using AI tutoring and digital learning tools performed compared to traditional approaches.',
-	  imageUrl: 'https://images.pexels.com/photos/4974967/pexels-photo-4974967.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905728/pexels-photo-5905728.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'October 8, 2025',
 	  datetime: '2025-10-08',
 	  category: 'Education Reform',
@@ -2579,7 +2579,7 @@ export const blogPosts = [
 	  slug: 'western-cape-digital-schools-initiative',
 	  title: 'Western Cape Launches Ambitious Digital Schools Initiative',
 	  description: 'The Western Cape Education Department recently announced a comprehensive digital schools program, aiming to equip 500 schools with enhanced technology and AI-assisted learning tools. We examine what this initiative means for students and whether it can serve as a model for other provinces.',
-	  imageUrl: 'https://images.pexels.com/photos/4974968/pexels-photo-4974968.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905729/pexels-photo-5905729.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'September 28, 2025',
 	  datetime: '2025-09-28',
 	  category: 'Education Reform',
@@ -2594,7 +2594,7 @@ export const blogPosts = [
 		<p>The three-year program includes:</p>
 		<ul>
 		  <li><strong>Infrastructure Upgrades:</strong> High-speed internet connectivity, computer labs, and digital whiteboards for 500 schools</li>
-		  <li><strong>Device Provision:</strong> Tablets or laptops for students in Grades 8-12 in participating schools</li>
+		  <li><strong>Device Provision:</strong> Tablets or laptops for students in Grades 10-12 in participating schools</li>
 		  <li><strong>AI Tutoring Platform:</strong> Access to AI-assisted learning tools aligned with the CAPS curriculum</li>
 		  <li><strong>Teacher Training:</strong> Comprehensive professional development for 15,000 teachers on using digital tools effectively</li>
 		</ul>
@@ -2672,7 +2672,7 @@ export const blogPosts = [
 	  slug: 'teacher-shortage-crisis-south-africa',
 	  title: 'South Africa\'s Teacher Shortage Crisis: Can AI Help Bridge the Gap?',
 	  description: 'A recent report from the South African Council for Educators (SACE) revealed that the country faces a critical shortage of qualified teachers, particularly in Mathematics and Physical Sciences. As schools struggle to fill vacancies, some are turning to AI tutoring platforms as a supplementary solution.',
-	  imageUrl: 'https://images.pexels.com/photos/4974969/pexels-photo-4974969.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905730/pexels-photo-5905730.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'October 22, 2025',
 	  datetime: '2025-10-22',
 	  category: 'Education Reform',
@@ -2768,7 +2768,7 @@ export const blogPosts = [
 	  slug: 'caps-curriculum-updates-2025',
 	  title: 'CAPS Curriculum Updates 2025: What Changes Mean for AI-Assisted Learning',
 	  description: 'The Department of Basic Education recently announced updates to the CAPS curriculum, with increased focus on digital literacy and 21st-century skills. We examine how these changes affect AI tutoring platforms and what students and parents need to know.',
-	  imageUrl: 'https://images.pexels.com/photos/4974970/pexels-photo-4974970.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905731/pexels-photo-5905731.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'October 5, 2025',
 	  datetime: '2025-10-05',
 	  category: 'Education Reform',
@@ -2985,7 +2985,7 @@ export const blogPosts = [
 	  slug: 'gamification-ai-learning-engagement',
 	  title: 'Gamification and AI: Making Learning More Engaging',
 	  description: 'Discover how gamification principles, combined with AI technology, can transform learning from a chore into an engaging experience. We explore how game-like elements can motivate students and improve learning outcomes.',
-	  imageUrl: 'https://images.pexels.com/photos/4974912/pexels-photo-4974912.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905732/pexels-photo-5905732.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 6, 2025',
 	  datetime: '2025-11-06',
 	  category: 'Technology',
@@ -3142,7 +3142,7 @@ export const blogPosts = [
 	  slug: 'preparing-university-ai-study-skills',
 	  title: 'Preparing for University: How AI Develops Essential Study Skills',
 	  description: 'The transition from high school to university requires a significant shift in learning approaches. Learn how AI tutoring platforms can help students develop the independent learning skills, critical thinking, and self-regulation needed for university success.',
-	  imageUrl: 'https://images.pexels.com/photos/5905709/pexels-photo-5905709.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905720/pexels-photo-5905720.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 8, 2025',
 	  datetime: '2025-11-08',
 	  category: 'Study Tips',
@@ -3163,7 +3163,7 @@ export const blogPosts = [
 	  slug: 'mastering-time-management-ai-tools',
 	  title: 'Mastering Time Management: How AI Tools Help Students Prioritize and Focus',
 	  description: 'Effective time management is crucial for academic success. Discover how AI-powered planning tools and study schedulers can help students organize their time, set priorities, and maintain focus on their most important learning goals.',
-	  imageUrl: 'https://images.pexels.com/photos/4974918/pexels-photo-4974918.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905706/pexels-photo-5905706.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 11, 2025',
 	  datetime: '2025-11-11',
 	  category: 'Study Tips',
@@ -3184,7 +3184,7 @@ export const blogPosts = [
 	  slug: 'building-confidence-through-ai-guided-practice',
 	  title: 'Building Confidence Through AI-Guided Practice: Overcoming Test Anxiety',
 	  description: 'Test anxiety affects millions of students worldwide. Learn how AI tutoring platforms provide low-stakes practice environments that help students build confidence, reduce anxiety, and develop resilience for high-pressure academic situations.',
-	  imageUrl: 'https://images.pexels.com/photos/4974919/pexels-photo-4974919.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905707/pexels-photo-5905707.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 13, 2025',
 	  datetime: '2025-11-13',
 	  category: 'Study Tips',
@@ -3205,7 +3205,7 @@ export const blogPosts = [
 	  slug: 'multilingual-ai-breaking-language-barriers',
 	  title: 'Multilingual AI: Breaking Language Barriers in South African Classrooms',
 	  description: 'Language diversity shouldn\'t be a barrier to quality education. Explore how AI-powered multilingual tutoring systems are helping South African students learn effectively in their home languages while building English proficiency for academic success.',
-	  imageUrl: 'https://images.pexels.com/photos/4974920/pexels-photo-4974920.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905708/pexels-photo-5905708.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 15, 2025',
 	  datetime: '2025-11-15',
 	  category: 'Education Reform',
@@ -3226,7 +3226,7 @@ export const blogPosts = [
 	  slug: 'data-driven-learning-analytics-and-insights',
 	  title: 'Data-Driven Learning: How Analytics Transform Student Success',
 	  description: 'Modern AI tutoring platforms collect rich data about student learning patterns. Discover how learning analytics can help students, parents, and teachers identify strengths, address weaknesses, and make informed decisions about educational strategies.',
-	  imageUrl: 'https://images.pexels.com/photos/5905713/pexels-photo-5905713.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905714/pexels-photo-5905714.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 18, 2025',
 	  datetime: '2025-11-18',
 	  category: 'Technology',
@@ -3247,7 +3247,7 @@ export const blogPosts = [
 	  slug: 'collaborative-learning-in-digital-age',
 	  title: 'Collaborative Learning in the Digital Age: AI as a Study Partner',
 	  description: 'While AI tutors excel at personalized instruction, they can also facilitate peer learning and collaboration. Discover how AI-powered platforms are creating virtual study groups and collaborative learning experiences that mirror the benefits of in-person study sessions.',
-	  imageUrl: 'https://images.pexels.com/photos/4974921/pexels-photo-4974921.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905715/pexels-photo-5905715.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 20, 2025',
 	  datetime: '2025-11-20',
 	  category: 'Education Reform',
@@ -3268,7 +3268,7 @@ export const blogPosts = [
 	  slug: 'inclusive-education-ai-accessibility',
 	  title: 'Inclusive Education: How AI Makes Learning Accessible to All',
 	  description: 'Accessibility should be at the forefront of educational technology. Learn how AI-powered features like text-to-speech, adaptive interfaces, and customizable learning paths are making quality education accessible to students with diverse needs and abilities.',
-	  imageUrl: 'https://images.pexels.com/photos/4974923/pexels-photo-4974923.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905716/pexels-photo-5905716.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 22, 2025',
 	  datetime: '2025-11-22',
 	  category: 'Education Reform',
@@ -3289,7 +3289,7 @@ export const blogPosts = [
 	  slug: 'motivation-and-engagement-ai-strategies',
 	  title: 'Motivation and Engagement: AI Strategies That Keep Students Learning',
 	  description: 'Maintaining student motivation is one of education\'s greatest challenges. Explore how AI tutoring systems use behavioral science principles, progress tracking, and personalized encouragement to keep students engaged and motivated throughout their learning journey.',
-	  imageUrl: 'https://images.pexels.com/photos/4974924/pexels-photo-4974924.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905717/pexels-photo-5905717.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 25, 2025',
 	  datetime: '2025-11-25',
 	  category: 'Study Tips',
@@ -3310,7 +3310,7 @@ export const blogPosts = [
 	  slug: 'future-of-assessment-ai-evaluation',
 	  title: 'The Future of Assessment: Rethinking Evaluation with AI',
 	  description: 'Traditional assessments often fail to capture the full picture of student understanding. Discover how AI-powered assessment tools are revolutionizing evaluation, moving beyond multiple-choice tests to provide comprehensive, authentic assessments of student knowledge and skills.',
-	  imageUrl: 'https://images.pexels.com/photos/4974925/pexels-photo-4974925.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905718/pexels-photo-5905718.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 27, 2025',
 	  datetime: '2025-11-27',
 	  category: 'Technology',
@@ -3331,7 +3331,7 @@ export const blogPosts = [
 	  slug: 'parent-guide-ai-tutoring-success',
 	  title: 'A Parent\'s Guide to AI Tutoring: Supporting Your Child\'s Learning Journey',
 	  description: 'As a parent, understanding how AI tutoring works can help you better support your child\'s education. This comprehensive guide covers how to choose the right AI tutor, monitor progress, and create an effective learning environment at home.',
-	  imageUrl: 'https://images.pexels.com/photos/4974926/pexels-photo-4974926.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905719/pexels-photo-5905719.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'November 29, 2025',
 	  datetime: '2025-11-29',
 	  category: 'Study Tips',
@@ -3352,7 +3352,7 @@ export const blogPosts = [
 	  slug: 'holiday-learning-maintaining-momentum',
 	  title: 'Holiday Learning: Maintaining Academic Momentum During School Breaks',
 	  description: 'School holidays don\'t have to mean a complete break from learning. Discover how to use holiday time effectively to review, catch up, or get ahead, while still enjoying well-deserved rest. Learn strategies for balanced holiday learning that keeps skills sharp.',
-	  imageUrl: 'https://images.pexels.com/photos/4974927/pexels-photo-4974927.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905721/pexels-photo-5905721.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'December 2, 2025',
 	  datetime: '2025-12-02',
 	  category: 'Study Tips',
@@ -3373,7 +3373,7 @@ export const blogPosts = [
 	  slug: 'year-end-reflection-goal-setting',
 	  title: 'Year-End Reflection and Goal Setting: Preparing for Academic Success in 2026',
 	  description: 'As the year draws to a close, it\'s the perfect time to reflect on academic achievements and set goals for the year ahead. Learn how to conduct meaningful self-assessment, identify areas for growth, and create actionable plans for improved performance.',
-	  imageUrl: 'https://images.pexels.com/photos/4974928/pexels-photo-4974928.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905722/pexels-photo-5905722.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'December 4, 2025',
 	  datetime: '2025-12-04',
 	  category: 'Study Tips',
@@ -3394,7 +3394,7 @@ export const blogPosts = [
 	  slug: 'exam-stress-management-techniques',
 	  title: 'Exam Stress Management: Techniques for Staying Calm Under Pressure',
 	  description: 'End-of-year exams can create significant stress and anxiety for students. Learn evidence-based techniques for managing exam stress, maintaining focus, and performing your best when it matters most. Discover how AI tutors can create low-pressure practice environments.',
-	  imageUrl: 'https://images.pexels.com/photos/4974929/pexels-photo-4974929.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905723/pexels-photo-5905723.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'December 6, 2025',
 	  datetime: '2025-12-06',
 	  category: 'Study Tips',
@@ -3436,7 +3436,7 @@ export const blogPosts = [
 	  slug: 'reading-comprehension-ai-support',
 	  title: 'Building Reading Comprehension: How AI Tutors Support Literacy Development',
 	  description: 'Strong reading comprehension is fundamental to academic success across all subjects. Discover how AI tutoring platforms can help students develop essential reading skills, from vocabulary building to critical analysis, in ways that are engaging and personalized.',
-	  imageUrl: 'https://images.pexels.com/photos/4974931/pexels-photo-4974931.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
+	  imageUrl: 'https://images.pexels.com/photos/5905724/pexels-photo-5905724.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2',
 	  date: 'December 11, 2025',
 	  datetime: '2025-12-11',
 	  category: 'Education Reform',
@@ -4189,8 +4189,37 @@ export const blogPosts = [
 	}
   ];
 
+// Helper function to check if a blog should be published based on its date
+function shouldPublishBlog(datetime: string, comingSoon: boolean | undefined): boolean {
+  // If not marked as coming soon, always publish
+  if (!comingSoon) return true;
+  
+  // If marked as coming soon, check if the date has passed
+  const blogDate = new Date(datetime);
+  const today = new Date();
+  // Set time to midnight for accurate date comparison
+  today.setHours(0, 0, 0, 0);
+  blogDate.setHours(0, 0, 0, 0);
+  
+  // Publish if the blog date is today or in the past
+  return blogDate <= today;
+}
+
+// Export processed blogPosts with automatic publishing based on date
+// This automatically removes comingSoon flag when the blog's date arrives
+export const publishedBlogPosts = blogPosts.map((post) => {
+  const shouldPublish = shouldPublishBlog(post.datetime, post.comingSoon);
+  const isPublished = !post.comingSoon || shouldPublish;
+  
+  return {
+    ...post,
+    comingSoon: isPublished ? false : true, // Set to false if date has passed
+  };
+});
+
 // Export alias for backward compatibility - maps description to excerpt
-export const posts = blogPosts.map(({ id, slug, title, description, date, datetime, category, author, imageUrl, comingSoon }) => ({
+// Automatically publishes blogs when their date arrives
+export const posts = publishedBlogPosts.map(({ id, slug, title, description, date, datetime, category, author, imageUrl, comingSoon }) => ({
   slug,
   title,
   excerpt: description,

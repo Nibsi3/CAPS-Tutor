@@ -34,15 +34,53 @@ import { Award, Trophy, Clock, Target, BookOpen, Zap, Sparkles, Loader, Star, Fl
 import { Button } from '@/components/ui/button';
 import { checkAchievements, calculateUserStats, UserStats } from '@/lib/achievement-checker';
 import { updateUnlockedAchievements } from '@/lib/achievement-tracking';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useScrollRestore } from '@/hooks/use-scroll-restore';
+import { useFeature } from '@/hooks/use-features';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AchievementsPage() {
   const { user } = useUser();
   const databases = useDatabases();
+  const router = useRouter();
+  const { toast } = useToast();
+  const { enabled: achievementsEnabled, isLoading: featuresLoading } = useFeature('achievements');
   const [unlockedAchievements, setUnlockedAchievements] = useState<Set<string>>(new Set());
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  
+  // Persist state across reloads
+  const [selectedCategory, setSelectedCategory] = useLocalStorage<string>('achievements-selected-category', 'all');
+  const [viewMode, setViewMode] = useLocalStorage<'achievements' | 'leaderboard'>('achievements-view-mode', 'achievements');
+  
+  // Restore scroll position on reload
+  useScrollRestore('achievements-page');
+  
+  // Redirect if feature is disabled
+  useEffect(() => {
+    if (!featuresLoading && !achievementsEnabled) {
+      toast({
+        title: "Feature Disabled",
+        description: "Achievements are currently disabled. Please contact an administrator.",
+        variant: "destructive",
+      });
+      router.push('/dashboard');
+    }
+  }, [achievementsEnabled, featuresLoading, router, toast]);
+  
+  if (featuresLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader className="h-12 w-12 animate-spin" />
+      </div>
+    );
+  }
+  
+  if (!achievementsEnabled) {
+    return null; // Will redirect via useEffect
+  }
+  
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'achievements' | 'leaderboard'>('achievements');
 
   // Get user profile
   const userProfileRef = useMemoAppwrite(() => {
@@ -244,7 +282,7 @@ export default function AchievementsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Tabs value={selectedCategory || 'all'} onValueChange={setSelectedCategory}>
               <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7">
                 <TabsTrigger value="all">All ({achievementsByCategory.all})</TabsTrigger>
                 <TabsTrigger value="login">

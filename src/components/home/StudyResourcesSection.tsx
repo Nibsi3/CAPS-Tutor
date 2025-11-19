@@ -9,17 +9,17 @@ import { BookOpen, FileText, GraduationCap, Download, ExternalLink, Award, Light
 const studyResources = [
   {
     icon: FileText,
-    title: "Study Guides",
-    description: "Comprehensive study guides for all subjects, covering key concepts, formulas, and exam tips.",
-    link: "/dashboard/lessons",
-    badge: "Available"
+    title: "Study Guidelines",
+    description: "Comprehensive CAPS study guide for Grade 10-12 students with strategies, tips, and subject-specific guidance.",
+    link: "/study-guidelines",
+    badge: "New"
   },
   {
     icon: Lightbulb,
     title: "Exam Tips & Strategies",
     description: "Learn proven strategies for exam success, time management, and tackling different question types.",
-    link: "/blog",
-    badge: "Blog Posts"
+    link: "/exam-tips",
+    badge: "New"
   },
   {
     icon: Award,

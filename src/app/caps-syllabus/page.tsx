@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { CheckCircle } from "lucide-react";
 import Link from "next/link";
+import { useUser } from "@/appwrite";
 
 const features = [
   {
@@ -26,6 +27,7 @@ const features = [
 
 
 export default function CapsSyllabusPage() {
+  const { user } = useUser();
   return (
     <main className="flex-1">
         <div className="relative isolate overflow-hidden">
@@ -80,11 +82,13 @@ export default function CapsSyllabusPage() {
                 <p className="mt-6 text-lg leading-8 text-muted-foreground">
                     By focusing exclusively on the CAPS curriculum, we ensure that students are not wasting time on irrelevant topics. Our AI Tutor helps reinforce classroom learning, clarifies difficult concepts, and prepares students for the exact type of questions they will face in their tests and exams. It's the smartest way to study and achieve academic excellence.
                 </p>
-                <div className="mt-10 flex items-center justify-center gap-x-6">
-                    <Button asChild size="lg">
-                      <Link href="/register">Get Started for Free</Link>
-                    </Button>
-                </div>
+                {!user && (
+                  <div className="mt-10 flex items-center justify-center gap-x-6">
+                      <Button asChild size="lg">
+                        <Link href="/register">Get Started for Free</Link>
+                      </Button>
+                  </div>
+                )}
             </div>
           </section>
           

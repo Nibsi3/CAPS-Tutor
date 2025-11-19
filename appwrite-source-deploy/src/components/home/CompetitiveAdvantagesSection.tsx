@@ -38,7 +38,7 @@ const advantages = [
   {
     icon: CheckCircle,
     title: "Comprehensive Coverage",
-    description: "Access to all subjects across Grades 8-12, with thousands of practice questions and interactive lessons for every topic.",
+    description: "Access to all subjects across Grades 10-12, with thousands of practice questions and interactive lessons for every topic.",
     highlight: "All Subjects"
   }
 ];
@@ -87,7 +87,7 @@ const comparisonFeatures = [
     otherPlatforms: false
   },
   {
-    feature: "All Grades 8-12 Subjects",
+    feature: "All Grades 10-12 Subjects",
     capstutor: true,
     traditional: false,
     otherPlatforms: false

@@ -1,5 +1,6 @@
 "use client"
 
+import { useId } from "react"
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -25,6 +26,11 @@ export function ProgressChart({ hasActivity = false }: { hasActivity?: boolean }
   const data = hasActivity ? progressChartData : emptyProgressData;
   const lang = useLanguage();
   const t = translations[lang] || translations.en; // Fallback to English if lang is invalid
+  const gradientSuffix = useId().replace(/:/g, "")
+  const gradientIds = {
+    lastWeek: `progress-last-week-${gradientSuffix}`,
+    thisWeek: `progress-this-week-${gradientSuffix}`,
+  }
 
   return (
     <Card className="h-full flex flex-col">
@@ -37,24 +43,48 @@ export function ProgressChart({ hasActivity = false }: { hasActivity?: boolean }
           'This Week': { 
             label: t.thisWeek, 
             theme: { 
-              light: 'hsl(210, 90%, 55%)', 
-              dark: 'hsl(210, 90%, 60%)' 
+              // Deep Blue #2563eb
+              light: 'hsl(217, 84%, 53%)', 
+              dark: 'hsl(217, 84%, 58%)' 
             } 
           },
           'Last Week': { 
             label: t.lastWeek, 
             theme: { 
-              light: 'hsl(25, 95%, 55%)', 
-              dark: 'hsl(25, 95%, 60%)' 
+              // Teal #38bdf8
+              light: 'hsl(199, 92%, 63%)', 
+              dark: 'hsl(199, 92%, 68%)' 
             } 
           },
         }} className="!aspect-auto h-full w-full flex-1 flex flex-col justify-end">
               <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id={gradientIds.lastWeek} x1="0" y1="0" x2="0" y2="1">
+                    <stop
+                      offset="0%"
+                      stopColor="color-mix(in srgb, var(--color-Last-Week) 80%, white)"
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor="color-mix(in srgb, var(--color-Last-Week) 85%, black)"
+                    />
+                  </linearGradient>
+                  <linearGradient id={gradientIds.thisWeek} x1="0" y1="0" x2="0" y2="1">
+                    <stop
+                      offset="0%"
+                      stopColor="color-mix(in srgb, var(--color-This-Week) 80%, white)"
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor="color-mix(in srgb, var(--color-This-Week) 85%, black)"
+                    />
+                  </linearGradient>
+                </defs>
                 <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={6} tick={{ fontSize: 12 }} />
                 <YAxis tickLine={false} axisLine={false} tickMargin={6} unit="m" tick={{ fontSize: 12 }} />
                 <Tooltip cursor={false} content={<ChartTooltipContent indicator="dot" hideLabel />} />
-                <Bar dataKey="Last Week" fill="var(--color-Last-Week)" radius={4} />
-                <Bar dataKey="This Week" fill="var(--color-This-Week)" radius={4} />
+                <Bar dataKey="Last Week" fill={`url(#${gradientIds.lastWeek})`} radius={4} />
+                <Bar dataKey="This Week" fill={`url(#${gradientIds.thisWeek})`} radius={4} />
               </BarChart>
         </ChartContainer>
       </CardContent>

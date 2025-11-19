@@ -11,6 +11,7 @@ export interface UseDocResult<T> {
   data: WithId<T> | null;
   isLoading: boolean;
   error: Error | null;
+  refetch: () => void;
 }
 
 export interface DocRef {
@@ -30,6 +31,7 @@ export function useDoc<T = any>(
   const isValidDatabases = databases && typeof databases.getDocument === 'function';
   const [isLoading, setIsLoading] = useState<boolean>(!!memoizedDocRef && isValidDatabases);
   const [error, setError] = useState<Error | null>(null);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   useEffect(() => {
     // Only run on client-side and if we have valid databases instance
@@ -88,50 +90,95 @@ export function useDoc<T = any>(
           !errorMessage.includes('document');
         
         if (isCollectionNotFound) {
-          const helpfulError = new Error(
-            `Collection "${collectionId}" not found in database "${databaseId}".\n\n` +
-            `To fix this:\n` +
-            `1. Go to: https://cloud.appwrite.io/console\n` +
-            `2. Select project: CAPS Tutor\n` +
-            `3. Go to: Databases → ${databaseId}\n` +
-            `4. Click: Create Collection\n` +
-            `5. Collection ID: ${collectionId}\n` +
-            `6. See: docs/APPWRITE_COLLECTIONS_SETUP.md for details`
-          );
+          // Import diagnostic utilities (dynamic import to avoid circular dependencies)
+          import('@/lib/collection-diagnostics').then(({ getCollectionNotFoundMessage, generateDiagnosticCode }) => {
+            const helpfulMessage = getCollectionNotFoundMessage(collectionId, databaseId, err);
+            
+            console.error(`❌ Collection "${collectionId}" not found in database "${databaseId}"`);
+            console.error('\n' + '='.repeat(80));
+            console.error('DIAGNOSTIC INFORMATION');
+            console.error('='.repeat(80));
+            console.error('Collection details:', {
+              collectionId: collectionId || 'MISSING',
+              databaseId: databaseId || 'MISSING',
+              documentId: documentId || 'MISSING',
+              errorCode: errorCode || 'MISSING',
+              errorMessage: (err as any).message || 'MISSING',
+              errorType: errorType || 'MISSING',
+              config: {
+                databaseId: appwriteConfig.databaseId || 'MISSING',
+                projectId: appwriteConfig.projectId || 'MISSING',
+                endpoint: appwriteConfig.endpoint || 'MISSING',
+              },
+            });
+            
+            console.error('\n' + '='.repeat(80));
+            console.error('QUICK FIX - Run this diagnostic code:');
+            console.error('='.repeat(80));
+            console.log(generateDiagnosticCode());
+            console.error('\n' + '='.repeat(80));
+            console.error('Or visit: http://localhost:9002/api/admin/debug/check-all-collections');
+            console.error('Or run: node scripts/check-collections.js');
+            console.error('='.repeat(80) + '\n');
+            
+            // Also log the full helpful message
+            console.error(helpfulMessage);
+          }).catch(() => {
+            // Fallback if diagnostic import fails
+            const helpfulError = new Error(
+              `Collection "${collectionId}" not found in database "${databaseId}".\n\n` +
+              `To fix this:\n` +
+              `1. Go to: https://cloud.appwrite.io/console\n` +
+              `2. Select project: CAPS Tutor\n` +
+              `3. Go to: Databases → ${databaseId}\n` +
+              `4. Click: Create Collection\n` +
+              `5. Collection ID: ${collectionId}\n` +
+              `6. See: docs/APPWRITE_COLLECTIONS_SETUP.md for details\n` +
+              `7. Run diagnostics: Visit /api/admin/debug/check-collections or run: node scripts/check-collections.js`
+            );
+            
+            console.error('❌ Collection Missing:', {
+              collectionId: collectionId || 'MISSING',
+              databaseId: databaseId || 'MISSING',
+              documentId: documentId || 'MISSING',
+              errorCode: errorCode || 'MISSING',
+              errorMessage: (err as any).message || 'MISSING',
+            });
+          });
           
-          // Log detailed error information
-          const errorDetails = {
-            collectionId: collectionId || 'MISSING',
-            databaseId: databaseId || 'MISSING',
-            errorCode: errorCode || 'MISSING',
-            errorMessage: (err as any).message || 'MISSING',
-            errorType: errorType || 'MISSING',
-            config: {
-              databaseId: appwriteConfig.databaseId || 'MISSING',
-              projectId: appwriteConfig.projectId || 'MISSING',
-              endpoint: appwriteConfig.endpoint || 'MISSING',
-            },
-            errorString: String(err),
-            errorStack: err.stack || 'No stack trace',
-          };
-          
-          console.error('❌ Collection Missing:', errorDetails);
-          console.error('Full error object:', err);
-          setError(helpfulError);
+          // Set error with a user-friendly message
+          const errorMessage = `Collection "${collectionId}" not found. See console for diagnostic instructions.`;
+          setError(new Error(errorMessage));
           setData(null);
         } else if (errorCode === 404) {
-          // Document doesn't exist (but collection does) - this is normal, not an error
-          // Log for debugging but don't set error state
-          if (process.env.NODE_ENV === 'development') {
-            console.log('ℹ️ Document not found (404):', {
-              collectionId,
-              databaseId,
-              documentId,
-              message: 'This is normal if the document does not exist yet.',
-            });
+          // Check if it's a collection not found vs document not found
+          const errorMessage = error?.message?.toLowerCase() || '';
+          const isCollectionNotFound = 
+            errorMessage.includes('collection') && 
+            !errorMessage.includes('document');
+          
+          if (isCollectionNotFound) {
+            // Collection not found - this is an error
+            const helpfulError = new Error(
+              `Collection "${collectionId}" not found. ` +
+              `Visit /api/admin/debug/check-all-collections to see available collections.`
+            );
+            setError(helpfulError);
+            setData(null);
+          } else {
+            // Document doesn't exist (but collection does) - this is normal, not an error
+            // Log for debugging but don't set error state
+            if (process.env.NODE_ENV === 'development') {
+              console.log('ℹ️ Document not found (404):', {
+                collectionId,
+                databaseId,
+                documentId,
+                message: 'This is normal if the document does not exist yet.',
+              });
+            }
+            setData(null);
+            setError(null);
           }
-          setData(null);
-          setError(null);
         } else if (isNetworkError) {
           // Handle network errors gracefully - often temporary issues
           if (process.env.NODE_ENV === 'development') {
@@ -165,8 +212,12 @@ export function useDoc<T = any>(
     // Note: Appwrite doesn't have real-time subscriptions by default in the web SDK
     // You would need to use Appwrite Realtime or poll for updates
     // For now, we'll just fetch once
-  }, [memoizedDocRef, databases, isValidDatabases]);
+  }, [memoizedDocRef, databases, isValidDatabases, refetchTrigger]);
 
-  return { data, isLoading, error };
+  const refetch = () => {
+    setRefetchTrigger(prev => prev + 1);
+  };
+
+  return { data, isLoading, error, refetch };
 }
 

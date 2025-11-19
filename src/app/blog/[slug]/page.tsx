@@ -1,6 +1,6 @@
 
 import { notFound } from 'next/navigation';
-import { blogPosts } from '@/lib/blog-posts';
+import { publishedBlogPosts } from '@/lib/blog-posts';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,7 +10,7 @@ import { BlogSidebar } from '@/components/blog/BlogSidebar';
 // Other posts will be generated on-demand via ISR
 export async function generateStaticParams() {
   // Sort by date (most recent first) and take top 10
-  const recentPosts = [...blogPosts]
+  const recentPosts = [...publishedBlogPosts]
     .filter(post => !post.comingSoon)
     .sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime())
     .slice(0, 10);
@@ -25,7 +25,7 @@ export const revalidate = 3600;
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = blogPosts.find((p) => p.slug === slug);
+  const post = publishedBlogPosts.find((p) => p.slug === slug);
 
   if (!post) {
     notFound();

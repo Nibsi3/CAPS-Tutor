@@ -32,14 +32,19 @@ const isAppwriteFontRequest = (url: string): boolean => {
 if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
   // Intercept fetch requests
   const originalFetch = window.fetch;
-  window.fetch = async function(...args) {
+  window.fetch = async function(...args: Parameters<typeof fetch>): Promise<Response> {
     let url = '';
-    if (typeof args[0] === 'string') {
-      url = args[0];
-    } else if (args[0] instanceof Request) {
-      url = args[0].url;
-    } else if (args[0] instanceof URL) {
-      url = args[0].toString();
+    try {
+      if (typeof args[0] === 'string') {
+        url = args[0];
+      } else if (args[0] instanceof Request) {
+        url = args[0].url;
+      } else if (args[0] instanceof URL) {
+        url = args[0].toString();
+      }
+    } catch (error) {
+      // If URL extraction fails, allow the request to proceed
+      return originalFetch(...args);
     }
     
     if (isAppwriteFontRequest(url)) {
@@ -47,7 +52,8 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
       return Promise.reject(new Error('Blocked Appwrite font request'));
     }
     
-    return originalFetch.apply(this, args);
+    // Call original fetch directly (fetch doesn't use 'this' context)
+    return originalFetch(...args);
   };
 
   // Intercept XMLHttpRequest

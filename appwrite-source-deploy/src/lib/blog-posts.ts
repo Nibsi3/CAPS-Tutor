@@ -2594,7 +2594,7 @@ export const blogPosts = [
 		<p>The three-year program includes:</p>
 		<ul>
 		  <li><strong>Infrastructure Upgrades:</strong> High-speed internet connectivity, computer labs, and digital whiteboards for 500 schools</li>
-		  <li><strong>Device Provision:</strong> Tablets or laptops for students in Grades 8-12 in participating schools</li>
+		  <li><strong>Device Provision:</strong> Tablets or laptops for students in Grades 10-12 in participating schools</li>
 		  <li><strong>AI Tutoring Platform:</strong> Access to AI-assisted learning tools aligned with the CAPS curriculum</li>
 		  <li><strong>Teacher Training:</strong> Comprehensive professional development for 15,000 teachers on using digital tools effectively</li>
 		</ul>

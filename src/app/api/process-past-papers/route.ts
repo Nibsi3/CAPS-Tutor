@@ -9,8 +9,9 @@ import { listStorageFilesServer, downloadStorageFileServer } from '@/appwrite/st
 import { isLifeSciencePaper1, isLifeSciencePaper1Memo, processStoragePDFWithPyMuPDF, parsePaperMetadata } from '@/lib/past-paper-processor';
 import { processPastPaperFromPyMuPDF } from '@/ai/flows/past-paper-processing';
 import { storeQuestions, updatePaperQuestionCount } from '@/lib/question-storage';
-import { Client, ID, Databases as ClientDatabases, Storage } from 'node-appwrite';
+import { ID, getServerStorage, getServerDatabases } from '@/lib/appwrite-server';
 import { appwriteConfig } from '@/appwrite/config';
+import { Databases as ClientDatabases } from 'node-appwrite';
 import fs from 'fs';
 import * as path from 'path';
 
@@ -27,34 +28,22 @@ async function uploadImageToStorage(
   filename: string,
   bucketId: string = QUESTION_IMAGES_BUCKET_ID
 ): Promise<string> {
-  // Initialize Node Appwrite client
-  // Use server-side env vars (no NEXT_PUBLIC_ prefix)
-  const endpoint = process.env.APPWRITE_ENDPOINT || appwriteConfig.endpoint;
-  const projectId = process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_PROJECT || appwriteConfig.projectId;
-  const apiKey = process.env.APPWRITE_API_KEY || '';
-  
-  if (!apiKey) {
-    throw new Error('APPWRITE_API_KEY environment variable is required for server-side uploads');
-  }
-  
-  const client = new Client()
-    .setEndpoint(endpoint)
-    .setProject(projectId)
-    .setKey(apiKey);
-  
-  const storage = new Storage(client);
+  // Use server-side storage instance (guaranteed to be node-appwrite)
+  // getServerStorage() internally validates that node-appwrite SDK is being used (checks for .key property)
+  const storage = getServerStorage();
   
   // Create read stream from file path
+  // Node SDK accepts ReadStream directly - no .size property needed
   const stream = fs.createReadStream(imagePath);
   
   try {
     // Upload to Appwrite Storage using Node SDK
     // Signature: createFile(bucketId, fileId, stream)
-    // TypeScript types may not reflect that Node SDK accepts ReadStream, but it works at runtime
+    // No type assertion needed - Node SDK handles ReadStream natively
     const uploaded = await storage.createFile(
       bucketId,
       ID.unique(), // fileId as second argument
-      stream as any // Node readable stream as third argument (type assertion needed for TypeScript)
+      stream // Node readable stream as third argument
     );
     
     console.log(`✅ Uploaded ${filename} → ${uploaded.$id}`);
@@ -192,33 +181,28 @@ export async function POST(request: NextRequest) {
     let failed = 0;
     const errors: string[] = [];
     
-    // Create server-side databases instance with API key
-    const apiKey = typeof process !== 'undefined' 
-      ? (process as any).env?.APPWRITE_API_KEY 
-      : undefined;
-    
-    if (!apiKey) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'APPWRITE_API_KEY is not set. Please set it in your .env.local file.',
-        },
-        { status: 500 }
-      );
-    }
-    
     // Use node-appwrite for server-side database operations
-    const { Client, Databases } = await import('node-appwrite');
-    const client = new Client()
-      .setEndpoint(appwriteConfig.endpoint)
-      .setProject(appwriteConfig.projectId)
-      .setKey(apiKey); // Add API key for database operations
-    const databases = new Databases(client);
+    // getServerDatabases() validates that node-appwrite SDK is being used and throws if API key is missing
+    let databases: ClientDatabases;
+    try {
+      databases = getServerDatabases();
+    } catch (error: any) {
+      if (error.message?.includes('APPWRITE_API_KEY')) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'APPWRITE_API_KEY is not set. Please set it in your .env.local file.',
+          },
+          { status: 500 }
+        );
+      }
+      throw error;
+    }
     
     // Check which papers already exist
     const existingPapers = await databases.listDocuments(
       appwriteConfig.databaseId,
-      'pastPapers',
+      'pastpapers',
       []
     );
     
@@ -370,7 +354,7 @@ export async function POST(request: NextRequest) {
             paperId = existingPaper.$id;
             await databases.updateDocument(
               appwriteConfig.databaseId,
-              'pastPapers',
+              'pastpapers',
               paperId,
               {
                 paperName: paperFilename,
@@ -382,7 +366,7 @@ export async function POST(request: NextRequest) {
             paperId = ID.unique();
             await databases.createDocument(
               appwriteConfig.databaseId,
-              'pastPapers',
+              'pastpapers',
               paperId,
               {
                 teacherId: userId,
@@ -531,7 +515,7 @@ export async function POST(request: NextRequest) {
               if (existing) {
                 await databases.updateDocument(
                   appwriteConfig.databaseId,
-                  'pastPapers',
+                  'pastpapers',
                   existing.$id,
                   paperDoc
                 );
@@ -539,7 +523,7 @@ export async function POST(request: NextRequest) {
               } else {
                 const created = await databases.createDocument(
                   appwriteConfig.databaseId,
-                  'pastPapers',
+                  'pastpapers',
                   ID.unique(),
                   paperDoc
                 );

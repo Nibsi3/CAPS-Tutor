@@ -14,7 +14,7 @@ const faqs = [
   },
   {
     question: "What subjects are available on CAPS Tutor?",
-    answer: "We cover all major subjects for Grades 8-12 aligned with the CAPS curriculum, including Mathematics, Physical Sciences, Life Sciences, Accounting, Business Studies, Economics, Geography, History, Information Technology, Computer Applications Technology (CAT), and language subjects (English and Afrikaans)."
+    answer: "We cover all major subjects for Grades 10-12 aligned with the CAPS curriculum, including Mathematics, Physical Sciences, Life Sciences, Accounting, Business Studies, Economics, Geography, History, Information Technology, Computer Applications Technology (CAT), and language subjects (English and Afrikaans)."
   },
   {
     question: "How does the AI tutoring work?",

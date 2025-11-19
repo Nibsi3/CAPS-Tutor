@@ -2,7 +2,25 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bot, Target, MessageSquare, TrendingUp, GraduationCap, Brain } from "lucide-react";
+import { useUser } from "@/appwrite";
+import {
+  Bot,
+  Target,
+  MessageSquare,
+  TrendingUp,
+  GraduationCap,
+  Brain,
+  BookOpen,
+  CalendarClock,
+  ClipboardList,
+  LineChart,
+  Award,
+  Gamepad2,
+  FileText,
+  Users,
+  Sparkles,
+  Layers,
+} from "lucide-react";
 import { SafeImage } from "@/components/ui/safe-image";
 import Link from "next/link";
 
@@ -18,8 +36,8 @@ const steps = [
       "Matches the style and format of official exams"
     ],
     icon: Brain,
-    imageUrl: "https://images.pexels.com/photos/3760868/pexels-photo-3760868.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "AI-generated educational content"
+    imageUrl: "/images/how-it-works/intelligent-content.svg",
+    imageAlt: "Illustration of CAPS-aligned intelligent content generation"
   },
   {
     id: 2,
@@ -32,8 +50,8 @@ const steps = [
       "Adapts in real-time as you learn"
     ],
     icon: Target,
-    imageUrl: "https://images.pexels.com/photos/3760826/pexels-photo-3760826.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "Adaptive learning visualization"
+    imageUrl: "/images/how-it-works/adaptive-learning.svg",
+    imageAlt: "Illustration showing adaptive learning focused on CAPS subjects"
   },
   {
     id: 3,
@@ -46,8 +64,8 @@ const steps = [
       "Celebrates your successes along the way"
     ],
     icon: MessageSquare,
-    imageUrl: "https://images.pexels.com/photos/3760864/pexels-photo-3760864.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "Interactive feedback and explanations"
+    imageUrl: "/images/how-it-works/ai-feedback.svg",
+    imageAlt: "AI chat panel providing instant feedback"
   },
   {
     id: 4,
@@ -60,8 +78,8 @@ const steps = [
       "Study time analytics and insights"
     ],
     icon: TrendingUp,
-    imageUrl: "https://images.pexels.com/photos/3760863/pexels-photo-3760863.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "Progress tracking and analytics"
+    imageUrl: "/images/how-it-works/progress-tracking.svg",
+    imageAlt: "Progress dashboard highlighting study gains"
   },
   {
     id: 5,
@@ -71,11 +89,11 @@ const steps = [
       "100% aligned with CAPS curriculum documents",
       "Uses South African educational standards",
       "Matches official assessment formats",
-      "Grade-specific content for Grades 8-12"
+      "Grade-specific content for Grades 10-12"
     ],
     icon: GraduationCap,
-    imageUrl: "https://images.pexels.com/photos/3760852/pexels-photo-3760852.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "CAPS curriculum alignment"
+    imageUrl: "/images/how-it-works/caps-alignment.svg",
+    imageAlt: "CAPS curriculum alignment board"
   },
   {
     id: 6,
@@ -88,12 +106,177 @@ const steps = [
       "Guided problem-solving assistance"
     ],
     icon: Bot,
-    imageUrl: "https://images.pexels.com/photos/3760861/pexels-photo-3760861.jpeg?auto=compress&cs=tinysrgb&w=2070&dpr=2",
-    imageAlt: "Interactive AI tutoring"
+    imageUrl: "/images/how-it-works/interactive-tutoring.svg",
+    imageAlt: "Friendly AI tutor chat bubbles"
   }
 ];
 
+const highlightStats = [
+  {
+    label: "Grades Served",
+    value: "10 – 12",
+    detail: "Focused on the FET Phase with depth for every senior subject.",
+  },
+  {
+    label: "Past Paper Library",
+    value: "Paper 1 & 2",
+    detail: "Authentic CAPS exams with matching memos.",
+  },
+  {
+    label: "Study Support",
+    value: "24/7 AI Tutor",
+    detail: "Instant explanations, hints, and revision prompts.",
+  },
+  {
+    label: "Curriculum Fit",
+    value: "100% CAPS",
+    detail: "Lesson plans, projects & assessments mirror DBE standards.",
+  },
+];
+
+const featurePillars = [
+  {
+    title: "Curriculum-perfect planning",
+    description: "Create learning paths that mirror the CAPS term plan for every subject and phase.",
+    icon: GraduationCap,
+    details: [
+      "Grade-specific study goals and weekly focus areas",
+      "Built-in CAPS syllabus browser for quick topic lookup",
+      "Lesson summaries that echo textbook pacing guides",
+    ],
+  },
+  {
+    title: "Adaptive practice engine",
+    description: "Mix teacher-created content with AI-generated questions that respond to performance.",
+    icon: Target,
+    details: [
+      "Placement checks surface immediate gaps",
+      "Custom drills filter by topic, taxonomy level, or Bloom’s verb",
+      "Step-by-step feedback locks in understanding before moving on",
+    ],
+  },
+  {
+    title: "Evidence-based monitoring",
+    description: "Dashboards help students, teachers, and parents make data-driven decisions every week.",
+    icon: TrendingUp,
+    details: [
+      "Progress screens track mastery per strand and term",
+      "Attendance-style logs for practice time and lesson completion",
+      "Exportable summaries for parent meetings or teacher records",
+    ],
+  },
+];
+
+const learningJourney = [
+  {
+    title: "Create your profile",
+    subtitle: "Onboarding",
+    description: "CAPS Tutor loads the correct term plan, textbooks, and exemplars instantly.",
+    icon: Users,
+  },
+  {
+    title: "Placement & readiness checks",
+    subtitle: "Baseline checks",
+    description: "We highlight prerequisite topics so revision starts where it matters most.",
+    icon: ClipboardList,
+  },
+  {
+    title: "Daily learning loops",
+    subtitle: "Learning loop",
+    description: "Jump between concept videos, quick notes, and AI-generated worked examples.",
+    icon: BookOpen,
+  },
+  {
+    title: "Instant guidance",
+    subtitle: "AI support",
+    description: "Voice-friendly prompts, multilingual hints, and context-aware support keep you moving.",
+    icon: MessageSquare,
+  },
+  {
+    title: "Weekly reviews",
+    subtitle: "Progress check",
+    description: "Teachers and parents receive concise summaries with suggested next steps.",
+    icon: LineChart,
+  },
+  {
+    title: "Exam readiness",
+    subtitle: "Exam mode",
+    description: "Paper 1 and Paper 2 sessions follow the official layout, complete with marking guidelines.",
+    icon: FileText,
+  },
+];
+
+const capabilityGrid = [
+  {
+    title: "Smart Practice Workspace",
+    tag: "Practice",
+    description: "Blend AI-created questions with your teacher’s worksheets in one drill.",
+    icon: Sparkles,
+    items: [
+      "Topic filters for everything from Euclidean Geometry to Organic Chemistry",
+      "Difficulty sliders and timed modes that match Paper 1/Paper 2 expectations",
+      "Confidence ratings so the AI knows when to remediate or extend",
+    ],
+  },
+  {
+    title: "Past Paper Studio",
+    tag: "Assessment",
+    description: "Real CAPS past papers with matching memos, diagrams, and mark allocations.",
+    icon: FileText,
+    items: [
+      "Switch between standard view and exam-timer view",
+      "Upload your own scanned scripts for targeted marking",
+      "Flag tricky questions to revisit inside personalised revision lists",
+    ],
+  },
+  {
+    title: "Interactive Tutor Desk",
+    tag: "AI Tutor",
+    description: "Chat to the tutor, request analogies, or break down multi-mark questions.",
+    icon: Bot,
+    items: [
+      "Supports Afrikaans and English terminology from CAPS glossaries",
+      "Shares diagrams, tables, and step-by-step hints inline",
+      "Escalates to human tutor notes when schools upload their own scripts",
+    ],
+  },
+  {
+    title: "Lesson & Syllabus Explorer",
+    tag: "Lessons",
+    description: "Jump straight to the CAPS topic, ATP week, or textbook heading you need.",
+    icon: Layers,
+    items: [
+      "Linked concept summaries, worked examples, and practical tips",
+      "One-click access to DBE guidelines, PAT rubrics, and SBA checklists",
+      "Bookmark favourite lessons for offline revision packs",
+    ],
+  },
+  {
+    title: "Gamified Motivation",
+    tag: "Progress",
+    description: "Keep momentum with streaks, achievements, and friendly leaderboards.",
+    icon: Gamepad2,
+    items: [
+      "Unlock badges for consistent study habits",
+      "House competitions encourage collaborative revision",
+      "Optional teacher challenges for homework accountability",
+    ],
+  },
+  {
+    title: "Teacher & Parent Insights",
+    tag: "Insights",
+    description: "Bring everyone into the learning loop with shareable analytics.",
+    icon: Award,
+    items: [
+      "Export PDF or CSV snapshots of mastery per term",
+      "Annotate goals and interventions directly on the dashboard",
+      "Receive nudges when a student needs encouragement or extension",
+    ],
+  },
+];
+
 export default function HowItWorksPage() {
+  const { user } = useUser();
   return (
     <main className="flex-1">
       <div className="relative isolate bg-background">
@@ -107,6 +290,66 @@ export default function HowItWorksPage() {
               <p className="mt-6 text-lg leading-8 text-muted-foreground">
                 Discover how our AI-powered platform revolutionizes learning for South African students
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Highlight Metrics */}
+        <div className="pb-12">
+          <div className="mx-auto max-w-6xl px-6 lg:px-8">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {highlightStats.map((stat) => (
+                <Card key={stat.label} className="border-primary/20 bg-card/70">
+                  <CardHeader>
+                    <CardDescription>{stat.label}</CardDescription>
+                    <CardTitle className="text-3xl font-bold">{stat.value}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">{stat.detail}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Feature Pillars */}
+        <div className="py-16 bg-muted/20">
+          <div className="mx-auto max-w-6xl px-6 lg:px-8">
+            <div className="mx-auto max-w-3xl text-center mb-12">
+              <p className="text-base font-semibold text-primary">Built for South African classrooms</p>
+              <h2 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                Everything revolves around CAPS learning
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                CAPS Tutor isn’t a generic study app—it mirrors the official policy so teachers, parents, and students stay in sync.
+              </p>
+            </div>
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {featurePillars.map((pillar) => {
+                const Icon = pillar.icon;
+                return (
+                  <Card key={pillar.title} className="h-full border-2 border-primary/10 shadow-sm">
+                    <CardHeader className="space-y-4">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Icon className="h-6 w-6" aria-hidden="true" />
+                      </div>
+                      <CardTitle className="text-xl">{pillar.title}</CardTitle>
+                      <CardDescription className="text-base">{pillar.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-3 text-sm text-muted-foreground">
+                        {pillar.details.map((point) => (
+                          <li key={point} className="flex items-start gap-2">
+                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                            <span>{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -131,7 +374,7 @@ export default function HowItWorksPage() {
                     <Card className="overflow-hidden border-2 hover:shadow-xl transition-all duration-300">
                       <div className={`flex flex-col ${isEven ? '' : 'lg:flex-row-reverse'}`}>
                         {/* Image */}
-                        <div className="relative w-full lg:w-1/2 aspect-[16/10] lg:aspect-[4/3] lg:min-h-[400px] bg-muted">
+                        <div className="relative w-full lg:w-1/2 aspect-[16/10] lg:aspect-[4/3] lg:min-h-[400px] bg-muted overflow-hidden rounded-t-lg lg:rounded-none lg:rounded-l-lg">
                           <SafeImage
                             src={step.imageUrl}
                             alt={step.imageAlt}
@@ -139,7 +382,9 @@ export default function HowItWorksPage() {
                             sizes="(max-width: 1024px) 100vw, 50vw"
                             className="object-cover"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/40 to-transparent lg:from-transparent lg:via-transparent lg:bg-gradient-to-r lg:from-background/80 lg:to-transparent" />
+                          <div className="absolute inset-0 pointer-events-none">
+                            <div className="h-full w-full bg-gradient-to-t from-background/60 via-background/10 to-transparent md:bg-gradient-to-r md:from-background/25 md:via-transparent md:to-transparent" />
+                          </div>
                         </div>
 
                         {/* Content */}
@@ -182,27 +427,120 @@ export default function HowItWorksPage() {
           </div>
         </div>
 
-        {/* CTA Section */}
-        <div className="py-24 sm:py-32">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-                Ready to Transform Your Learning?
+        {/* Learning Journey */}
+        <div className="py-16">
+          <div className="mx-auto max-w-6xl px-6 lg:px-8">
+            <div className="max-w-3xl">
+              <p className="text-base font-semibold text-primary">A day-to-day journey that makes sense</p>
+              <h2 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                From onboarding to exam day, every step stays CAPS-aligned
               </h2>
-              <p className="mt-6 text-lg leading-8 text-muted-foreground">
-                Join thousands of South African students already using CAPS Tutor to excel in their studies
+              <p className="mt-4 text-lg text-muted-foreground">
+                Learners follow the official Annual Teaching Plan (ATP) rhythm while still enjoying personalised support, reflection, and celebration.
               </p>
-              <div className="mt-10 flex items-center justify-center gap-x-6">
-                <Button asChild size="lg" className="text-lg px-8 py-6">
-                  <Link href="/register">Get Started for Free</Link>
-                </Button>
-                <Button asChild variant="outline" size="lg">
-                  <Link href="/">Back to Home</Link>
-                </Button>
-              </div>
+            </div>
+            <div className="mt-12 grid gap-6 md:grid-cols-2">
+              {learningJourney.map((phase, index) => {
+                const Icon = phase.icon;
+                return (
+                  <Card key={phase.title} className="relative h-full border-2 border-primary/10">
+                    <CardHeader className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white font-semibold">
+                          {index + 1}
+                        </span>
+                        <div className="rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+                          {phase.subtitle}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <Icon className="h-6 w-6" aria-hidden="true" />
+                        </div>
+                        <CardTitle className="text-xl">{phase.title}</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">{phase.description}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         </div>
+
+        {/* Capabilities Grid */}
+        <div className="py-16 bg-muted/10">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="max-w-3xl">
+              <p className="text-base font-semibold text-primary">Deep dive into the toolkit</p>
+              <h2 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                Everything you need to learn, teach, and monitor—online in one place
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground">
+                Each feature reflects real workflows inside South African classrooms, from weekly homework to formal assessments.
+              </p>
+            </div>
+            <div className="mt-12 grid gap-8 md:grid-cols-2">
+              {capabilityGrid.map((feature) => {
+                const Icon = feature.icon;
+                return (
+                  <Card key={feature.title} className="flex h-full flex-col border-2 border-primary/10">
+                    <CardHeader className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <Icon className="h-6 w-6" aria-hidden="true" />
+                          </div>
+                          <CardTitle className="text-xl">{feature.title}</CardTitle>
+                        </div>
+                        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                          {feature.tag}
+                        </span>
+                      </div>
+                      <CardDescription className="text-base">{feature.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="mt-auto">
+                      <ul className="space-y-3 text-sm text-muted-foreground">
+                        {feature.items.map((item) => (
+                          <li key={item} className="flex items-start gap-2">
+                            <Sparkles className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* CTA Section - Only show if user is not logged in */}
+        {!user && (
+          <div className="py-24 sm:py-32">
+            <div className="mx-auto max-w-7xl px-6 lg:px-8">
+              <div className="mx-auto max-w-2xl text-center">
+                <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                  Ready to Transform Your Learning?
+                </h2>
+                <p className="mt-6 text-lg leading-8 text-muted-foreground">
+                  Join thousands of South African students already using CAPS Tutor to excel in their studies
+                </p>
+                <div className="mt-10 flex items-center justify-center gap-x-6">
+                  <Button asChild size="lg" className="text-lg px-8 py-6">
+                    <Link href="/register">Get Started for Free</Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg">
+                    <Link href="/">Back to Home</Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Decorative elements */}
         <div
