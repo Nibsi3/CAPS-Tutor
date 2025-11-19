@@ -2,9 +2,35 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerDatabases } from '@/lib/appwrite-server';
 import { appwriteConfig } from '@/appwrite/config';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
-    const databases = getServerDatabases();
+    let databases;
+    try {
+      databases = getServerDatabases();
+      if (!databases) {
+        return NextResponse.json({
+          success: false,
+          error: 'Database connection failed',
+          users: [],
+          total: 0,
+          message: 'Server API key not configured - admin features unavailable'
+        });
+      }
+    } catch (initError: any) {
+      if (initError.message?.includes('APPWRITE_API_KEY')) {
+        console.warn('APPWRITE_API_KEY not available - returning empty access roles');
+        return NextResponse.json({
+          success: true,
+          users: [],
+          total: 0,
+          message: 'Server API key not configured - admin features unavailable'
+        });
+      }
+      throw initError;
+    }
 
     // Get all users with their roles
     const users = await databases.listDocuments(
@@ -63,7 +89,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const databases = getServerDatabases();
+    let databases;
+    try {
+      databases = getServerDatabases();
+      if (!databases) {
+        return NextResponse.json({
+          success: false,
+          error: 'Database connection failed - Server API key not configured'
+        }, { status: 500 });
+      }
+    } catch (initError: any) {
+      if (initError.message?.includes('APPWRITE_API_KEY')) {
+        return NextResponse.json({
+          success: false,
+          error: 'Server API key not configured - admin features unavailable'
+        }, { status: 500 });
+      }
+      throw initError;
+    }
 
     // Find user if email provided
     let targetUserId = userId;
