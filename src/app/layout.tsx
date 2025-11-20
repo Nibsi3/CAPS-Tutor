@@ -4,34 +4,14 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AppwriteClientProvider } from '@/appwrite/client-provider';
-import { PT_Sans, Space_Grotesk, Source_Code_Pro } from 'next/font/google';
 import { LanguageProvider } from '@/components/language-provider';
+import { FontLoaderFromAppwrite } from '@/components/FontLoaderFromAppwrite';
 import { ConditionalPublicLayout } from '@/components/layout/ConditionalPublicLayout';
 import { ErrorSuppressor } from '@/components/ErrorSuppressor';
 import { FontRequestBlocker } from '@/components/FontRequestBlocker';
-import { FontLoaderFromAppwrite } from '@/components/FontLoaderFromAppwrite';
 import { GlobalAchievementChecker } from '@/components/achievements/GlobalAchievementChecker';
 import { MaintenanceModeGuard } from '@/components/MaintenanceModeGuard';
 import { ScrollToTop } from '@/components/ScrollToTop';
-
-const ptSans = PT_Sans({
-  subsets: ['latin'],
-  weight: ['400', '700'],
-  variable: '--font-pt-sans',
-  display: 'swap',
-});
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-space-grotesk',
-  display: 'swap',
-});
-
-const sourceCodePro = Source_Code_Pro({
-  subsets: ['latin'],
-  variable: '--font-source-code-pro',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: 'CAPS Tutor - Your AI Learning Companion',
@@ -59,7 +39,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
+        className="font-body antialiased"
       >
         {/* Early blocking script - runs before any other scripts using beforeInteractive strategy */}
         <Script

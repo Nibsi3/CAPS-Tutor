@@ -78,42 +78,12 @@ export function FontLoaderFromAppwrite() {
           font-display: swap;
         }
       `,
-      // Inter Regular - only load if file ID is provided
-      (FONT_FILE_IDS['Inter-Regular.woff2'] && FONT_FILE_IDS['Inter-Regular.woff2'].trim() !== '') && `
+      // Fira Code Light - for lighter text
+      FONT_FILE_IDS['FiraCode-Light.woff2'] && `
         @font-face {
-          font-family: 'Inter';
-          src: url('${getFontUrl(FONT_FILE_IDS['Inter-Regular.woff2'])}') format('woff2');
-          font-weight: 400;
-          font-style: normal;
-          font-display: swap;
-        }
-      `,
-      // Inter Medium - only load if file ID is provided
-      (FONT_FILE_IDS['Inter-Medium.woff2'] && FONT_FILE_IDS['Inter-Medium.woff2'].trim() !== '') && `
-        @font-face {
-          font-family: 'Inter';
-          src: url('${getFontUrl(FONT_FILE_IDS['Inter-Medium.woff2'])}') format('woff2');
-          font-weight: 500;
-          font-style: normal;
-          font-display: swap;
-        }
-      `,
-      // Inter SemiBold - only load if file ID is provided
-      (FONT_FILE_IDS['Inter-SemiBold.woff2'] && FONT_FILE_IDS['Inter-SemiBold.woff2'].trim() !== '') && `
-        @font-face {
-          font-family: 'Inter';
-          src: url('${getFontUrl(FONT_FILE_IDS['Inter-SemiBold.woff2'])}') format('woff2');
-          font-weight: 600;
-          font-style: normal;
-          font-display: swap;
-        }
-      `,
-      // Inter Bold - only load if file ID is provided
-      (FONT_FILE_IDS['Inter-Bold.woff2'] && FONT_FILE_IDS['Inter-Bold.woff2'].trim() !== '') && `
-        @font-face {
-          font-family: 'Inter';
-          src: url('${getFontUrl(FONT_FILE_IDS['Inter-Bold.woff2'])}') format('woff2');
-          font-weight: 700;
+          font-family: 'Fira Code';
+          src: url('${getFontUrl(FONT_FILE_IDS['FiraCode-Light.woff2'])}') format('woff2');
+          font-weight: 300;
           font-style: normal;
           font-display: swap;
         }
