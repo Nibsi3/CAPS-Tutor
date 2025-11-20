@@ -275,38 +275,80 @@ export async function GET(request: NextRequest) {
             return { collectionId, questions: [] };
           }
           
-          // Fetch all questions from this collection
-          // Try with order field first, fall back to no ordering if it doesn't exist
-          let questionsResponse;
-          try {
-            questionsResponse = await databases.listDocuments(
-              DATABASE_ID,
-              collectionId,
-              [Query.orderAsc('order')] // Try ordering by 'order' field if it exists
-            );
-          } catch (orderError: any) {
-            // If order field doesn't exist, try without ordering
-            if (orderError.type === 'general_query_invalid' && orderError.code === 400) {
+          // Fetch all questions from this collection using pagination
+          // Appwrite has a limit per query (typically 25-100), so we need to paginate
+          const allQuestions: any[] = [];
+          const limit = 100; // Maximum documents per query in Appwrite
+          let offset = 0;
+          let hasMore = true;
+          let total = 0;
+          
+          while (hasMore) {
+            let batchResponse;
+            try {
+              // Try with order field first if it exists
               try {
-                questionsResponse = await databases.listDocuments(
+                batchResponse = await databases.listDocuments(
                   DATABASE_ID,
                   collectionId,
-                  [] // No ordering - just fetch all documents
+                  [
+                    Query.orderAsc('order'),
+                    Query.limit(limit),
+                    Query.offset(offset)
+                  ]
                 );
-              } catch (fetchError: any) {
-                // If still fails, skip this collection
-                console.warn(`Could not fetch from collection ${collectionId}:`, fetchError.message);
-                return { collectionId, subjectLabel, questions: [] };
+              } catch (orderError: any) {
+                // If order field doesn't exist, try without ordering
+                if (orderError.type === 'general_query_invalid' && orderError.code === 400) {
+                  batchResponse = await databases.listDocuments(
+                    DATABASE_ID,
+                    collectionId,
+                    [
+                      Query.limit(limit),
+                      Query.offset(offset)
+                    ]
+                  );
+                } else {
+                  throw orderError;
+                }
               }
-            } else {
-              throw orderError;
+              
+              const batchQuestions = batchResponse.documents || [];
+              allQuestions.push(...batchQuestions);
+              
+              if (total === 0) {
+                total = batchResponse.total || 0;
+              }
+              
+              const fetchedCount = batchQuestions.length;
+              offset += fetchedCount;
+              
+              // Continue if we got a full batch and haven't fetched all questions
+              hasMore = fetchedCount === limit && allQuestions.length < total;
+              
+              // Safety check to prevent infinite loops
+              if (allQuestions.length >= total && total > 0) {
+                hasMore = false;
+              }
+              
+              // Prevent infinite loops (safety limit)
+              if (offset > 100000) {
+                console.warn(`⚠️ Stopping pagination for ${collectionId} at ${offset} documents to prevent infinite loop`);
+                hasMore = false;
+              }
+            } catch (fetchError: any) {
+              // If still fails, skip this collection
+              console.warn(`Could not fetch from collection ${collectionId}:`, fetchError.message);
+              return { collectionId, subjectLabel, questions: [] };
             }
           }
+          
+          console.log(`✅ Fetched ${allQuestions.length} questions from ${collectionId} collection`);
           
           return {
             collectionId,
             subjectLabel,
-            questions: questionsResponse.documents,
+            questions: allQuestions,
           };
         } catch (error: any) {
           // Handle collection access errors gracefully
@@ -426,13 +468,17 @@ export async function GET(request: NextRequest) {
 
     const total = allPresets.length;
     
-    // Apply pagination
+    // Apply pagination only if limit is explicitly set and > 0
+    // If limit is 0 (no limit), return all presets
     let paginatedPresets = allPresets;
-    if (offset > 0 || (limit > 0 && limit < total)) {
+    if (limit > 0 && (offset > 0 || limit < total)) {
       const start = offset;
-      const end = limit > 0 ? start + limit : undefined;
+      const end = start + limit;
       paginatedPresets = allPresets.slice(start, end);
     }
+    
+    // Log summary for debugging
+    console.log(`📊 Total presets: ${total} (custom: ${customPresets.length}, database: ${databasePresets.length}), returning: ${paginatedPresets.length}`);
 
     return NextResponse.json({
       success: true,

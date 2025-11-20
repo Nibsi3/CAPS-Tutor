@@ -4,9 +4,46 @@ import { appwriteConfig } from '@/appwrite/config';
 
 const SETTINGS_DOC_ID = 'systemSettings';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
-    const databases = getServerDatabases();
+    let databases;
+    try {
+      databases = getServerDatabases();
+      if (!databases) {
+        // Return defaults if database connection fails
+        return NextResponse.json({
+          success: true,
+          features: {
+            aiTutor: true,
+            pastPapers: true,
+            practiceQuestions: true,
+            weeklyTasks: false,
+            achievements: true,
+            progressTracking: true,
+          },
+        });
+      }
+    } catch (initError: any) {
+      // Return defaults if API key is missing
+      if (initError.message?.includes('APPWRITE_API_KEY')) {
+        return NextResponse.json({
+          success: true,
+          features: {
+            aiTutor: true,
+            pastPapers: true,
+            practiceQuestions: true,
+            weeklyTasks: false,
+            achievements: true,
+            progressTracking: true,
+          },
+        });
+      }
+      throw initError;
+    }
+    
     const actualCollectionId = 'systemsettings';
 
     try {

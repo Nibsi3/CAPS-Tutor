@@ -109,34 +109,86 @@ export const languages = [
 ];
 
 export const contentSubjects = [
+    // Languages
+    { value: "English Home Language", label: "English Home Language" },
+    { value: "English First Additional Language", label: "English First Additional Language" },
+    { value: "Afrikaans Huistaal", label: "Afrikaans Huistaal" },
+    { value: "Afrikaans Eerste Addisionele Taal", label: "Afrikaans Eerste Addisionele Taal" },
+    { value: "isiXhosa", label: "isiXhosa" },
+    { value: "isiZulu", label: "isiZulu" },
+    { value: "Sepedi", label: "Sepedi" },
+    { value: "Sesotho", label: "Sesotho" },
+    { value: "Setswana", label: "Setswana" },
+    { value: "siSwati", label: "siSwati" },
+    { value: "Tshivenda", label: "Tshivenda" },
+    { value: "Xitsonga", label: "Xitsonga" },
+    { value: "isiNdebele", label: "isiNdebele" },
+    
+    // Mathematics & Sciences
     { value: "Mathematics", label: "Mathematics" },
     { value: "Mathematical Literacy", label: "Mathematical Literacy" },
     { value: "Physical Sciences", label: "Physical Sciences" },
     { value: "Life Sciences", label: "Life Sciences" },
+    
+    // Social Sciences & Humanities
+    { value: "History", label: "History" },
+    { value: "Geography", label: "Geography" },
+    
+    // Business & Commerce
     { value: "Accounting", label: "Accounting" },
     { value: "Business Studies", label: "Business Studies" },
     { value: "Economics", label: "Economics" },
-    { value: "Geography", label: "Geography" },
-    { value: "History", label: "History" },
+    
+    // Technology
     { value: "Information Technology", label: "Information Technology" },
     { value: "Computer Applications Technology (CAT)", label: "Computer Applications Technology (CAT)" },
-    { value: "Tourism", label: "Tourism" },
+    { value: "Engineering Graphics & Design", label: "Engineering Graphics & Design" },
+    
+    // Consumer & Hospitality
     { value: "Consumer Studies", label: "Consumer Studies" },
     { value: "Hospitality Studies", label: "Hospitality Studies" },
-    { value: "Engineering Graphics & Design", label: "Engineering Graphics & Design" },
+    
+    // Tourism & Services
+    { value: "Tourism", label: "Tourism" },
+    
+    // Arts & Culture
+    { value: "Visual Arts", label: "Visual Arts" },
+    { value: "Dramatic Arts", label: "Dramatic Arts" },
+    { value: "Music", label: "Music" },
+    { value: "Dance Studies", label: "Dance Studies" },
     { value: "Creative Arts", label: "Creative Arts" },
-    // Foundation & Intermediate Phase subjects
+    { value: "Design", label: "Design" },
+    
+    // Life Orientation & Skills
+    { value: "Life Orientation", label: "Life Orientation" },
     { value: "Life Skills", label: "Life Skills" },
+    { value: "Religion Studies", label: "Religion Studies" },
+    
+    // Agricultural Sciences
+    { value: "Agricultural Sciences", label: "Agricultural Sciences" },
+    { value: "Agricultural Management Practices", label: "Agricultural Management Practices" },
+    { value: "Agricultural Technology", label: "Agricultural Technology" },
+    
+    // Technical Subjects
+    { value: "Civil Technology", label: "Civil Technology" },
+    { value: "Electrical Technology", label: "Electrical Technology" },
+    { value: "Mechanical Technology", label: "Mechanical Technology" },
+    
+    // Additional Sciences
+    { value: "Marine Sciences", label: "Marine Sciences" },
+    { value: "Equine Studies", label: "Equine Studies" },
+    
+    // Foundation & Intermediate Phase subjects
     { value: "Natural Sciences and Technology", label: "Natural Sciences and Technology" },
     { value: "Social Sciences", label: "Social Sciences" },
     // Senior Phase subjects
     { value: "Natural Sciences", label: "Natural Sciences" },
     { value: "Technology", label: "Technology" },
     { value: "Economic & Management Sciences", label: "Economic & Management Sciences" },
-    { value: "Life Orientation", label: "Life Orientation" },
 ];
 
-export const subjects = [...contentSubjects, ...languageSubjects.english, ...languageSubjects.afrikaans];
+// All subjects - contentSubjects already includes all languages, so no need to add duplicates
+export const subjects = contentSubjects;
 
 
 export const subjectColors: Record<string, { bg: string, text: string, border: string }> = {

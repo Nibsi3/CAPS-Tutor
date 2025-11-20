@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  // Skip middleware during build time
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
+  // Skip if request is invalid (shouldn't happen, but be defensive)
+  if (!request || !request.nextUrl) {
     return NextResponse.next();
   }
 
-  const response = NextResponse.next();
+  try {
+    const response = NextResponse.next();
 
   // Only set CSP on HTML responses (not API routes, static files, etc.)
   const pathname = request.nextUrl.pathname;
@@ -38,9 +39,14 @@ export function middleware(request: NextRequest) {
 
     // Set CSP header on HTML responses (it will override any duplicate from next.config.ts)
     response.headers.set('Content-Security-Policy', cspHeader);
-  }
+    }
 
-  return response;
+    return response;
+  } catch (error) {
+    // If anything fails, just pass through without CSP
+    console.error('Middleware error:', error);
+    return NextResponse.next();
+  }
 }
 
 export const config = {

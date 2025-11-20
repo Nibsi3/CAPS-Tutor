@@ -128,7 +128,8 @@ export default function CustomPresetsPage() {
 
   useEffect(() => {
     if (user) {
-      fetchPresets(false);
+      // Always fetch all presets on initial load (no limit)
+      fetchPresets(true);
     }
   }, [user]);
 
@@ -209,9 +210,8 @@ export default function CustomPresetsPage() {
         setLoading(true);
       }
       
-      // If fetchAll is true (when searching), fetch all presets (no limit)
-      // Otherwise, fetch only first 50 presets
-      const limit = fetchAll ? 0 : 50; // 0 means no limit
+      // Always fetch all presets (no limit) - there are thousands of questions in the database
+      const limit = 0; // 0 means no limit - fetch all presets
       const response = await fetch(`/api/admin/custom-presets?userId=${user.$id}&limit=${limit}`);
       const data = await response.json();
       
