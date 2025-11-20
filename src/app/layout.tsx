@@ -480,6 +480,38 @@ export default function RootLayout({
                     setTimeout(() => clearInterval(checkHead), 1000);
                   }
                   
+                  // Also run continuously to catch any late-added links (Appwrite SDK might add them after page load)
+                  // Use a more frequent interval to catch Appwrite SDK font loading
+                  setInterval(removeExistingFontLinks, 50); // Check every 50ms for aggressive blocking
+                  
+                  // Also monitor for font link additions via MutationObserver with better detection
+                  const linkObserver = new MutationObserver(() => {
+                    removeExistingFontLinks();
+                  });
+                  
+                  if (document.head) {
+                    linkObserver.observe(document.head, { 
+                      childList: true, 
+                      subtree: false, 
+                      attributes: true, 
+                      attributeFilter: ['href', 'rel', 'as'] 
+                    });
+                  } else {
+                    // Wait for head to exist
+                    const waitForHead = setInterval(() => {
+                      if (document.head) {
+                        linkObserver.observe(document.head, { 
+                          childList: true, 
+                          subtree: false, 
+                          attributes: true, 
+                          attributeFilter: ['href', 'rel', 'as'] 
+                        });
+                        clearInterval(waitForHead);
+                      }
+                    }, 10);
+                    setTimeout(() => clearInterval(waitForHead), 2000);
+                  }
+                  
                   // Intercept fetch IMMEDIATELY - must be FIRST, before anything else
                   if (window.fetch && !window.__fontBlockerFetch) {
                     try {
