@@ -2,51 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  // Skip if request is invalid (shouldn't happen, but be defensive)
-  if (!request || !request.nextUrl) {
-    return NextResponse.next();
-  }
-
-  try {
-    const response = NextResponse.next();
-
-  // Only set CSP on HTML responses (not API routes, static files, etc.)
-  const pathname = request.nextUrl.pathname;
-  const isHtmlResponse = 
-    !pathname.startsWith('/api/') &&
-    !pathname.startsWith('/_next/') &&
-    !pathname.includes('.') && // Exclude files with extensions
-    pathname !== '/favicon.ico';
-
-  if (isHtmlResponse) {
-    // Ensure CSP header is set correctly on HTML responses
-    // This explicitly blocks fonts from assets.appwrite.io
-    const cspHeader = [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fra.cloud.appwrite.io https://*.appwrite.io",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      // Explicitly block fonts from assets.appwrite.io - only allow self-hosted and Google fonts
-      "font-src 'self' data: https://fonts.gstatic.com",
-      "img-src 'self' data: https: blob:",
-      "connect-src 'self' https://fra.cloud.appwrite.io https://*.appwrite.io https://*.appwrite.network wss://*.appwrite.io",
-      "frame-src 'self'",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-      "upgrade-insecure-requests",
-    ].join('; ');
-
-    // Set CSP header on HTML responses (it will override any duplicate from next.config.ts)
-    response.headers.set('Content-Security-Policy', cspHeader);
-    }
-
-    return response;
-  } catch (error) {
-    // If anything fails, just pass through without CSP
-    console.error('Middleware error:', error);
-    return NextResponse.next();
-  }
+  // Simple pass-through - CSP is handled in next.config.ts headers
+  // This middleware exists for future use but currently just passes through
+  return NextResponse.next();
 }
 
 export const config = {
