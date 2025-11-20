@@ -88,16 +88,6 @@ export function FontLoaderFromAppwrite() {
           font-display: swap;
         }
       `,
-      // Fira Code Light - for lighter text
-      FONT_FILE_IDS['FiraCode-Light.woff2'] && `
-        @font-face {
-          font-family: 'Fira Code';
-          src: url('${getFontUrl(FONT_FILE_IDS['FiraCode-Light.woff2'])}') format('woff2');
-          font-weight: 300;
-          font-style: normal;
-          font-display: swap;
-        }
-      `,
     ].filter(Boolean).join('\n');
 
     // Create and inject style element
