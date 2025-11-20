@@ -42,8 +42,9 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fra.cloud.appwrite.io https://*.appwrite.io",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              // Block fonts from assets.appwrite.io by only allowing specific sources
-              "font-src 'self' data: https://fonts.gstatic.com https://*.cloud.appwrite.io",
+              // Explicitly block fonts from assets.appwrite.io - only allow self-hosted fonts and Google fonts
+              // Note: assets.appwrite.io is NOT included, so it will be blocked by CSP
+              "font-src 'self' data: https://fonts.gstatic.com",
               "img-src 'self' data: https: blob:",
               "connect-src 'self' https://fra.cloud.appwrite.io https://*.appwrite.io https://*.appwrite.network wss://*.appwrite.io",
               "frame-src 'self'",

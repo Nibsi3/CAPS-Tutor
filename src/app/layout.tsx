@@ -151,25 +151,49 @@ export default function RootLayout({
                   };
                 }
                 
+                // Remove any existing Appwrite font links IMMEDIATELY
+                if (typeof document !== 'undefined') {
+                  const removeFontLinks = function() {
+                    try {
+                      if (document.head) {
+                        const links = document.head.querySelectorAll('link[href*="assets.appwrite.io"]');
+                        links.forEach(link => link.remove());
+                      }
+                    } catch(e) {}
+                  };
+                  // Try immediately, and also on DOM ready
+                  removeFontLinks();
+                  if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', removeFontLinks);
+                  }
+                }
+                
                 // Inject CSS overrides IMMEDIATELY - run when document is ready
                 if (typeof document !== 'undefined') {
                   const injectCSS = function() {
-                    if (document.head || document.documentElement) {
-                      const existingStyle = document.getElementById('block-appwrite-fonts-inline-css');
-                      if (!existingStyle) {
-                        const style = document.createElement('style');
-                        style.id = 'block-appwrite-fonts-inline-css';
-                        style.textContent = '@font-face{font-family:"Inter";src:local("Arial"),local("Helvetica"),local("sans-serif");font-weight:100 900;font-style:normal italic}@font-face{font-family:"Fira Code";src:local("Monaco"),local("Menlo"),local("Courier New"),local("monospace");font-weight:100 900;font-style:normal italic}@font-face{font-family:"Fira Code VF";src:local("Monaco"),local("Menlo"),local("Courier New"),local("monospace");font-weight:100 900;font-style:normal italic}';
-                        const target = document.head || document.documentElement;
-                        target.insertBefore(style, target.firstChild);
+                    try {
+                      if (document.head || document.documentElement) {
+                        const existingStyle = document.getElementById('block-appwrite-fonts-inline-css');
+                        if (!existingStyle) {
+                          const style = document.createElement('style');
+                          style.id = 'block-appwrite-fonts-inline-css';
+                          style.textContent = '@font-face{font-family:"Inter";src:local("Arial"),local("Helvetica"),local("sans-serif");font-weight:100 900;font-style:normal italic}@font-face{font-family:"Fira Code";src:local("Monaco"),local("Menlo"),local("Courier New"),local("monospace");font-weight:100 900;font-style:normal italic}@font-face{font-family:"Fira Code VF";src:local("Monaco"),local("Menlo"),local("Courier New"),local("monospace");font-weight:100 900;font-style:normal italic}';
+                          const target = document.head || document.documentElement;
+                          if (target) {
+                            target.insertBefore(style, target.firstChild);
+                          }
+                        }
                       }
-                    }
+                    } catch(e) {}
                   };
+                  // Try immediately, and also on DOM ready
                   if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', injectCSS);
                   } else {
                     injectCSS();
                   }
+                  // Also try after a short delay to catch late-added links
+                  setTimeout(injectCSS, 0);
                 }
               })();
             `,
