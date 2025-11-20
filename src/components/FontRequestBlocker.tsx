@@ -45,7 +45,7 @@ const isAppwriteFontRequest = (url: string): boolean => {
 // Set up interceptors immediately when module loads (before React mounts)
 // This must run before any other scripts that might load fonts
 if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
-  // Intercept fetch requests
+  // Intercept fetch requests with enhanced pattern matching
   const originalFetch = window.fetch;
   window.fetch = async function(...args: Parameters<typeof fetch>): Promise<Response> {
     let url = '';
@@ -56,14 +56,23 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
         url = args[0].url;
       } else if (args[0] instanceof URL) {
         url = args[0].toString();
+      } else if (args[0] && typeof args[0] === 'object' && 'url' in args[0]) {
+        url = (args[0] as any).url || '';
       }
     } catch (error) {
       // If URL extraction fails, allow the request to proceed
       return originalFetch(...args);
     }
     
-    if (isAppwriteFontRequest(url)) {
+    // Check case-insensitively and catch all variations
+    const urlLower = url.toLowerCase();
+    const isBlocked = urlLower.includes('assets.appwrite.io/fonts') ||
+                     (urlLower.includes('fira-code') && (urlLower.includes('.woff') || urlLower.includes('.woff2'))) ||
+                     (urlLower.includes('inter') && urlLower.includes('fonts') && (urlLower.includes('.woff') || urlLower.includes('.woff2')));
+    
+    if (isBlocked || isAppwriteFontRequest(url)) {
       // Block the request by returning a rejected promise
+      console.debug('[FontBlocker] Blocked fetch request to:', url);
       return Promise.reject(new Error('Blocked Appwrite font request'));
     }
     
@@ -71,13 +80,20 @@ if (typeof window !== 'undefined' && !(window as any).__fontBlockerSetup) {
     return originalFetch(...args);
   };
 
-  // Intercept XMLHttpRequest
+  // Intercept XMLHttpRequest with enhanced pattern matching
   const originalXHROpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method: string, url: string | URL, async?: boolean, username?: string | null, password?: string | null) {
     const urlString = typeof url === 'string' ? url : url.toString();
+    const urlLower = urlString.toLowerCase();
     
-    if (isAppwriteFontRequest(urlString)) {
+    // Check case-insensitively for Appwrite font URLs
+    const isBlocked = urlLower.includes('assets.appwrite.io/fonts') ||
+                     (urlLower.includes('fira-code') && (urlLower.includes('.woff') || urlLower.includes('.woff2'))) ||
+                     (urlLower.includes('inter') && urlLower.includes('fonts') && (urlLower.includes('.woff') || urlLower.includes('.woff2')));
+    
+    if (isBlocked || isAppwriteFontRequest(urlString)) {
       // Block by throwing an error
+      console.debug('[FontBlocker] Blocked XHR request to:', urlString);
       throw new Error('Blocked Appwrite font request');
     }
     
