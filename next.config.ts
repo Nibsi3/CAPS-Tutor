@@ -6,7 +6,6 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
   openAnalyzer: false,
   analyzerMode: 'static',
-  generateStatsFile: true,
 });
 
 const nextConfig: NextConfig = {
@@ -36,6 +35,24 @@ const nextConfig: NextConfig = {
           {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fra.cloud.appwrite.io https://*.appwrite.io",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              // Block fonts from assets.appwrite.io by only allowing specific sources
+              "font-src 'self' data: https://fonts.gstatic.com https://*.cloud.appwrite.io",
+              "img-src 'self' data: https: blob:",
+              "connect-src 'self' https://fra.cloud.appwrite.io https://*.appwrite.io https://*.appwrite.network wss://*.appwrite.io",
+              "frame-src 'self'",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+              "upgrade-insecure-requests",
+            ].join('; '),
           },
         ],
       },

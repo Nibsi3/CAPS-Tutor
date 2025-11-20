@@ -60,12 +60,180 @@ export default function RootLayout({
       <body
         className={`${ptSans.variable} ${spaceGrotesk.variable} ${sourceCodePro.variable} font-body antialiased`}
       >
+        {/* Early blocking script - runs before any other scripts using beforeInteractive strategy */}
         <Script
-          id="block-appwrite-fonts-inline"
+          id="block-appwrite-fonts-earliest"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
-              (function(){var f=window.fetch;window.fetch=function(){var u=arguments[0];var s=typeof u==='string'?u:(u?.url||u?.toString()||'');if(s&&(s.includes('assets.appwrite.io/fonts')||s.includes('FiraCode-Regular.woff2')||s.includes('Inter-Regular.woff2')))return Promise.reject(new Error('Blocked'));return f.apply(this,arguments);};var x=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){var s=typeof u==='string'?u:(u?.toString()||'');if(s&&(s.includes('assets.appwrite.io/fonts')||s.includes('FiraCode-Regular.woff2')||s.includes('Inter-Regular.woff2')))throw new Error('Blocked');return x.call(this,m,u);};})();
+              (function(){
+                // Block fetch IMMEDIATELY - must be first
+                if (typeof window !== 'undefined' && window.fetch) {
+                  const origFetch = window.fetch;
+                  window.fetch = function(...args) {
+                    let url = '';
+                    try {
+                      if (typeof args[0] === 'string') url = args[0];
+                      else if (args[0]?.url) url = args[0].url;
+                      else if (args[0] instanceof Request) url = args[0].url;
+                      else if (args[0] instanceof URL) url = args[0].toString();
+                      else url = String(args[0] || '');
+                    } catch(e) {}
+                    if (url && (
+                      url.includes('assets.appwrite.io/fonts') ||
+                      url.includes('assets.appwrite.io/fonts/fira-code') ||
+                      url.includes('assets.appwrite.io/fonts/inter') ||
+                      url.includes('FiraCode-Regular.woff2') ||
+                      url.includes('Inter-Regular.woff2') ||
+                      url.includes('fonts/fira-code/') ||
+                      url.includes('fonts/inter/')
+                    )) {
+                      return Promise.reject(new Error('Blocked'));
+                    }
+                    return origFetch.apply(this, args);
+                  };
+                }
+                
+                // Block XMLHttpRequest IMMEDIATELY
+                if (typeof XMLHttpRequest !== 'undefined' && XMLHttpRequest.prototype && XMLHttpRequest.prototype.open) {
+                  const origOpen = XMLHttpRequest.prototype.open;
+                  XMLHttpRequest.prototype.open = function(method, url) {
+                    const urlStr = typeof url === 'string' ? url : (url?.toString() || '');
+                    if (urlStr && (
+                      urlStr.includes('assets.appwrite.io/fonts') ||
+                      urlStr.includes('assets.appwrite.io/fonts/fira-code') ||
+                      urlStr.includes('assets.appwrite.io/fonts/inter') ||
+                      urlStr.includes('FiraCode-Regular.woff2') ||
+                      urlStr.includes('Inter-Regular.woff2') ||
+                      urlStr.includes('fonts/fira-code/') ||
+                      urlStr.includes('fonts/inter/')
+                    )) {
+                      throw new Error('Blocked');
+                    }
+                    return origOpen.apply(this, arguments);
+                  };
+                }
+                
+                // Block link tag creation IMMEDIATELY
+                if (typeof document !== 'undefined' && document.createElement) {
+                  const origCreateElement = document.createElement;
+                  document.createElement = function(tagName) {
+                    const el = origCreateElement.call(this, tagName);
+                    if (tagName === 'LINK' && el.setAttribute) {
+                      const origSetAttr = el.setAttribute.bind(el);
+                      el.setAttribute = function(name, value) {
+                        if (name === 'href' && value && (
+                          value.includes('assets.appwrite.io/fonts') ||
+                          value.includes('assets.appwrite.io/fonts/fira-code') ||
+                          value.includes('assets.appwrite.io/fonts/inter') ||
+                          value.includes('FiraCode-Regular.woff2') ||
+                          value.includes('Inter-Regular.woff2')
+                        )) {
+                          return; // Block setting href
+                        }
+                        if (name === 'rel' && value === 'preload') {
+                          el.__isPreload = true;
+                        }
+                        if (name === 'as' && el.__isPreload && value === 'font') {
+                          const href = el.getAttribute('href') || '';
+                          if (href && (
+                            href.includes('assets.appwrite.io/fonts') ||
+                            href.includes('.woff') ||
+                            href.includes('.woff2')
+                          )) {
+                            return; // Block font preload
+                          }
+                        }
+                        return origSetAttr(name, value);
+                      };
+                    }
+                    return el;
+                  };
+                }
+                
+                // Inject CSS overrides IMMEDIATELY - run when document is ready
+                if (typeof document !== 'undefined') {
+                  const injectCSS = function() {
+                    if (document.head || document.documentElement) {
+                      const existingStyle = document.getElementById('block-appwrite-fonts-inline-css');
+                      if (!existingStyle) {
+                        const style = document.createElement('style');
+                        style.id = 'block-appwrite-fonts-inline-css';
+                        style.textContent = '@font-face{font-family:"Inter";src:local("Arial"),local("Helvetica"),local("sans-serif");font-weight:100 900;font-style:normal italic}@font-face{font-family:"Fira Code";src:local("Monaco"),local("Menlo"),local("Courier New"),local("monospace");font-weight:100 900;font-style:normal italic}@font-face{font-family:"Fira Code VF";src:local("Monaco"),local("Menlo"),local("Courier New"),local("monospace");font-weight:100 900;font-style:normal italic}';
+                        const target = document.head || document.documentElement;
+                        target.insertBefore(style, target.firstChild);
+                      }
+                    }
+                  };
+                  if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', injectCSS);
+                  } else {
+                    injectCSS();
+                  }
+                }
+              })();
+            `,
+          }}
+        />
+        <Script
+          id="block-appwrite-fonts-inline-enhanced"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){
+                // Enhanced pattern matching - catch all variations
+                const fontPatterns = [
+                  'assets.appwrite.io/fonts',
+                  'assets.appwrite.io/fonts/fira-code',
+                  'assets.appwrite.io/fonts/inter',
+                  '/fonts/fira-code/',
+                  '/fonts/inter/',
+                  'fonts/fira-code/',
+                  'fonts/inter/',
+                  'FiraCode-Regular.woff2',
+                  'FiraCode-Regular.woff',
+                  'Inter-Regular.woff2',
+                  'Inter-Regular.woff2',
+                  'FiraCode-',
+                  'Inter-'
+                ];
+                const isFontRequest = function(url) {
+                  if (!url || typeof url !== 'string') return false;
+                  const urlLower = url.toLowerCase();
+                  return fontPatterns.some(p => urlLower.includes(p.toLowerCase()));
+                };
+                
+                // Block fetch with enhanced patterns
+                if (window.fetch) {
+                  const origFetch = window.fetch;
+                  window.fetch = function(...args) {
+                    let url = '';
+                    try {
+                      if (typeof args[0] === 'string') url = args[0];
+                      else if (args[0]?.url) url = args[0].url;
+                      else if (args[0] instanceof Request) url = args[0].url;
+                      else if (args[0] instanceof URL) url = args[0].toString();
+                      else url = String(args[0] || '');
+                    } catch(e) {}
+                    if (isFontRequest(url)) {
+                      return Promise.reject(new Error('Blocked Appwrite font request'));
+                    }
+                    return origFetch.apply(this, args);
+                  };
+                }
+                
+                // Block XMLHttpRequest with enhanced patterns
+                if (XMLHttpRequest && XMLHttpRequest.prototype && XMLHttpRequest.prototype.open) {
+                  const origOpen = XMLHttpRequest.prototype.open;
+                  XMLHttpRequest.prototype.open = function(method, url) {
+                    const urlStr = typeof url === 'string' ? url : (url?.toString() || '');
+                    if (isFontRequest(urlStr)) {
+                      throw new Error('Blocked Appwrite font request');
+                    }
+                    return origOpen.apply(this, arguments);
+                  };
+                }
+              })();
             `,
           }}
         />
@@ -147,7 +315,7 @@ export default function RootLayout({
                     observer.observe(document.body, { childList: true, subtree: true });
                   }
                   
-                  // Block font requests from Appwrite assets CDN - comprehensive patterns
+                  // Block font requests from Appwrite assets CDN - enhanced comprehensive patterns
                   const patterns = [
                     'assets.appwrite.io/fonts',
                     'assets.appwrite.io/fonts/fira-code',
@@ -156,14 +324,26 @@ export default function RootLayout({
                     'https://assets.appwrite.io/fonts/fira-code',
                     'http://assets.appwrite.io/fonts/inter',
                     'http://assets.appwrite.io/fonts/fira-code',
+                    'https://assets.appwrite.io/fonts/fira-code/',
+                    'https://assets.appwrite.io/fonts/inter/',
                     'Inter-Regular.woff2',
                     'Inter-Regular.woff',
+                    'Inter-Medium.woff2',
+                    'Inter-SemiBold.woff2',
+                    'Inter-Bold.woff2',
                     'FiraCode-Regular.woff2',
                     'FiraCode-Regular.woff',
+                    'FiraCode-Medium.woff2',
+                    'FiraCode-SemiBold.woff2',
+                    'FiraCode-Bold.woff2',
                     '/fonts/fira-code/',
                     '/fonts/inter/',
                     'fonts/fira-code/',
-                    'fonts/inter/'
+                    'fonts/inter/',
+                    'FiraCode-',
+                    'Inter-',
+                    '.woff2',
+                    '.woff'
                   ];
                   const isBlocked = (url) => {
                     try {
