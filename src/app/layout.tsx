@@ -60,16 +60,15 @@ export default function RootLayout({
                       else if (args[0] instanceof URL) url = args[0].toString();
                       else url = String(args[0] || '');
                     } catch(e) {}
-                    if (url && (
-                      url.includes('assets.appwrite.io/fonts') ||
-                      url.includes('assets.appwrite.io/fonts/fira-code') ||
-                      url.includes('assets.appwrite.io/fonts/inter') ||
-                      url.includes('FiraCode-Regular.woff2') ||
-                      url.includes('Inter-Regular.woff2') ||
-                      url.includes('fonts/fira-code/') ||
-                      url.includes('fonts/inter/')
+                    // Check for Appwrite font URLs - catch all variations
+                    const urlLower = url.toLowerCase();
+                    if (urlLower && (
+                      urlLower.includes('assets.appwrite.io/fonts') ||
+                      urlLower.includes('fira-code') ||
+                      urlLower.includes('inter') && (urlLower.includes('.woff') || urlLower.includes('.woff2') || urlLower.includes('/fonts/'))
                     )) {
-                      return Promise.reject(new Error('Blocked'));
+                      console.debug('[FontBlocker-Earliest] Blocked fetch:', url);
+                      return Promise.reject(new Error('Blocked Appwrite font request'));
                     }
                     return origFetch.apply(this, args);
                   };
@@ -80,16 +79,15 @@ export default function RootLayout({
                   const origOpen = XMLHttpRequest.prototype.open;
                   XMLHttpRequest.prototype.open = function(method, url) {
                     const urlStr = typeof url === 'string' ? url : (url?.toString() || '');
-                    if (urlStr && (
-                      urlStr.includes('assets.appwrite.io/fonts') ||
-                      urlStr.includes('assets.appwrite.io/fonts/fira-code') ||
-                      urlStr.includes('assets.appwrite.io/fonts/inter') ||
-                      urlStr.includes('FiraCode-Regular.woff2') ||
-                      urlStr.includes('Inter-Regular.woff2') ||
-                      urlStr.includes('fonts/fira-code/') ||
-                      urlStr.includes('fonts/inter/')
+                    // Check for Appwrite font URLs - catch all variations
+                    const urlStrLower = urlStr.toLowerCase();
+                    if (urlStrLower && (
+                      urlStrLower.includes('assets.appwrite.io/fonts') ||
+                      (urlStrLower.includes('fira-code') && urlStrLower.includes('.woff')) ||
+                      (urlStrLower.includes('inter') && urlStrLower.includes('.woff'))
                     )) {
-                      throw new Error('Blocked');
+                      console.debug('[FontBlocker-Earliest] Blocked XHR:', urlStr);
+                      throw new Error('Blocked Appwrite font request');
                     }
                     return origOpen.apply(this, arguments);
                   };
@@ -103,14 +101,15 @@ export default function RootLayout({
                     if (tagName === 'LINK' && el.setAttribute) {
                       const origSetAttr = el.setAttribute.bind(el);
                       el.setAttribute = function(name, value) {
-                        if (name === 'href' && value && (
-                          value.includes('assets.appwrite.io/fonts') ||
-                          value.includes('assets.appwrite.io/fonts/fira-code') ||
-                          value.includes('assets.appwrite.io/fonts/inter') ||
-                          value.includes('FiraCode-Regular.woff2') ||
-                          value.includes('Inter-Regular.woff2')
-                        )) {
-                          return; // Block setting href
+                        // Block Appwrite font URLs - check case-insensitively
+                        if (name === 'href' && value) {
+                          const valueLower = value.toLowerCase();
+                          if (valueLower.includes('assets.appwrite.io/fonts') ||
+                              (valueLower.includes('fira-code') && valueLower.includes('.woff')) ||
+                              (valueLower.includes('inter') && valueLower.includes('.woff'))) {
+                            console.debug('[FontBlocker-Earliest] Blocked link href:', value);
+                            return; // Block setting href
+                          }
                         }
                         if (name === 'rel' && value === 'preload') {
                           el.__isPreload = true;
@@ -295,14 +294,26 @@ export default function RootLayout({
                             const linkElement = element as HTMLLinkElement;
                             const href = linkElement.href || linkElement.getAttribute('href') || '';
                             const rel = linkElement.getAttribute('rel') || '';
-                            if ((rel === 'preload' || rel === 'stylesheet') && (href.includes('assets.appwrite.io') || href.includes('.woff') || href.includes('.woff2'))) {
+                            const hrefLower = href.toLowerCase();
+                            
+                            // Check for Appwrite font URLs - more comprehensive
+                            const isAppwriteFont = hrefLower.includes('assets.appwrite.io/fonts') ||
+                                                 (hrefLower.includes('fira-code') && (hrefLower.includes('.woff') || hrefLower.includes('.woff2'))) ||
+                                                 (hrefLower.includes('inter') && (hrefLower.includes('.woff') || hrefLower.includes('.woff2')));
+                            
+                            if ((rel === 'preload' || rel === 'stylesheet') && (isAppwriteFont || href.includes('.woff') || href.includes('.woff2'))) {
                               console.debug('[FontBlocker] Removed dynamically added font link:', href);
                               linkElement.remove();
                             }
                           } else if (element.tagName === 'STYLE') {
                             const styleElement = element as HTMLStyleElement;
                             const content = styleElement.textContent || styleElement.innerHTML || '';
-                            if (content.includes('assets.appwrite.io') || content.includes('@font-face') && (content.includes('.woff') || content.includes('.woff2'))) {
+                            const contentLower = content.toLowerCase();
+                            const isAppwriteFontInContent = contentLower.includes('assets.appwrite.io/fonts') ||
+                                                          (contentLower.includes('fira-code') && (contentLower.includes('.woff') || contentLower.includes('.woff2'))) ||
+                                                          (contentLower.includes('inter') && (contentLower.includes('.woff') || contentLower.includes('.woff2')));
+                            
+                            if (isAppwriteFontInContent || (content.includes('@font-face') && (content.includes('.woff') || content.includes('.woff2')))) {
                               console.debug('[FontBlocker] Removed dynamically added font style');
                               styleElement.remove();
                             }
@@ -312,7 +323,10 @@ export default function RootLayout({
                     });
                   });
 
-                  // Start observing
+                  // Start observing - observe documentElement to catch everything
+                  if (document.documentElement) {
+                    observer.observe(document.documentElement, { childList: true, subtree: true });
+                  }
                   if (document.head) {
                     observer.observe(document.head, { childList: true, subtree: true });
                   }
