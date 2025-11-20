@@ -1,0 +1,773 @@
+{
+  "subject": "Agricultural",
+  "paper": "Paper 1",
+  "year": "2020",
+  "template": {
+    "sections": [
+      {
+        "title": "UNSECTIONED",
+        "questions": [
+          {
+            "number": "1",
+            "maxMarks": null,
+            "subquestions": []
+          }
+        ]
+      },
+      {
+        "title": "SECTION B",
+        "questions": [
+          {
+            "number": "2",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "3",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "4",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "5",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "6",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "7",
+            "maxMarks": null,
+            "subquestions": []
+          }
+        ]
+      },
+      {
+        "title": "SECTION A",
+        "questions": [
+          {
+            "number": "1",
+            "maxMarks": null,
+            "subquestions": [
+              {
+                "number": "1.1",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "1.1.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.1.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.1.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "number": "i",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "ii",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "iii",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "iv",
+            "maxMarks": null,
+            "subquestions": [
+              {
+                "number": "1.1.4",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "1.1.5",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "1.1.6",
+                "maxMarks": null,
+                "subquestions": []
+              }
+            ]
+          },
+          {
+            "number": "i",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "ii",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "iii",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "iv",
+            "maxMarks": null,
+            "subquestions": [
+              {
+                "number": "1.1.7",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "1.1.8",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "1.1.9",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "1.1.10",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "1.2",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "1.2.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.2.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.2.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.2.4",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.2.5",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "number": "5",
+            "maxMarks": null,
+            "subquestions": [
+              {
+                "number": "1.3",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "1.3.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.3.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.3.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.3.4",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.3.5",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "1.4",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "1.4.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.4.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.4.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.4.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.4.4",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "1.4.5",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "SECTION B",
+        "questions": [
+          {
+            "number": "2",
+            "maxMarks": null,
+            "subquestions": [
+              {
+                "number": "2.1",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "2.1.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "2.1.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "number": "a",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "b",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "c",
+            "maxMarks": null,
+            "subquestions": [
+              {
+                "number": "2.1.3",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "2.2",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "2.2.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "2.2.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "2.2.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "number": "a",
+            "maxMarks": null,
+            "subquestions": []
+          },
+          {
+            "number": "b",
+            "maxMarks": null,
+            "subquestions": [
+              {
+                "number": "2.3",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "2.3.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "2.3.2",
+                    "maxMarks": null,
+                    "subquestions": [
+                      {
+                        "number": "2.3.1.1",
+                        "maxMarks": null,
+                        "subquestions": []
+                      }
+                    ]
+                  },
+                  {
+                    "number": "2.3.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "2.4",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "2.4.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "2.4.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "2.5",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "2.5.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "2.5.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "2.5.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "2.6",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "2.6.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "2.6.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "2.6.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "number": "3",
+            "maxMarks": null,
+            "subquestions": [
+              {
+                "number": "3.1",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "1.35",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "2.30",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "3.25",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "4.22",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "5.20",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "6.20",
+                "maxMarks": null,
+                "subquestions": []
+              },
+              {
+                "number": "7.20",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "3.1.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.1.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.1.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "3.2",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "3.2.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.2.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.2.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.2.4",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "3.3",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "3.3.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.3.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "3.4",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "3.4.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.4.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.4.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.4.4",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "3.5",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "3.5.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.5.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.5.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "3.6",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "3.6.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.6.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "3.6.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "number": "4",
+            "maxMarks": null,
+            "subquestions": [
+              {
+                "number": "4.1",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "4.1.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.1.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.1.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "4.2",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "4.2.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.2.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "4.3",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "4.3.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.3.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.3.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.3.4",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.3.5",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "4.4",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "4.4.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.4.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "4.5",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "4.5.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.5.2",
+                    "maxMarks": null,
+                    "subquestions": [
+                      {
+                        "number": "4.5.1.3",
+                        "maxMarks": null,
+                        "subquestions": []
+                      }
+                    ]
+                  },
+                  {
+                    "number": "4.5.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "4.6",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "4.6.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.6.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.6.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.6.4",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.6.5",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              },
+              {
+                "number": "4.7",
+                "maxMarks": null,
+                "subquestions": [
+                  {
+                    "number": "4.7.1",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.7.2",
+                    "maxMarks": null,
+                    "subquestions": []
+                  },
+                  {
+                    "number": "4.7.3",
+                    "maxMarks": null,
+                    "subquestions": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

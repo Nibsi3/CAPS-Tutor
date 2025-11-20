@@ -795,6 +795,28 @@ export default function RootLayout({
             `,
           }}
         />
+        {/* Service Worker Registration - Network-level font blocking */}
+        <Script
+          id="register-service-worker"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){
+                if ('serviceWorker' in navigator && typeof window !== 'undefined') {
+                  window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/sw.js')
+                      .then(function(registration) {
+                        console.log('[SW] Service Worker registered successfully:', registration.scope);
+                      })
+                      .catch(function(error) {
+                        console.warn('[SW] Service Worker registration failed:', error);
+                      });
+                  });
+                }
+              })();
+            `,
+          }}
+        />
         <FontRequestBlocker />
         <FontLoaderFromAppwrite />
         <ErrorSuppressor />

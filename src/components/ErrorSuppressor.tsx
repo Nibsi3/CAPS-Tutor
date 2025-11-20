@@ -108,8 +108,14 @@ if (typeof window !== 'undefined' && !(window as any).__errorSuppressorSetup) {
     // Also suppress CORS errors for Appwrite fonts
     const message = event.message || '';
     if (
-      (message.includes('Access to font') || message.includes('CORS policy')) &&
-      (message.includes('appwrite.io') || message.includes('assets.appwrite.io'))
+      (message.includes('Access to font') || 
+       message.includes('CORS policy') || 
+       message.includes('Failed to load resource') ||
+       message.includes('ERR_FAILED') ||
+       message.includes('net::')) &&
+      (message.includes('appwrite.io') || 
+       message.includes('assets.appwrite.io') ||
+       message.includes('font'))
     ) {
       event.preventDefault();
       event.stopPropagation();
@@ -134,15 +140,21 @@ export function ErrorSuppressor() {
       // Appwrite font CORS errors and blocked font request errors
       if (
         message.includes('assets.appwrite.io/fonts') ||
+        message.includes('assets.appwrite.io/fonts/fira-code') ||
+        message.includes('assets.appwrite.io/fonts/inter') ||
         message.includes('FiraCode-Regular.woff2') ||
         message.includes('FiraCode-Regular') ||
         message.includes('Inter-Regular.woff2') ||
         message.includes('Inter-Regular') ||
-        (message.includes('Access to font') && message.includes('appwrite.io')) ||
-        (message.includes('CORS policy') && message.includes('appwrite.io')) ||
-        (message.includes('Access-Control-Allow-Origin') && message.includes('appwrite.io')) ||
-        (message.includes('Failed to load resource') && message.includes('appwrite.io')) ||
-        message.includes('Blocked Appwrite font request')
+        (message.includes('Access to font') && (message.includes('appwrite.io') || message.includes('assets.appwrite.io'))) ||
+        (message.includes('CORS policy') && (message.includes('appwrite.io') || message.includes('assets.appwrite.io'))) ||
+        (message.includes('Access-Control-Allow-Origin') && (message.includes('appwrite.io') || message.includes('assets.appwrite.io'))) ||
+        (message.includes('Failed to load resource') && (message.includes('appwrite.io') || message.includes('assets.appwrite.io') || message.includes('font'))) ||
+        message.includes('Blocked Appwrite font request') ||
+        (message.includes('ERR_FAILED') && (message.includes('appwrite.io') || message.includes('assets.appwrite.io') || message.includes('font'))) ||
+        (message.includes('net::') && (message.includes('appwrite.io') || message.includes('assets.appwrite.io') || message.includes('font'))) ||
+        (message.includes('status of 400') && message.includes('font')) ||
+        (message.includes('status of 500') && message.includes('font'))
       ) {
         return true;
       }

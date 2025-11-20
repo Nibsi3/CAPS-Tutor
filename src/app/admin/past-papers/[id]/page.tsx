@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ArrowLeft, 
@@ -664,6 +665,8 @@ export default function EditPastPaperPage() {
   const [autoSaving, setAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [deployDialogOpen, setDeployDialogOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<'Draft' | 'Processed' | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
 
@@ -1455,8 +1458,8 @@ export default function EditPastPaperPage() {
     }
   };
 
-  const handleSaveStructure = async () => {
-    if (!paperStructure) return;
+  const persistPaperStructure = async (): Promise<boolean> => {
+    if (!paperStructure) return false;
 
     try {
       setSaving(true);
@@ -1498,12 +1501,14 @@ export default function EditPastPaperPage() {
         });
         // Also sync questions to database
         await syncQuestionsToDatabase();
+        return true;
       } else {
         toast({
           variant: 'destructive',
           title: 'Error',
           description: data.error || 'Failed to save paper structure',
         });
+        return false;
       }
     } catch (error) {
       console.error('Error saving structure:', error);
@@ -1512,9 +1517,69 @@ export default function EditPastPaperPage() {
         title: 'Error',
         description: 'Failed to save paper structure',
       });
+      return false;
     } finally {
       setSaving(false);
     }
+  };
+
+  const updatePaperStatus = async (targetStatus: 'Draft' | 'Processed'): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/admin/content/past-papers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paperId, status: targetStatus }),
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        toast({
+          variant: 'destructive',
+          title: 'Status update failed',
+          description: data.error || 'Unable to update paper status.',
+        });
+        return false;
+      }
+
+      setPaper((prev) => (prev ? { ...prev, status: targetStatus } : prev));
+      toast({
+        title: targetStatus === 'Processed' ? 'Paper deployed' : 'Saved as draft',
+        description:
+          targetStatus === 'Processed'
+            ? 'Learners can now access this paper.'
+            : 'Paper kept in drafts. Deploy it whenever you are ready.',
+      });
+      return true;
+    } catch (error) {
+      console.error('Error updating paper status:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Status update failed',
+        description: 'Something went wrong while updating the paper status.',
+      });
+      return false;
+    }
+  };
+
+  const handleSaveWithStatus = async (targetStatus: 'Draft' | 'Processed') => {
+    if (!paperStructure) return;
+    setPendingStatus(targetStatus);
+
+    const saved = await persistPaperStructure();
+    if (!saved) {
+      setPendingStatus(null);
+      return;
+    }
+
+    const statusUpdated = await updatePaperStatus(targetStatus);
+    if (statusUpdated) {
+      setDeployDialogOpen(false);
+    }
+    setPendingStatus(null);
+  };
+
+  const handleSaveButtonClick = () => {
+    setDeployDialogOpen(true);
   };
 
   const syncQuestionsToDatabase = async () => {
@@ -1996,7 +2061,7 @@ export default function EditPastPaperPage() {
                 </>
               ) : null}
             </div>
-            <Button onClick={handleSaveStructure} disabled={saving || autoSaving}>
+            <Button onClick={handleSaveButtonClick} disabled={saving || autoSaving}>
             {saving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -2027,9 +2092,62 @@ export default function EditPastPaperPage() {
         onDeleteSection={deleteSection}
         onDeleteQuestion={deleteQuestion}
         onDeleteSubQuestion={deleteSubQuestion}
-        onSave={handleSaveStructure}
+        onSave={handleSaveButtonClick}
         saving={saving}
       />
+
+      <AlertDialog
+        open={deployDialogOpen}
+        onOpenChange={(open) => {
+          if (!pendingStatus) {
+            setDeployDialogOpen(open);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deploy this past paper?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Choose &ldquo;Deploy now&rdquo; to make it live for students. Press &ldquo;No&rdquo; to keep it in drafts so you can deploy later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <AlertDialogCancel disabled={pendingStatus !== null}>Keep editing</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => handleSaveWithStatus('Draft')}
+              disabled={pendingStatus !== null}
+            >
+              {pendingStatus === 'Draft' ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving draft...
+                </>
+              ) : (
+                'No, save to drafts'
+              )}
+            </Button>
+            <AlertDialogAction
+              asChild
+            >
+              <Button
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => handleSaveWithStatus('Processed')}
+                disabled={pendingStatus !== null}
+              >
+                {pendingStatus === 'Processed' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deploying...
+                  </>
+                ) : (
+                  'Yes, deploy now'
+                )}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

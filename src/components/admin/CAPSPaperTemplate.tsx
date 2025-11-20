@@ -102,6 +102,19 @@ export function CAPSPaperTemplate({
   const [randomizeDialogOpen, setRandomizeDialogOpen] = useState(false);
   const [isRandomizing, setIsRandomizing] = useState(false);
 
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 12 }, (_, index) => (currentYear + 1 - index).toString());
+  const paperNumberOptions = ['1', '2', '3'];
+  const gradeOptions = ['10', '11', '12'];
+
+  const getResolvedGradeValue = (grade?: number) => {
+    const candidate = grade?.toString();
+    if (candidate && gradeOptions.includes(candidate)) {
+      return candidate;
+    }
+    return '12';
+  };
+
   // Handler to open preset dialog
   const handleOpenPresetDialog = (sectionId: string, questionId?: string, type?: QuestionType) => {
     setPresetDialogSectionId(sectionId);
@@ -571,62 +584,89 @@ export function CAPSPaperTemplate({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Subject</label>
-              <Input
-                value={paperStructure.header.subject}
-                onChange={(e) =>
+              <Combobox
+                options={subjects.map(s => ({ value: s.value, label: s.label }))}
+                value={paperStructure.header.subject || ''}
+                onValueChange={(value) =>
                   onUpdateStructure({
                     ...paperStructure,
-                    header: { ...paperStructure.header, subject: e.target.value },
+                    header: { ...paperStructure.header, subject: value },
                   })
                 }
-                placeholder="Mathematics"
+                placeholder="Select subject..."
+                searchPlaceholder="Search subjects..."
+                emptyText="No subjects found."
                 className="text-lg font-semibold"
               />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Paper Number</label>
-              <Input
-                value={paperStructure.header.paperNumber}
-                onChange={(e) =>
+              <Select
+                value={paperStructure.header.paperNumber || undefined}
+                onValueChange={(value) =>
                   onUpdateStructure({
                     ...paperStructure,
-                    header: { ...paperStructure.header, paperNumber: e.target.value },
+                    header: { ...paperStructure.header, paperNumber: value },
                   })
                 }
-                placeholder="Paper 1"
-                className="text-lg font-semibold"
-              />
+              >
+                <SelectTrigger className="text-lg font-semibold">
+                  <SelectValue placeholder="Choose paper number" />
+                </SelectTrigger>
+                <SelectContent>
+                  {paperNumberOptions.map((number) => (
+                    <SelectItem key={number} value={number}>
+                      Paper {number}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Year</label>
-              <Input
-                value={paperStructure.header.year}
-                onChange={(e) =>
+              <Select
+                value={paperStructure.header.year || undefined}
+                onValueChange={(value) =>
                   onUpdateStructure({
                     ...paperStructure,
-                    header: { ...paperStructure.header, year: e.target.value },
+                    header: { ...paperStructure.header, year: value },
                   })
                 }
-                placeholder="2024"
-                className="text-lg font-semibold"
-              />
+              >
+                <SelectTrigger className="text-lg font-semibold">
+                  <SelectValue placeholder="Select year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((year) => (
+                    <SelectItem key={year} value={year}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Grade</label>
-              <Input
-                type="number"
-                value={paperStructure.header.grade}
-                onChange={(e) =>
+              <Select
+                value={getResolvedGradeValue(paperStructure.header.grade)}
+                onValueChange={(value) =>
                   onUpdateStructure({
                     ...paperStructure,
-                    header: { ...paperStructure.header, grade: parseInt(e.target.value) || 12 },
+                    header: { ...paperStructure.header, grade: parseInt(value, 10) },
                   })
                 }
-                placeholder="12"
-                className="text-lg font-semibold"
-                min="1"
-                max="12"
-              />
+              >
+                <SelectTrigger className="text-lg font-semibold">
+                  <SelectValue placeholder="Select grade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {gradeOptions.map((grade) => (
+                    <SelectItem key={grade} value={grade}>
+                      Grade {grade}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="mt-4 pt-4 border-t">
@@ -673,10 +713,10 @@ export function CAPSPaperTemplate({
           <ScrollArea className="flex-1">
           <div className="p-6">
             {/* Paper Header - Enhanced and Editable */}
-            <div className="flex items-center justify-between mb-8 pb-4 border-b group/header">
-              <div className="text-left space-y-2">
-                {/* Subject and Paper Number - Editable */}
-                <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between mb-8 pb-4 border-b group/header gap-6 flex-wrap">
+              <div className="text-left space-y-2 min-w-[260px] flex-1">
+                {/* Subject and Paper Number */}
+                <div className="flex items-center gap-2 flex-wrap max-w-full">
                   <Combobox
                     options={subjects.map(s => ({ value: s.value, label: s.label }))}
                     value={paperStructure.header.subject || ''}
@@ -689,78 +729,53 @@ export function CAPSPaperTemplate({
                     placeholder="Select subject..."
                     searchPlaceholder="Search subjects..."
                     emptyText="No subjects found."
-                    className="font-bold text-xl h-auto py-1 w-64"
+                    className="font-bold text-xl h-auto py-1 min-w-[240px] max-w-[520px] flex-grow"
                   />
-                  <span className="font-bold text-xl text-foreground">/</span>
-                  {editingId === 'header-paperNumber' && editingField === 'paperNumber' ? (
-                    <Input
-                      value={editingValue}
-                      onChange={(e) => setEditingValue(e.target.value)}
-                      onBlur={() => {
-                        onUpdateStructure({
-                          ...paperStructure,
-                          header: { ...paperStructure.header, paperNumber: editingValue }
-                        });
-                        saveEdit('header');
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          onUpdateStructure({
-                            ...paperStructure,
-                            header: { ...paperStructure.header, paperNumber: editingValue }
-                          });
-                          saveEdit('header');
-                        }
-                      }}
-                      autoFocus
-                      className="font-bold text-xl bg-background border-border h-auto py-1 w-16"
-                      placeholder="1"
-                    />
-                  ) : (
-                    <div
-                      onClick={() => startEditing('header-paperNumber', 'paperNumber', paperStructure.header.paperNumber || '1')}
-                      className="font-bold text-xl text-foreground cursor-text hover:bg-muted/30 px-2 py-1 rounded transition-colors"
-                    >
-                      P{paperStructure.header.paperNumber || '1'}
-                    </div>
-                  )}
-                </div>
-                {/* Grade - Editable */}
-                {editingId === 'header-grade' && editingField === 'grade' ? (
-                  <Input
-                    type="number"
-                    value={editingValue}
-                    onChange={(e) => setEditingValue(e.target.value)}
-                    onBlur={() => {
+                  <span className="font-bold text-xl text-foreground flex-shrink-0">/</span>
+                  <Select
+                    value={paperStructure.header.paperNumber || undefined}
+                    onValueChange={(value) =>
                       onUpdateStructure({
                         ...paperStructure,
-                        header: { ...paperStructure.header, grade: parseInt(editingValue) || 12 }
-                      });
-                      saveEdit('header');
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        onUpdateStructure({
-                          ...paperStructure,
-                          header: { ...paperStructure.header, grade: parseInt(editingValue) || 12 }
-                        });
-                        saveEdit('header');
-                      }
-                    }}
-                    autoFocus
-                    className="text-xs bg-background border-border h-auto py-1 w-20"
-                    placeholder="12"
-                    min="1"
-                    max="12"
-                  />
-                ) : (
-                  <div
-                    onClick={() => startEditing('header-grade', 'grade', (paperStructure.header.grade || 12).toString())}
-                    className="text-xs text-muted-foreground cursor-text hover:bg-muted/30 px-2 py-1 rounded transition-colors w-fit"
+                        header: { ...paperStructure.header, paperNumber: value }
+                      })
+                    }
                   >
-                    Grade {paperStructure.header.grade || '12'}
-                  </div>
-                )}
+                    <SelectTrigger className="font-bold text-xl h-auto py-1 w-28 flex-shrink-0">
+                      <SelectValue placeholder="Paper" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paperNumberOptions.map((number) => (
+                        <SelectItem key={number} value={number}>
+                          Paper {number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-fit">
+                  <div className="text-xs text-muted-foreground mb-1">Grade</div>
+                  <Select
+                    value={getResolvedGradeValue(paperStructure.header.grade)}
+                    onValueChange={(value) =>
+                      onUpdateStructure({
+                        ...paperStructure,
+                        header: { ...paperStructure.header, grade: parseInt(value, 10) }
+                      })
+                    }
+                  >
+                    <SelectTrigger className="text-xs h-8 w-28">
+                      <SelectValue placeholder="Grade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {gradeOptions.map((grade) => (
+                        <SelectItem key={grade} value={grade}>
+                          Grade {grade}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="text-center space-y-1">
                 {/* SC/NSC - Editable */}
@@ -798,9 +813,9 @@ export function CAPSPaperTemplate({
                 )}
                 <div className="text-xs text-muted-foreground">NATIONAL SENIOR CERTIFICATE</div>
               </div>
-              <div className="text-right space-y-2">
-                {/* Exam Board and Year - Editable */}
-                <div className="flex items-center gap-2 justify-end">
+              <div className="text-right space-y-2 min-w-[220px]">
+                {/* Exam Board and Year */}
+                <div className="flex items-center gap-2 justify-end flex-wrap">
                   {editingId === 'header-examBoard' && editingField === 'examBoard' ? (
                     <Input
                       value={editingValue}
@@ -835,38 +850,26 @@ export function CAPSPaperTemplate({
                   )}
                   <span className="text-sm font-semibold text-foreground">/</span>
                   <span className="text-sm font-semibold text-foreground">November</span>
-                  {editingId === 'header-year' && editingField === 'year' ? (
-                    <Input
-                      value={editingValue}
-                      onChange={(e) => setEditingValue(e.target.value)}
-                      onBlur={() => {
-                        onUpdateStructure({
-                          ...paperStructure,
-                          header: { ...paperStructure.header, year: editingValue }
-                        });
-                        saveEdit('header');
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          onUpdateStructure({
-                            ...paperStructure,
-                            header: { ...paperStructure.header, year: editingValue }
-                          });
-                          saveEdit('header');
-                        }
-                      }}
-                      autoFocus
-                      className="text-sm font-semibold bg-background border-border h-auto py-1 w-20 text-right"
-                      placeholder="2024"
-                    />
-                  ) : (
-                    <div
-                      onClick={() => startEditing('header-year', 'year', paperStructure.header.year || '2024')}
-                      className="text-sm font-semibold text-foreground cursor-text hover:bg-muted/30 px-2 py-1 rounded transition-colors"
-                    >
-                      {paperStructure.header.year || '2024'}
-                    </div>
-                  )}
+                  <Select
+                    value={paperStructure.header.year || undefined}
+                    onValueChange={(value) =>
+                      onUpdateStructure({
+                        ...paperStructure,
+                        header: { ...paperStructure.header, year: value }
+                      })
+                    }
+                  >
+                    <SelectTrigger className="text-sm font-semibold h-auto py-1 w-24">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {yearOptions.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="text-xs text-muted-foreground">Marks: {paperStructure.totalMarks || 0}</div>
               </div>

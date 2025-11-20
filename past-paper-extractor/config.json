@@ -1,0 +1,10 @@
+{
+  "inputFolders": {
+    "English": "C:/Users/cameron/Documents/past papers/EnglishPastPapers",
+    "Afrikaans": "C:/Users/cameron/Documents/past papers/AfrikaansPastPapers",
+    "OtherLanguages": "C:/Users/cameron/Documents/past papers/OtherLanguagesPastPapers"
+  },
+  "outputFolder": "C:/Users/cameron/Desktop/past-paper-templates",
+  "logLevel": "INFO"
+}
+
