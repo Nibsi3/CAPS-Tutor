@@ -48,22 +48,46 @@ async function main() {
     console.log(`Project ID: ${PROJECT_ID.substring(0, 8)}...`);
     console.log(`Bucket ID: ${BUCKET_ID}\n`);
 
-    // List all files in the bucket
+    // Try to list all files in the bucket
+    // Note: Appwrite Storage listFiles supports queries, but for font files
+    // we'll just list all and filter by extension/name
     let allFiles = [];
     let offset = 0;
     const limit = 100;
     let hasMore = true;
+    let attempts = 0;
+    const maxAttempts = 10; // Safety limit
 
-    while (hasMore) {
-      const response = await storage.listFiles(BUCKET_ID, [], limit, offset);
-      allFiles = allFiles.concat(response.files);
-      
-      if (response.files.length < limit) {
-        hasMore = false;
-      } else {
+    console.log('📂 Listing all files in bucket...');
+    
+    while (hasMore && attempts < maxAttempts) {
+      try {
+        const response = await storage.listFiles(BUCKET_ID, [], limit, offset);
+        
+        if (response.files && response.files.length > 0) {
+          allFiles = allFiles.concat(response.files);
+          console.log(`   Found ${response.files.length} files (offset: ${offset}, total so far: ${allFiles.length})`);
+        }
+        
+        if (!response.files || response.files.length < limit) {
+          hasMore = false;
+        } else {
+          offset += limit;
+        }
+      } catch (error) {
+        console.error(`   Error at offset ${offset}:`, error.message);
+        // Try to continue with next offset
         offset += limit;
+        attempts++;
+        if (attempts >= maxAttempts) {
+          console.error('   Too many errors, stopping...');
+          break;
+        }
       }
+      attempts++;
     }
+    
+    console.log(`\n📊 Total files found: ${allFiles.length}\n`);
 
     // Filter to font files only
     const fontExtensions = ['.woff2', '.woff', '.ttf', '.otf', '.eot', '.css'];

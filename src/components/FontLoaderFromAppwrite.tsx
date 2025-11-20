@@ -36,6 +36,7 @@ export function FontLoaderFromAppwrite() {
     };
 
     // Build CSS @font-face rules using file IDs from config
+    // Only include fonts that have valid file IDs (non-empty)
     const fontFaceRules = [
       // Fira Code Regular
       FONT_FILE_IDS['FiraCode-Regular.woff2'] && `
@@ -77,8 +78,8 @@ export function FontLoaderFromAppwrite() {
           font-display: swap;
         }
       `,
-      // Inter Regular
-      FONT_FILE_IDS['Inter-Regular.woff2'] && `
+      // Inter Regular - only load if file ID is provided
+      (FONT_FILE_IDS['Inter-Regular.woff2'] && FONT_FILE_IDS['Inter-Regular.woff2'].trim() !== '') && `
         @font-face {
           font-family: 'Inter';
           src: url('${getFontUrl(FONT_FILE_IDS['Inter-Regular.woff2'])}') format('woff2');
@@ -87,8 +88,8 @@ export function FontLoaderFromAppwrite() {
           font-display: swap;
         }
       `,
-      // Inter Medium
-      FONT_FILE_IDS['Inter-Medium.woff2'] && `
+      // Inter Medium - only load if file ID is provided
+      (FONT_FILE_IDS['Inter-Medium.woff2'] && FONT_FILE_IDS['Inter-Medium.woff2'].trim() !== '') && `
         @font-face {
           font-family: 'Inter';
           src: url('${getFontUrl(FONT_FILE_IDS['Inter-Medium.woff2'])}') format('woff2');
@@ -97,8 +98,8 @@ export function FontLoaderFromAppwrite() {
           font-display: swap;
         }
       `,
-      // Inter SemiBold
-      FONT_FILE_IDS['Inter-SemiBold.woff2'] && `
+      // Inter SemiBold - only load if file ID is provided
+      (FONT_FILE_IDS['Inter-SemiBold.woff2'] && FONT_FILE_IDS['Inter-SemiBold.woff2'].trim() !== '') && `
         @font-face {
           font-family: 'Inter';
           src: url('${getFontUrl(FONT_FILE_IDS['Inter-SemiBold.woff2'])}') format('woff2');
@@ -107,8 +108,8 @@ export function FontLoaderFromAppwrite() {
           font-display: swap;
         }
       `,
-      // Inter Bold
-      FONT_FILE_IDS['Inter-Bold.woff2'] && `
+      // Inter Bold - only load if file ID is provided
+      (FONT_FILE_IDS['Inter-Bold.woff2'] && FONT_FILE_IDS['Inter-Bold.woff2'].trim() !== '') && `
         @font-face {
           font-family: 'Inter';
           src: url('${getFontUrl(FONT_FILE_IDS['Inter-Bold.woff2'])}') format('woff2');
