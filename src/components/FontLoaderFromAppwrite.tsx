@@ -38,52 +38,32 @@ export function FontLoaderFromAppwrite() {
     // Build CSS @font-face rules using file IDs from config
     // Only include fonts that have valid file IDs (non-empty)
     const fontFaceRules = [
-      // Fira Code Light
-      FONT_FILE_IDS['FiraCode-Light.woff2'] && `
+      // PT Sans Regular (body font)
+      FONT_FILE_IDS['PTSans-Regular.woff'] && `
         @font-face {
-          font-family: 'Fira Code';
-          src: url('${getFontUrl(FONT_FILE_IDS['FiraCode-Light.woff2'])}') format('woff2');
-          font-weight: 300;
-          font-style: normal;
-          font-display: swap;
-        }
-      `,
-      // Fira Code Regular
-      FONT_FILE_IDS['FiraCode-Regular.woff2'] && `
-        @font-face {
-          font-family: 'Fira Code';
-          src: url('${getFontUrl(FONT_FILE_IDS['FiraCode-Regular.woff2'])}') format('woff2');
+          font-family: 'PT Sans';
+          src: url('${getFontUrl(FONT_FILE_IDS['PTSans-Regular.woff'])}') format('woff');
           font-weight: 400;
           font-style: normal;
           font-display: swap;
         }
       `,
-      // Fira Code Medium
-      FONT_FILE_IDS['FiraCode-Medium.woff2'] && `
+      // PT Sans Bold (body font)
+      FONT_FILE_IDS['PTSans-Bold.woff'] && `
         @font-face {
-          font-family: 'Fira Code';
-          src: url('${getFontUrl(FONT_FILE_IDS['FiraCode-Medium.woff2'])}') format('woff2');
-          font-weight: 500;
-          font-style: normal;
-          font-display: swap;
-        }
-      `,
-      // Fira Code SemiBold
-      FONT_FILE_IDS['FiraCode-SemiBold.woff2'] && `
-        @font-face {
-          font-family: 'Fira Code';
-          src: url('${getFontUrl(FONT_FILE_IDS['FiraCode-SemiBold.woff2'])}') format('woff2');
-          font-weight: 600;
-          font-style: normal;
-          font-display: swap;
-        }
-      `,
-      // Fira Code Bold
-      FONT_FILE_IDS['FiraCode-Bold.woff2'] && `
-        @font-face {
-          font-family: 'Fira Code';
-          src: url('${getFontUrl(FONT_FILE_IDS['FiraCode-Bold.woff2'])}') format('woff2');
+          font-family: 'PT Sans';
+          src: url('${getFontUrl(FONT_FILE_IDS['PTSans-Bold.woff'])}') format('woff');
           font-weight: 700;
+          font-style: normal;
+          font-display: swap;
+        }
+      `,
+      // Space Grotesk Variable (headline font)
+      FONT_FILE_IDS['SpaceGrotesk-VariableFont_wght.woff'] && `
+        @font-face {
+          font-family: 'Space Grotesk';
+          src: url('${getFontUrl(FONT_FILE_IDS['SpaceGrotesk-VariableFont_wght.woff'])}') format('woff');
+          font-weight: 100 900;
           font-style: normal;
           font-display: swap;
         }

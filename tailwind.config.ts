@@ -17,9 +17,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['Fira Code', 'Monaco', 'Menlo', 'Courier New', 'monospace'],
-        headline: ['Fira Code', 'Monaco', 'Menlo', 'Courier New', 'monospace'],
-        code: ['Fira Code', 'Monaco', 'Menlo', 'Courier New', 'monospace'],
+        body: ['PT Sans', 'Arial', 'Helvetica', 'sans-serif'],
+        headline: ['Space Grotesk', 'Arial', 'Helvetica', 'sans-serif'],
+        code: ['Space Grotesk', 'Monaco', 'Menlo', 'Courier New', 'monospace'],
       },
       colors: {
         background: 'hsl(var(--background))',

@@ -7,22 +7,13 @@
 export const FONT_BUCKET_ID = '690dafea0021f232399e';
 
 // Font file IDs (from upload output)
-// Update these with actual file IDs from Appwrite Console Storage bucket
+// PT Sans and Space Grotesk fonts from Appwrite Storage bucket
 export const FONT_FILE_IDS = {
-  // Fira Code fonts
-  'FiraCode-Light.woff2': '690dccc40023721b7db4',
-  'FiraCode-Light.woff': '690dccc4002375a118c4',
-  'FiraCode-Regular.woff2': '690dccc60002a57c716b',
-  'FiraCode-Regular.woff': '690dccc60002a47b4614',
-  'FiraCode-Medium.woff2': '690dccc60002ab9ef88c',
-  'FiraCode-Medium.woff': '690dccc40023783bc6d1',
-  'FiraCode-SemiBold.woff2': '690dccc60002ac198ad6',
-  'FiraCode-SemiBold.woff': '690dccc60002a5ebb163',
-  'FiraCode-Bold.woff2': '690dccc400237a66f085',
-  'FiraCode-Bold.woff': '690dccc40023382cb28f',
-  'FiraCode-VF.woff2': '690dccc7000f16a19098',
-  'FiraCode-VF.woff': '690dccc7000f14650fa7',
-  'fira_code.css': '690dccc7000f1fe4ab82',
+  // PT Sans fonts (body text)
+  'PTSans-Regular.woff': '691ede4700201f6ca8e4',
+  'PTSans-Bold.woff': '691ede4e000c5db2e14c',
+  // Space Grotesk fonts (headlines)
+  'SpaceGrotesk-VariableFont_wght.woff': '691ede3e001ae56ac7e3',
 } as const;
 
 /**
