@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Query } from 'node-appwrite';
 import { getServerDatabases, ID } from '@/lib/appwrite-server';
 import { appwriteConfig } from '@/appwrite/config';
+import { subjects } from '@/lib/data';
 
 const DATABASE_ID = appwriteConfig.databaseId;
 const COLLECTION_ID = 'custompresets'; // Collection ID in Appwrite (lowercase)
@@ -37,9 +38,136 @@ export interface CustomPreset {
 }
 
 /**
+ * Helper function to convert collection ID to subject label
+ * e.g., "mathematical-literacy" -> "Mathematical Literacy"
+ * This handles all subjects by:
+ * 1. First trying to match against known subjects
+ * 2. If no match, converting hyphenated collection IDs to proper case
+ */
+function collectionIdToSubjectLabel(collectionId: string): string {
+  // Normalize collection ID for matching
+  const normalizedId = collectionId.toLowerCase().trim();
+  
+  // Create a mapping from normalized collection IDs to actual subject labels
+  // This handles variations like "mathematical-literacy" -> "Mathematical Literacy"
+  const collectionIdToSubjectMap: Record<string, string> = {};
+  
+  // Build mapping from subjects array
+  subjects.forEach(subject => {
+    const subjectValue = subject.value.toLowerCase().trim();
+    // Create possible collection ID variations
+    const variations = [
+      subjectValue.replace(/\s+/g, '-'), // "mathematical literacy" -> "mathematical-literacy"
+      subjectValue.replace(/\s+/g, ''), // "mathematical literacy" -> "mathematicalliteracy"
+    ];
+    
+    variations.forEach(variation => {
+      collectionIdToSubjectMap[variation] = subject.label || subject.value;
+    });
+  });
+  
+  // Check if we have a direct match
+  if (collectionIdToSubjectMap[normalizedId]) {
+    return collectionIdToSubjectMap[normalizedId];
+  }
+  
+  // If no match, convert collection ID to subject label format
+  // Split by hyphens, capitalize first letter of each word, join with spaces
+  const words = collectionId.split('-');
+  
+  // Special handling for common acronyms and abbreviations
+  const acronyms: Record<string, string> = {
+    'cat': 'CAT',
+    'it': 'IT',
+    'ems': 'EMS',
+    'hl': 'HL',
+    'fal': 'FAL',
+    'ht': 'HT',
+    'eat': 'EAT',
+    'sal': 'SAL',
+  };
+  
+  const capitalized = words.map(word => {
+    const lowerWord = word.toLowerCase();
+    
+    // Check if it's a known acronym
+    if (acronyms[lowerWord]) {
+      return acronyms[lowerWord];
+    }
+    
+    // Capitalize first letter, lowercase the rest
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  });
+  
+  const converted = capitalized.join(' ');
+  
+  // Try to find a close match in the subjects list
+  const closeMatch = subjects.find(s => {
+    const subjectLower = s.value.toLowerCase();
+    return subjectLower === converted.toLowerCase() || 
+           subjectLower.includes(converted.toLowerCase()) ||
+           converted.toLowerCase().includes(subjectLower);
+  });
+  
+  return closeMatch ? (closeMatch.label || closeMatch.value) : converted;
+}
+
+/**
+ * Helper function to check if a collection is a system collection (not a subject collection)
+ */
+function isSystemCollection(collectionId: string): boolean {
+  const systemCollections = [
+    'user',
+    'users',
+    'userprogress',
+    'pastpapers',
+    'pastpaperprogress',
+    'questions',
+    'custompresets',
+    'adminid',
+    'systemsettings',
+    'announcements',
+    'contentcontrol',
+    'studentprogress',
+    'apikeys',
+    'activitylogs',
+    'photourl',
+    'log',
+    'logs',
+    'settings',
+    'system',
+    'admin',
+  ];
+  
+  const normalizedId = collectionId.toLowerCase();
+  
+  // Check exact match
+  if (systemCollections.includes(normalizedId)) {
+    return true;
+  }
+  
+  // Check for common system collection patterns
+  if (
+    normalizedId.endsWith('log') ||
+    normalizedId.endsWith('logs') ||
+    normalizedId.includes('api') ||
+    normalizedId.includes('key') ||
+    normalizedId.includes('setting') ||
+    normalizedId.includes('admin') ||
+    normalizedId.includes('system') ||
+    normalizedId.includes('photo') ||
+    normalizedId.includes('url')
+  ) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * GET /api/admin/custom-presets
  * Get all custom presets for the current user, optionally filtered by type and subject
- * Also automatically includes all questions from the questions collection
+ * Also automatically includes all questions from all subject collections in the database
  * Supports pagination with limit and offset
  */
 export async function GET(request: NextRequest) {
@@ -122,147 +250,160 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Step 2: Fetch all questions from the questions collection
+    // Step 2: Fetch all questions from all subject collections
     let databasePresets: any[] = [];
     
     try {
-      // Fetch all questions from the database
-      const questionsQuery: string[] = [Query.orderAsc('order')];
+      // List all collections in the database
+      const collectionsResponse = await databases.listCollections(DATABASE_ID);
+      const allCollections = collectionsResponse.collections.map((c: any) => c.$id);
       
-      // Apply subject filter if provided (will filter after getting paper info)
-      
-      const questionsResponse = await databases.listDocuments(
-        DATABASE_ID,
-        'questions',
-        questionsQuery
+      // Filter to only subject collections (exclude system collections)
+      const subjectCollections = allCollections.filter((collectionId: string) => 
+        !isSystemCollection(collectionId)
       );
-
-      // Get all unique paperIds
-      const paperIds = [...new Set(questionsResponse.documents.map((q: any) => q.paperId).filter(Boolean))];
       
-      // Fetch all papers to get subject information
-      const paperMap = new Map<string, any>();
+      console.log(`Found ${subjectCollections.length} subject collections: ${subjectCollections.join(', ')}`);
       
-      if (paperIds.length > 0) {
-        // Fetch papers individually (Appwrite doesn't support OR queries with multiple $id values efficiently)
-        // Use Promise.all for parallel fetching to improve performance
-        const paperPromises = paperIds.map(async (paperId) => {
+      // Fetch questions from all subject collections in parallel
+      const collectionPromises = subjectCollections.map(async (collectionId: string) => {
+        try {
+          const subjectLabel = collectionIdToSubjectLabel(collectionId);
+          
+          // Apply subject filter early if provided
+          if (subject && subjectLabel !== subject) {
+            return { collectionId, questions: [] };
+          }
+          
+          // Fetch all questions from this collection
+          // Try with order field first, fall back to no ordering if it doesn't exist
+          let questionsResponse;
           try {
-            const paper = await databases.getDocument(
+            questionsResponse = await databases.listDocuments(
               DATABASE_ID,
-              'pastpapers',
-              paperId
+              collectionId,
+              [Query.orderAsc('order')] // Try ordering by 'order' field if it exists
             );
-            return { id: paper.$id, paper };
-          } catch (err: any) {
-            console.warn(`Could not fetch paper ${paperId}:`, err.message);
-            return null;
+          } catch (orderError: any) {
+            // If order field doesn't exist, try without ordering
+            if (orderError.type === 'general_query_invalid' && orderError.code === 400) {
+              try {
+                questionsResponse = await databases.listDocuments(
+                  DATABASE_ID,
+                  collectionId,
+                  [] // No ordering - just fetch all documents
+                );
+              } catch (fetchError: any) {
+                // If still fails, skip this collection
+                console.warn(`Could not fetch from collection ${collectionId}:`, fetchError.message);
+                return { collectionId, subjectLabel, questions: [] };
+              }
+            } else {
+              throw orderError;
+            }
           }
-        });
-        
-        const paperResults = await Promise.all(paperPromises);
-        
-        paperResults.forEach((result) => {
-          if (result) {
-            paperMap.set(result.id, result.paper);
-          }
-        });
-      }
-
-      // Convert questions to preset format
-      databasePresets = questionsResponse.documents
-        .map((q: any) => {
-          const paper = paperMap.get(q.paperId);
-          const questionSubject = paper?.subject || q.subject || 'Unknown';
           
-          // Get question text from various possible fields
-          const questionText = q.question || q.questionText || q.text || q.content || q.body || '';
-          
-          // Skip if no question text
-          if (!questionText || questionText.trim().length === 0) {
-            return null;
-          }
-
-          // Apply subject filter if provided
-          if (subject && questionSubject !== subject) {
-            return null;
-          }
-
-          // Apply type filter if provided
-          if (type && q.type !== type) {
-            return null;
-          }
-
-          // Determine question type from database or infer from options
-          let questionType = q.type || 'short-answer';
-          if (q.options && Array.isArray(q.options) && q.options.length > 0) {
-            questionType = 'multiple-choice';
-          } else if (q.tableData || q.tableSubject) {
-            questionType = 'table-interpretation';
-          } else if (q.graphData || q.graphSubject) {
-            questionType = 'graph-interpretation';
-          } else if (q.extractText || q.extract) {
-            questionType = 'extract-source';
-          } else if (q.hasImage || q.imageFileId) {
-            questionType = q.type || 'diagram-interpretation';
-          }
-
-          // Convert to preset format
-          const preset: any = {
-            id: `question-${q.$id}`, // Prefix to distinguish from custom presets
-            userId: 'system-generator', // Mark as system-generated from database
-            name: `Question ${q.number || q.$id}${paper ? ` - ${paper.subject}` : ''}`,
-            description: `From past paper database${paper ? ` (${paper.year || ''})` : ''}`,
-            type: questionType,
-            text: questionText,
-            marks: q.marks || 0,
-            subject: questionSubject,
-            instructionText: q.instructionText || q.instruction || '',
-            answer: q.answer || '',
-            hasDiagram: q.hasImage || !!q.imageFileId || false,
-            diagramLabel: q.imageLabel || q.diagramLabel || '',
-            createdAt: q.$createdAt || '',
-            updatedAt: q.$updatedAt || '',
+          return {
+            collectionId,
+            subjectLabel,
+            questions: questionsResponse.documents,
           };
-
-          // Add optional fields if they exist
-          if (q.options && Array.isArray(q.options) && q.options.length > 0) {
-            preset.options = q.options;
+        } catch (error: any) {
+          // Handle collection access errors gracefully
+          if (error.code === 404 || error.type === 'collection_not_found') {
+            console.warn(`Collection ${collectionId} not found or not accessible. Skipping.`);
+          } else {
+            console.error(`Error fetching questions from collection ${collectionId}:`, error);
           }
+          return { collectionId, subjectLabel: collectionIdToSubjectLabel(collectionId), questions: [] };
+        }
+      });
+      
+      const collectionResults = await Promise.all(collectionPromises);
 
-          if (q.tableData) {
-            try {
-              preset.tableData = typeof q.tableData === 'string' ? JSON.parse(q.tableData) : q.tableData;
-            } catch (e) {
-              // If parsing fails, skip tableData
+      // Convert all questions to preset format
+      databasePresets = collectionResults
+        .flatMap(({ collectionId, subjectLabel, questions }) => {
+          return questions.map((q: any) => {
+            // Get question text from various possible fields
+            const questionText = q.question || q.questionText || q.text || q.content || q.body || '';
+            
+            // Skip if no question text
+            if (!questionText || questionText.trim().length === 0) {
+              return null;
             }
-          }
 
-          if (q.graphData) {
-            try {
-              preset.graphData = typeof q.graphData === 'string' ? JSON.parse(q.graphData) : q.graphData;
-            } catch (e) {
-              // If parsing fails, skip graphData
+            // Apply type filter if provided
+            if (type && q.type !== type) {
+              return null;
             }
-          }
 
-          if (q.extractText || q.extract) {
-            preset.extractText = q.extractText || q.extract || '';
-          }
+            // Determine question type from database or infer from options
+            let questionType = q.type || 'short-answer';
+            if (q.options && Array.isArray(q.options) && q.options.length > 0) {
+              questionType = 'multiple-choice';
+            } else if (q.tableData || q.tableSubject) {
+              questionType = 'table-interpretation';
+            } else if (q.graphData || q.graphSubject) {
+              questionType = 'graph-interpretation';
+            } else if (q.extractText || q.extract) {
+              questionType = 'extract-source';
+            } else if (q.hasImage || q.imageFileId) {
+              questionType = q.type || 'diagram-interpretation';
+            }
 
-          return preset;
+            // Convert to preset format
+            const preset: any = {
+              id: `question-${collectionId}-${q.$id}`, // Prefix with collection to ensure uniqueness
+              userId: 'system-generator', // Mark as system-generated from database
+              name: `Question ${q.number || q.$id} - ${subjectLabel}`,
+              description: `From ${subjectLabel} database`,
+              type: questionType,
+              text: questionText,
+              marks: q.marks || 0,
+              subject: subjectLabel, // Use the proper subject label
+              instructionText: q.instructionText || q.instruction || '',
+              answer: q.answer || '',
+              hasDiagram: q.hasImage || !!q.imageFileId || false,
+              diagramLabel: q.imageLabel || q.diagramLabel || '',
+              createdAt: q.$createdAt || '',
+              updatedAt: q.$updatedAt || '',
+            };
+
+            // Add optional fields if they exist
+            if (q.options && Array.isArray(q.options) && q.options.length > 0) {
+              preset.options = q.options;
+            }
+
+            if (q.tableData) {
+              try {
+                preset.tableData = typeof q.tableData === 'string' ? JSON.parse(q.tableData) : q.tableData;
+              } catch (e) {
+                // If parsing fails, skip tableData
+              }
+            }
+
+            if (q.graphData) {
+              try {
+                preset.graphData = typeof q.graphData === 'string' ? JSON.parse(q.graphData) : q.graphData;
+              } catch (e) {
+                // If parsing fails, skip graphData
+              }
+            }
+
+            if (q.extractText || q.extract) {
+              preset.extractText = q.extractText || q.extract || '';
+            }
+
+            return preset;
+          });
         })
         .filter((p: any) => p !== null); // Remove null entries
 
-      console.log(`Fetched ${databasePresets.length} questions from database for presets`);
+      console.log(`Fetched ${databasePresets.length} questions from ${subjectCollections.length} subject collections for presets`);
     } catch (error: any) {
-      // Handle questions collection not found gracefully
-      if (error.code === 404 || error.type === 'collection_not_found') {
-        console.warn('Questions collection does not exist yet. Continuing with custom presets only.');
-      } else {
-        console.error('Error fetching questions from database:', error);
-        // Continue with custom presets only
-      }
+      console.error('Error fetching questions from subject collections:', error);
+      // Continue with custom presets only
     }
 
     // Step 3: Combine custom presets and database presets
