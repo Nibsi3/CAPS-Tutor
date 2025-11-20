@@ -38,6 +38,16 @@ export function FontLoaderFromAppwrite() {
     // Build CSS @font-face rules using file IDs from config
     // Only include fonts that have valid file IDs (non-empty)
     const fontFaceRules = [
+      // Fira Code Light
+      FONT_FILE_IDS['FiraCode-Light.woff2'] && `
+        @font-face {
+          font-family: 'Fira Code';
+          src: url('${getFontUrl(FONT_FILE_IDS['FiraCode-Light.woff2'])}') format('woff2');
+          font-weight: 300;
+          font-style: normal;
+          font-display: swap;
+        }
+      `,
       // Fira Code Regular
       FONT_FILE_IDS['FiraCode-Regular.woff2'] && `
         @font-face {
