@@ -9,6 +9,7 @@ import { LanguageProvider } from '@/components/language-provider';
 import { ConditionalPublicLayout } from '@/components/layout/ConditionalPublicLayout';
 import { ErrorSuppressor } from '@/components/ErrorSuppressor';
 import { FontRequestBlocker } from '@/components/FontRequestBlocker';
+import { FontLoaderFromAppwrite } from '@/components/FontLoaderFromAppwrite';
 import { GlobalAchievementChecker } from '@/components/achievements/GlobalAchievementChecker';
 import { MaintenanceModeGuard } from '@/components/MaintenanceModeGuard';
 import { ScrollToTop } from '@/components/ScrollToTop';
@@ -769,6 +770,7 @@ export default function RootLayout({
           }}
         />
         <FontRequestBlocker />
+        <FontLoaderFromAppwrite />
         <ErrorSuppressor />
         <ThemeProvider
           attribute="class"

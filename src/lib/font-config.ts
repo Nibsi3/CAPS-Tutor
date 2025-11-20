@@ -6,7 +6,8 @@
  */
 export const FONT_BUCKET_ID = '690dafea0021f232399e';
 
-// Fira Code font file IDs (from upload output)
+// Font file IDs (from upload output)
+// Update these with actual file IDs from Appwrite Console Storage bucket
 export const FONT_FILE_IDS = {
   // Fira Code fonts
   'FiraCode-Light.woff2': '690dccc40023721b7db4',
@@ -22,6 +23,12 @@ export const FONT_FILE_IDS = {
   'FiraCode-VF.woff2': '690dccc7000f16a19098',
   'FiraCode-VF.woff': '690dccc7000f14650fa7',
   'fira_code.css': '690dccc7000f1fe4ab82',
+  // Inter fonts - TODO: Get actual file IDs from Appwrite Console
+  // These will be populated once you check the bucket and get the file IDs
+  'Inter-Regular.woff2': '', // Update with actual file ID
+  'Inter-Medium.woff2': '', // Update with actual file ID
+  'Inter-SemiBold.woff2': '', // Update with actual file ID
+  'Inter-Bold.woff2': '', // Update with actual file ID
 } as const;
 
 /**
