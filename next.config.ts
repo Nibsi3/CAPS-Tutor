@@ -209,27 +209,6 @@ const nextConfig: NextConfig = {
     'appwrite',
     'node-appwrite',
   ],
-  // Optimize build performance and reduce memory usage
-  outputFileTracingExcludes: {
-    '*': [
-      // Exclude large files from serverless function tracing
-      '**/node_modules/@swc/core*/**',
-      '**/node_modules/@next/swc*/**',
-      // Exclude large source files that might be causing issues
-      '**/src/lib/questions.ts',
-      '**/past papers/**',
-      '**/extracted_papers/**',
-      '**/*.pdf',
-      '**/*.json',
-      '**/scripts/**',
-      '**/docs/**',
-      '**/*.md',
-      '**/*.py',
-      '**/*.ps1',
-      '**/*.bat',
-      '**/*.sh',
-    ],
-  },
   // Optimized webpack config for faster builds
   webpack: (config, { isServer, dev }) => {
     // Only apply optimizations in production
