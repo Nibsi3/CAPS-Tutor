@@ -215,8 +215,6 @@ const nextConfig: NextConfig = {
       // Exclude large files from serverless function tracing
       '**/node_modules/@swc/core*/**',
       '**/node_modules/@next/swc*/**',
-      '**/node_modules/next/dist/compiled/**',
-      '**/node_modules/next/dist/server/**',
       // Exclude large source files that might be causing issues
       '**/src/lib/questions.ts',
       '**/past papers/**',
