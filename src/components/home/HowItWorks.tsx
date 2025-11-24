@@ -1,8 +1,10 @@
+'use client';
+
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bot, Target, MessageSquare, TrendingUp, GraduationCap, Brain } from "lucide-react";
 import { SafeImage } from "@/components/ui/safe-image";
-import { getHowItWorksImageOrFallback } from "@/lib/how-it-works-images";
 import Link from "next/link";
 
 const baseSteps = [
@@ -56,21 +58,64 @@ const baseSteps = [
   }
 ];
 
-const steps = baseSteps.map((step) => {
-  const image = getHowItWorksImageOrFallback(
-    step.imageKey,
-    `/images/how-it-works/${step.imageKey}.jpg`,
-    step.fallbackAlt
-  );
-
-  return {
-    ...step,
-    imageUrl: image.imageUrl,
-    imageAlt: image.imageAlt,
-  };
-});
+const steps = baseSteps.map((step) => ({
+  ...step,
+  imageUrl: `/images/how-it-works/${step.imageKey}.jpg`, // Fallback URL
+  imageAlt: step.fallbackAlt,
+}));
 
 export function HowItWorks() {
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [thumbnailError, setThumbnailError] = useState<string | null>(null);
+
+  const imageKeys = useMemo(
+    () => steps.map((step) => step.imageKey),
+    []
+  );
+
+  const missingKeys = useMemo(
+    () => imageKeys.filter((key) => !thumbnails[key]),
+    [imageKeys, thumbnails]
+  );
+
+  useEffect(() => {
+    if (missingKeys.length === 0) return;
+
+    let cancelled = false;
+
+    const fetchThumbnails = async () => {
+      try {
+        const response = await fetch('/api/how-it-works/thumbnails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slugs: missingKeys }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch thumbnails: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (!cancelled && data?.thumbnails) {
+          setThumbnails((prev) => ({ ...prev, ...data.thumbnails }));
+          setThumbnailError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to resolve how-it-works thumbnails:', error);
+          setThumbnailError('Some images may fall back to default artwork.');
+        }
+      }
+    };
+
+    fetchThumbnails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [missingKeys]);
+
   return (
     <section id="how-it-works" className="py-24 sm:py-32 bg-gradient-to-b from-background to-muted/20">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -91,6 +136,7 @@ export function HowItWorks() {
             {steps.map((step, index) => {
               const Icon = step.icon;
               const isEven = index % 2 === 0;
+              const imageUrl = thumbnails[step.imageKey] ?? step.imageUrl;
               
               return (
                 <Card 
@@ -101,7 +147,7 @@ export function HowItWorks() {
                     {/* Image */}
                     <div className="relative w-full lg:w-1/2 aspect-[16/10] lg:aspect-[4/3] lg:min-h-[400px] bg-muted">
                       <SafeImage
-                        src={step.imageUrl}
+                        src={imageUrl}
                         alt={step.imageAlt}
                         fill
                         sizes="(max-width: 1024px) 100vw, 50vw"

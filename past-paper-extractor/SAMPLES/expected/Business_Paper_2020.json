@@ -1,0 +1,45 @@
+{
+  "subject": "Business Studies",
+  "paper": "Paper 1",
+  "year": "2020",
+  "template": {
+    "sections": [
+      {
+        "title": "SECTION A",
+        "questions": [
+          { "number": "1", "maxMarks": 40, "subquestions": [] },
+          { "number": "2", "maxMarks": 40, "subquestions": [] }
+        ]
+      },
+      {
+        "title": "SECTION B",
+        "questions": [
+          {
+            "number": "3",
+            "maxMarks": 60,
+            "subquestions": [
+              { "number": "3.1", "maxMarks": 20, "subquestions": [] },
+              {
+                "number": "3.2",
+                "maxMarks": 40,
+                "subquestions": [
+                  { "number": "3.2.1", "maxMarks": 20, "subquestions": [] },
+                  { "number": "3.2.2", "maxMarks": 20, "subquestions": [] }
+                ]
+              }
+            ]
+          },
+          { "number": "4", "maxMarks": 60, "subquestions": [] }
+        ]
+      },
+      {
+        "title": "SECTION C",
+        "questions": [
+          { "number": "5", "maxMarks": 40, "subquestions": [] }
+        ]
+      }
+    ]
+  }
+}
+
+

@@ -49,20 +49,14 @@ export function useAdminMode(isAdmin: boolean) {
     
     if (isAdmin) {
       // User is confirmed as admin - restore from localStorage
-      // This is critical after page refresh when isAdmin changes from false to true
       if (saved !== null) {
         const savedValue = saved === 'true';
-        // Always update state to match localStorage
-        // This ensures state persists after refresh
         setAdminModeEnabledState(savedValue);
       } else {
         // No saved value - default to false and save it
         setAdminModeEnabledState(false);
         setToLocalStorage(ADMIN_MODE_KEY, 'false');
       }
-    } else {
-      // User is not admin - reset to false (but don't overwrite localStorage)
-      setAdminModeEnabledState(false);
     }
     
     setIsLoading(false);

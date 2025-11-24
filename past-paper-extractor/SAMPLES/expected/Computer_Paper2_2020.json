@@ -1,0 +1,38 @@
+{
+  "subject": "Computer Applications Technology",
+  "paper": "Paper 2",
+  "year": "2020",
+  "template": {
+    "sections": [
+      {
+        "title": "SECTION A",
+        "questions": [
+          {
+            "number": "1",
+            "maxMarks": 30,
+            "subquestions": [
+              { "number": "1.1", "maxMarks": 10, "subquestions": [] },
+              { "number": "1.2", "maxMarks": 20, "subquestions": [] }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "SECTION B",
+        "questions": [
+          {
+            "number": "2",
+            "maxMarks": 50,
+            "subquestions": [
+              { "number": "2.1", "maxMarks": 25, "subquestions": [] },
+              { "number": "2.2", "maxMarks": 25, "subquestions": [] }
+            ]
+          },
+          { "number": "3", "maxMarks": 20, "subquestions": [] }
+        ]
+      }
+    ]
+  }
+}
+
+
