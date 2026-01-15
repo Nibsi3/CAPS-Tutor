@@ -11,11 +11,13 @@ import { translations } from '@/lib/translations';
 import { Globe } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useIsAdmin } from '@/hooks/use-is-admin';
+import { useAdminMode } from '@/hooks/use-admin-mode';
 
 export function PublicHeader() {
   // Get user from Appwrite
   const { user } = useUser();
   const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
+  const { adminModeEnabled, isLoading: isAdminModeLoading } = useAdminMode(isAdmin || false);
   const router = useRouter();
   const currentLang = useLanguage();
   const setLanguage = useSetLanguage();
@@ -26,7 +28,7 @@ export function PublicHeader() {
 
   const handleDashboardClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!isAdminLoading && isAdmin) {
+    if (!isAdminLoading && !isAdminModeLoading && isAdmin && adminModeEnabled) {
       router.push('/admin');
     } else {
       router.push('/dashboard');

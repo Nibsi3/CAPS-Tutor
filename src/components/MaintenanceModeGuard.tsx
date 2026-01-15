@@ -22,17 +22,22 @@ export function MaintenanceModeGuard({ children }: { children: React.ReactNode }
           let data;
           const contentType = response.headers.get('content-type')
           if (contentType?.includes('application/json')) {
-            data = await response.json()
+            try {
+              data = await response.json()
+              console.error('Settings API error:', data)
+            } catch {
+              // Failed to parse JSON, ignore
+            }
           } else {
             // If not JSON, read as text to see what we got
-            const text = await response.text()
-            console.error('Non-JSON response from settings API:', text.substring(0, 200))
-            setIsMaintenanceMode(false)
-            setIsLoading(false)
-            return
+            try {
+              const text = await response.text()
+              console.error('Non-JSON response from settings API:', text.substring(0, 200))
+            } catch {
+              // Failed to read text, ignore
+            }
           }
-          
-          console.error('Settings API error:', data)
+          // Default to false (no maintenance) if API fails
           setIsMaintenanceMode(false)
           setIsLoading(false)
           return
@@ -46,8 +51,16 @@ export function MaintenanceModeGuard({ children }: { children: React.ReactNode }
           setIsMaintenanceMode(false)
         }
       } catch (error) {
-        console.error('Error checking maintenance mode:', error)
-        setIsMaintenanceMode(false)
+        // Network errors, CORS issues, or other fetch failures
+        // Default to false (no maintenance) to avoid blocking users
+        if (error instanceof TypeError && error.message === 'Failed to fetch') {
+          // Network error - don't log to avoid console spam
+          setIsMaintenanceMode(false)
+        } else {
+          // Other errors - log for debugging
+          console.error('Error checking maintenance mode:', error)
+          setIsMaintenanceMode(false)
+        }
       } finally {
         setIsLoading(false)
       }

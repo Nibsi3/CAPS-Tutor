@@ -596,7 +596,7 @@ export function CAPSPaperTemplate({
                 placeholder="Select subject..."
                 searchPlaceholder="Search subjects..."
                 emptyText="No subjects found."
-                className="text-lg font-semibold"
+                className="text-base font-semibold"
               />
             </div>
             <div className="space-y-2">
@@ -610,7 +610,7 @@ export function CAPSPaperTemplate({
                   })
                 }
               >
-                <SelectTrigger className="text-lg font-semibold">
+                <SelectTrigger className="text-base font-semibold">
                   <SelectValue placeholder="Choose paper number" />
                 </SelectTrigger>
                 <SelectContent>
@@ -729,9 +729,9 @@ export function CAPSPaperTemplate({
                     placeholder="Select subject..."
                     searchPlaceholder="Search subjects..."
                     emptyText="No subjects found."
-                    className="font-bold text-xl h-auto py-1 min-w-[240px] max-w-[520px] flex-grow"
+                    className="font-semibold text-lg h-auto py-1 min-w-[240px] max-w-[520px] flex-grow"
                   />
-                  <span className="font-bold text-xl text-foreground flex-shrink-0">/</span>
+                  <span className="font-semibold text-lg text-foreground flex-shrink-0">/</span>
                   <Select
                     value={paperStructure.header.paperNumber || undefined}
                     onValueChange={(value) =>
@@ -741,8 +741,8 @@ export function CAPSPaperTemplate({
                       })
                     }
                   >
-                    <SelectTrigger className="font-bold text-xl h-auto py-1 w-28 flex-shrink-0">
-                      <SelectValue placeholder="Paper" />
+                    <SelectTrigger className="font-semibold text-lg h-auto py-1 w-36 flex-shrink-0">
+                      <SelectValue placeholder="Paper No." />
                     </SelectTrigger>
                     <SelectContent>
                       {paperNumberOptions.map((number) => (

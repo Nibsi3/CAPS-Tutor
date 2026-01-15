@@ -31,12 +31,12 @@ function AdminLayoutContent({
 }) {
   const { user, isUserLoading } = useUser();
   const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
-  const { adminModeEnabled } = useAdminMode(isAdmin || false);
+  const { adminModeEnabled, isLoading: isAdminModeLoading } = useAdminMode(isAdmin || false);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isUserLoading && !isAdminLoading) {
+    if (!isUserLoading && !isAdminLoading && !isAdminModeLoading) {
       if (!user || !isAdmin) {
         router.push('/forbidden');
         return;
@@ -46,9 +46,9 @@ function AdminLayoutContent({
         router.push('/dashboard');
       }
     }
-  }, [user, isUserLoading, isAdmin, isAdminLoading, adminModeEnabled, router]);
+  }, [user, isUserLoading, isAdmin, isAdminLoading, isAdminModeLoading, adminModeEnabled, router]);
 
-  if (isUserLoading || isAdminLoading || !user || !isAdmin) {
+  if (isUserLoading || isAdminLoading || isAdminModeLoading || !user || !isAdmin) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader className="h-16 w-16 animate-spin" />

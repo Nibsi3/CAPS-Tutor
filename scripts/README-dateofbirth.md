@@ -70,3 +70,4 @@ After adding the attribute, you can verify it's working by:
 - Wait a minute and refresh the Appwrite Console
 - The script will wait up to 30 seconds for the attribute to be ready
 
+

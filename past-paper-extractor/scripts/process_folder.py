@@ -1,4 +1,4 @@
-"""CLI utility to process a folder of CAPS past papers into template JSON."""
+"""CLI utility to process folders of CAPS past papers into template JSON."""
 
 from __future__ import annotations
 
@@ -9,9 +9,11 @@ import re
 from pathlib import Path
 from typing import Dict, Iterable, Optional, Tuple
 
-from .build_template import build_template, save_template
-from .detect_structure import detect_structure
-from .extract_text import extract_text
+from .extract_text import extract_lines
+from .detect_sections import detect_sections
+from .detect_questions import detect_questions
+from .build_tree import build_tree, serialise_sections
+from .validator import validate_template
 
 
 LOGGER = logging.getLogger("past-paper-extractor.process_folder")
@@ -25,17 +27,15 @@ YEAR_PATTERN = re.compile(r"(19|20)\d{2}")
 PAPER_PATTERN = re.compile(r"(paper|p)\s*(?P<num>\d)", re.IGNORECASE)
 
 
-def _read_config(path: Path) -> Dict[str, str]:
+def _read_config(path: Path) -> Dict:
     if not path.exists():
         return {}
     with path.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
     folders = data.get("inputFolders", {})
     resolved = {key: str(Path(value)) for key, value in folders.items()}
-    return {
-        "output": data.get("outputFolder", ""),
-        **resolved,
-    }
+    data["inputFolders"] = resolved
+    return data
 
 
 def _infer_metadata(file_path: Path, explicit_subject: Optional[str]) -> Tuple[str, str, str]:
@@ -46,27 +46,64 @@ def _infer_metadata(file_path: Path, explicit_subject: Optional[str]) -> Tuple[s
     paper_match = PAPER_PATTERN.search(stem)
     paper = f"Paper {paper_match.group('num')}" if paper_match else "Paper"
 
-    if explicit_subject:
-        subject = explicit_subject
-    else:
-        subject_part = stem.split(" ")[0]
-        subject = subject_part.title()
-
+    subject = explicit_subject or stem.split(" ")[0].title()
     return subject, paper, year
 
 
 def iter_pdfs(root: Path) -> Iterable[Path]:
-    for path in sorted(root.rglob("*.pdf")):
-        if path.is_file():
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and path.suffix.lower() == ".pdf":
             yield path
 
 
-def process_pdf(pdf_path: Path, subject: str, paper: str, year: str, output_dir: Path) -> Path:
-    text = extract_text(pdf_path)
-    sections = detect_structure(text)
-    template = build_template(subject, paper, year, sections)
+def _write_json(payload: Dict, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, ensure_ascii=False, indent=2)
+
+
+def process_pdf(
+    pdf_path: Path,
+    subject: str,
+    paper: str,
+    year: str,
+    output_dir: Path,
+    config: Dict,
+) -> None:
+    lines = extract_lines(pdf_path)
+    parse_log: Dict = {"file": pdf_path.name, "sections": [], "questions": [], "rejections": []}
+
+    section_markers, heading_lines = detect_sections(lines, parse_log)
+    candidates = detect_questions(
+        lines,
+        section_markers,
+        heading_lines,
+        parse_log,
+        {"max_main_question": config.get("limits", {}).get("maxMainQuestion", 40)},
+    )
+
+    sections = build_tree(candidates, section_markers, parse_log)
+    template_payload = {
+        "subject": subject,
+        "paper": paper,
+        "year": year,
+        "template": {
+            "sections": serialise_sections(sections),
+        },
+    }
+
+    validation = validate_template(template_payload)
+    template_payload["confidence"] = validation["confidence"]
+
     filename = f"{subject}_{paper.replace(' ', '')}_{year}"
-    return save_template(template, output_dir, filename)
+    template_path = output_dir / f"{filename}.json"
+    _write_json(template_payload, template_path)
+
+    heuristics = parse_log.setdefault("heuristics", {})
+    top = sorted(heuristics.items(), key=lambda item: item[1], reverse=True)[:10]
+    parse_log["top_heuristics"] = [[name, count] for name, count in top]
+    _write_json(parse_log, output_dir / f"{filename}_parse_log.json")
+    _write_json(validation, output_dir / f"{filename}_validation.json")
 
 
 def main() -> None:
@@ -90,11 +127,12 @@ def main() -> None:
     args = parser.parse_args()
 
     config = _read_config(Path(args.config))
-    input_dir = Path(args.input or config.get("input", ""))
-    if not input_dir:
+    input_value = args.input or config.get("input", "")
+    if not input_value:
         raise SystemExit("No input directory supplied. Use --input or config.json inputFolders.")
+    input_dir = Path(input_value)
 
-    output_dir = Path(args.output or config.get("output") or DEFAULT_OUTPUT_DIR)
+    output_dir = Path(args.output or config.get("outputFolder") or DEFAULT_OUTPUT_DIR)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     LOGGER.info("Processing PDFs from %s", input_dir)
@@ -107,11 +145,11 @@ def main() -> None:
 
         LOGGER.info("Processing %s (%s, %s, %s)", pdf_path.name, subject, paper, year)
         try:
-            save_path = process_pdf(pdf_path, subject, paper, year, output_dir)
-        except Exception as exc:  # pragma: no cover - ensures batch keeps running
+            process_pdf(pdf_path, subject, paper, year, output_dir, config)
+        except Exception as exc:  # pragma: no cover
             LOGGER.error("Failed to process %s: %s", pdf_path.name, exc)
             continue
-        LOGGER.info("Generated template -> %s", save_path.name)
+        LOGGER.info("Generated template -> %s_%s_%s.json", subject, paper.replace(' ', ''), year)
 
 
 if __name__ == "__main__":

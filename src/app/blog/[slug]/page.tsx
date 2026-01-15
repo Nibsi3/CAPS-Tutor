@@ -2,9 +2,10 @@
 import { notFound } from 'next/navigation';
 import { publishedBlogPosts } from '@/lib/blog-posts';
 import { Badge } from '@/components/ui/badge';
-import Image from 'next/image';
 import Link from 'next/link';
+import { SafeImage } from '@/components/ui/safe-image';
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
+import { getThumbnailForPost } from '@/lib/blog-thumbnail-service';
 
 // Generate only the most recent 10 posts at build time for faster builds
 // Other posts will be generated on-demand via ISR
@@ -29,6 +30,13 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
   if (!post) {
     notFound();
+  }
+
+  let heroImageUrl = post.imageUrl;
+  try {
+    heroImageUrl = await getThumbnailForPost(post.slug);
+  } catch (error) {
+    console.warn(`Falling back to static blog image for slug "${post.slug}":`, (error as Error).message);
   }
 
   return (
@@ -57,13 +65,12 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               </div>
 
               <div className="relative mb-12">
-                <Image
-                  src={post.imageUrl}
+                <SafeImage
+                  src={heroImageUrl}
                   alt={post.title}
                   width={1200}
                   height={600}
                   className="aspect-video w-full rounded-2xl bg-muted object-cover"
-                  unoptimized={post.imageUrl.includes('pexels.com')}
                 />
                 <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-foreground/10" />
               </div>

@@ -8,8 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Image from 'next/image';
 import { Search, Lock } from 'lucide-react';
+import { SafeImage } from '@/components/ui/safe-image';
 
 const ITEMS_PER_PAGE = 12;
 
@@ -18,6 +18,8 @@ export default function BlogIndexPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [thumbnailError, setThumbnailError] = useState<string | null>(null);
 
   // Get unique categories
   const categories = useMemo(() => {
@@ -66,6 +68,56 @@ export default function BlogIndexPage() {
 
     return filtered;
   }, [searchQuery, sortBy, selectedCategory]);
+
+  const visibleSlugs = useMemo(() => {
+    const standard = filteredAndSortedPosts
+      .slice(0, displayCount)
+      .map((post) => post.slug);
+    const upcoming = comingSoonPosts.map((post) => post.slug);
+    return Array.from(new Set([...upcoming, ...standard]));
+  }, [comingSoonPosts, filteredAndSortedPosts, displayCount]);
+
+  const missingSlugs = useMemo(
+    () => visibleSlugs.filter((slug) => !thumbnails[slug]),
+    [visibleSlugs, thumbnails],
+  );
+
+  useEffect(() => {
+    if (missingSlugs.length === 0) return;
+
+    let cancelled = false;
+
+    const fetchThumbnails = async () => {
+      try {
+        const response = await fetch('/api/blog/thumbnails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slugs: missingSlugs }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Thumbnail API returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!cancelled && data?.thumbnails) {
+          setThumbnails((prev) => ({ ...prev, ...data.thumbnails }));
+          setThumbnailError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to resolve blog thumbnails:', error);
+          setThumbnailError('Some blog images may fall back to the default artwork.');
+        }
+      }
+    };
+
+    fetchThumbnails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [missingSlugs]);
 
   // Reset display count when filters change
   useEffect(() => {
@@ -158,6 +210,11 @@ export default function BlogIndexPage() {
                     Clear filters
                   </button>
                 )}
+                {thumbnailError && (
+                  <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                    {thumbnailError}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -186,13 +243,12 @@ export default function BlogIndexPage() {
                           </div>
                           {/* Image */}
                           <div className="relative w-full aspect-[16/9] overflow-hidden grayscale bg-muted">
-                            <Image
-                              src={post.imageUrl}
+                            <SafeImage
+                              src={thumbnails[post.slug] ?? post.imageUrl}
                               alt={post.title}
                               width={320}
                               height={180}
                               className="w-full h-full object-cover"
-                              unoptimized={post.imageUrl.includes('pexels.com')}
                             />
                             <div className="absolute inset-0 ring-1 ring-inset ring-foreground/10" />
                           </div>
@@ -244,13 +300,12 @@ export default function BlogIndexPage() {
                         
                         {/* Image */}
                         <div className="relative w-full aspect-[16/9] overflow-hidden bg-muted">
-                          <Image
-                            src={post.imageUrl}
+                          <SafeImage
+                            src={thumbnails[post.slug] ?? post.imageUrl}
                             alt={post.title}
                             width={800}
                             height={450}
                             className="w-full h-full object-cover"
-                            unoptimized={post.imageUrl.includes('pexels.com')}
                           />
                           <div className="absolute inset-0 ring-1 ring-inset ring-foreground/10" />
                         </div>

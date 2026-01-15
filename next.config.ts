@@ -44,7 +44,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               // Explicitly block fonts from assets.appwrite.io - only allow self-hosted fonts and Google fonts
               // Note: assets.appwrite.io is NOT included, so it will be blocked by CSP
-              "font-src 'self' data: https://fonts.gstatic.com",
+              "font-src 'self' data: https://fonts.gstatic.com https://fra.cloud.appwrite.io https://*.appwrite.io",
               "img-src 'self' data: https: blob:",
               "connect-src 'self' https://fra.cloud.appwrite.io https://*.appwrite.io https://*.appwrite.network wss://*.appwrite.io",
               "frame-src 'self'",
@@ -170,10 +170,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Enable compression
   compress: true,
-  // Standalone output for Appwrite deployment
-  // This creates a minimal server bundle in .next/standalone
-  // Temporarily disabled - Appwrite Cloud Sites might not support standalone mode
-  // output: 'standalone',
+  // Standalone output so Docker can copy `.next/standalone` (required for Appwrite stack)
+  output: 'standalone',
   // Fix standalone path issue on Windows by setting the root explicitly
   // This prevents Next.js from creating nested paths with spaces
   outputFileTracingRoot: path.resolve(process.cwd()),
@@ -211,29 +209,6 @@ const nextConfig: NextConfig = {
     'appwrite',
     'node-appwrite',
   ],
-  // Optimize build performance and reduce memory usage
-  outputFileTracingExcludes: {
-    '*': [
-      // Exclude large files from serverless function tracing
-      '**/node_modules/@swc/core*/**',
-      '**/node_modules/@next/swc*/**',
-      '**/node_modules/next/dist/compiled/**',
-      '**/node_modules/next/dist/server/**',
-      // Exclude large source files that might be causing issues
-      '**/src/lib/questions.ts',
-      '**/past papers/**',
-      '**/extracted_papers/**',
-      '**/*.pdf',
-      '**/*.json',
-      '**/scripts/**',
-      '**/docs/**',
-      '**/*.md',
-      '**/*.py',
-      '**/*.ps1',
-      '**/*.bat',
-      '**/*.sh',
-    ],
-  },
   // Optimized webpack config for faster builds
   webpack: (config, { isServer, dev }) => {
     // Only apply optimizations in production

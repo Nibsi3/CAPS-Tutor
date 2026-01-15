@@ -15,6 +15,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Provide env variables for Next.js build (expects values in .env.production)
+# This file is created locally from docker/env.docker.example
+COPY .env.docker .env.production
+
 # Set environment variables for build
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=4096"
@@ -34,8 +38,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy standalone output from builder
-# The standalone folder contains server.js and minimal dependencies
+# Copy package manifest and node_modules so runtime has all deps
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Copy standalone output from builder (contains compiled server + minimal deps)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 # Copy static files that are needed by the server
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

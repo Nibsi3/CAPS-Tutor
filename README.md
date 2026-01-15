@@ -131,6 +131,65 @@ npm run build
 npm start
 ```
 
+## 🐳 Docker + Appwrite Stack
+
+> This repository now ships with a self-hosted Appwrite stack plus the CAPS Tutor
+> Next.js site, all orchestrated through Docker Compose so you can lift local CPU
+> and RAM limits easily.
+
+1. **Copy the environment templates (or reuse `.env.local`)**
+   ```bash
+   cp docker/env.appwrite.example .env.appwrite
+   cp docker/env.docker.example .env.docker   # can be a trimmed copy of .env.local
+   ```
+   - Update `.env.appwrite` with fresh secrets (`_APP_OPENSSL_KEY_V1`, `_APP_DB_PASS`, `_APP_EXECUTOR_SECRET`, etc.).
+   - The `web` container loads `.env.local` (if present) and `.env.docker`, while the Docker
+     build itself reads `.env.docker` to embed `NEXT_PUBLIC_*` values into the Next.js bundle.
+     So you can either:
+       - copy your existing `.env.local` into `.env.docker`, or
+       - leave `.env.docker` for Docker-specific overrides only (e.g. `APPWRITE_ENDPOINT=http://appwrite/v1`)
+     Just make sure the browser-facing values continue pointing to the Traefik host,
+     e.g. `NEXT_PUBLIC_APPWRITE_ENDPOINT=http://localhost:9501/v1`.
+
+2. **Build and start the stack (front-end + Appwrite)**
+   ```bash
+   docker compose build
+   docker compose up -d
+   ```
+   The important ports are:
+   - `9002` → CAPS Tutor web app (Next.js)
+   - `9500` → Traefik dashboard / HTTP reverse proxy
+   - `9501` → Appwrite REST API
+   - `9502` → Appwrite Console
+   - `9503` → Mailcatcher web UI (local SMTP preview)
+
+3. **First-time Appwrite setup**
+   - Visit `http://localhost:9502/console`, create the root account, then create a
+     project that matches the IDs in `.env.docker`.
+   - Inside the console, create the API key with the scopes the app expects
+     (Databases, Users, Storage, Messaging, Functions). Update `.env.docker`
+     afterwards and redeploy with `docker compose up -d`.
+   - Run the collection setup scripts under `docs/APPWRITE_COLLECTIONS_SETUP.md`
+     if this is a brand-new Appwrite instance.
+
+4. **Controlling resources**
+   - Use Docker Desktop → Settings → Resources to raise global CPU/RAM caps.
+   - For per-container guard rails, set `WEB_CPUS`, `WEB_MEM_LIMIT`,
+     `APPWRITE_CPUS`, and `APPWRITE_MEM_LIMIT` in `.env.docker`
+     (defaults are 2 CPUs / 4 GB). Docker Compose reads these variables and
+     applies them to the `web` and `appwrite` services.
+
+5. **Stopping or cleaning up**
+   ```bash
+   docker compose down            # stop containers
+   docker compose down -v         # stop and remove volumes (data wipe)
+   ```
+
+> ℹ️ The Compose file mirrors the official Appwrite self-hosting layout (Traefik,
+> database, Redis, workers, runtimes). You can add future Appwrite upgrades by
+> editing `APPWRITE_VERSION` inside `.env.appwrite` and re-running `docker compose
+> up -d`.
+
 ## 📁 Project Structure
 
 ```

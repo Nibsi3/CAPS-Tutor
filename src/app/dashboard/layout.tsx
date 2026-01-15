@@ -50,7 +50,7 @@ export default function DashboardLayout({
   const { user, isUserLoading } = useUser();
   const databases = useDatabases();
   const { isAdmin, isLoading: isAdminLoading } = useIsAdmin();
-  const { adminModeEnabled } = useAdminMode(isAdmin || false);
+  const { adminModeEnabled, isLoading: isAdminModeLoading } = useAdminMode(isAdmin || false);
   
   // Redirect unauthenticated users to login
   useEffect(() => {
@@ -61,10 +61,10 @@ export default function DashboardLayout({
 
   // Redirect admins to admin dashboard only when they're in admin mode
   useEffect(() => {
-    if (!isUserLoading && !isAdminLoading && user && isAdmin && adminModeEnabled) {
+    if (!isUserLoading && !isAdminLoading && !isAdminModeLoading && user && isAdmin && adminModeEnabled) {
       router.push('/admin');
     }
-  }, [user, isUserLoading, isAdmin, isAdminLoading, adminModeEnabled, router]);
+  }, [user, isUserLoading, isAdmin, isAdminLoading, isAdminModeLoading, adminModeEnabled, router]);
 
   // Track login when user is authenticated
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function DashboardLayout({
   const { features } = useFeatures();
   
   // Show loading state while checking auth, loading profile, or checking admin status
-  if (isUserLoading || !user || isProfileLoading || isAdminLoading) {
+  if (isUserLoading || !user || isProfileLoading || isAdminLoading || isAdminModeLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader className="h-16 w-16 animate-spin" />

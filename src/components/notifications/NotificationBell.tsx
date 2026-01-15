@@ -162,12 +162,20 @@ export function NotificationBell() {
         let data;
         const contentType = response.headers.get('content-type')
         if (contentType?.includes('application/json')) {
-          data = await response.json()
-          console.error('Announcements API error:', data)
+          try {
+            data = await response.json()
+            console.error('Announcements API error:', data)
+          } catch {
+            // Failed to parse JSON, ignore
+          }
         } else {
           // If not JSON, read as text to see what we got
-          const text = await response.text()
-          console.error('Non-JSON response from announcements API:', text.substring(0, 200))
+          try {
+            const text = await response.text()
+            console.error('Non-JSON response from announcements API:', text.substring(0, 200))
+          } catch {
+            // Failed to read text, ignore
+          }
         }
         setAnnouncements([])
         setLoading(false)
@@ -212,9 +220,20 @@ export function NotificationBell() {
         })
         
         setAnnouncements(notDismissed)
+      } else {
+        setAnnouncements([])
       }
     } catch (error) {
-      console.error('Error loading announcements:', error)
+      // Network errors, CORS issues, or other fetch failures
+      // Silently fail and set empty announcements to avoid disrupting the UI
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        // Network error - don't log to avoid console spam
+        setAnnouncements([])
+      } else {
+        // Other errors - log for debugging
+        console.error('Error loading announcements:', error)
+        setAnnouncements([])
+      }
     } finally {
       setLoading(false)
     }

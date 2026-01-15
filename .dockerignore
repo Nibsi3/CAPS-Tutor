@@ -45,8 +45,9 @@ extracted_papers
 !components.json
 
 # Large source files
-src/lib/questions.ts
-src/lib/*.json
+# Keep the heavy question helpers in Docker builds because Next.js imports them
+# directly. Comment out large data blobs instead if they become a problem.
+# src/lib/*.json
 !src/lib/utils.ts
 !src/lib/translations.ts
 
