@@ -1,5 +1,7 @@
 # CAPS Tutor
 
+![caps tutor preview](https://opengraph.githubassets.com/1/Nibsi3/caps-tutor)
+
 AI-assisted learning platform aligned to the South African CAPS curriculum, with student flows, admin tooling, and Appwrite-backed services.
 
 ## What it does
