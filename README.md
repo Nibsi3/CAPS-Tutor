@@ -1,37 +1,41 @@
-# CAPS-Tutor
+# CAPS Tutor
 
-## Overview
-This repository contains active product code and implementation details for the **CAPS-Tutor** project.
+AI-assisted learning platform aligned to the South African CAPS curriculum, with student flows, admin tooling, and Appwrite-backed services.
 
-## Highlights
-- Clean project structure with separated app/data/config concerns.
-- Production-oriented setup with environment-driven configuration.
-- Ready for extension with tests, CI checks, and deployment workflows.
+## What it does
+- Subject discovery and guided learning flows across multiple curriculum areas.
+- Practice and progress features through dashboard routes.
+- Admin surfaces for content and paper-processing workflows.
+- Public-facing pages for onboarding, syllabus, blog, and support content.
 
-## Tech Stack
-- Node.js
-- TypeScript
-- React
-- Next.js
-- Tailwind CSS
-- Python
-- Docker
+## Stack
+- Next.js + React + TypeScript
+- Tailwind CSS + Radix UI component system
+- Appwrite SDKs (`appwrite`, `node-appwrite`) for backend integration
+- Utility scripts for question generation, presets, logging, and environment automation
 
-## Run Locally
-1. Clone the repository and move into the project folder.
-2. Install dependencies (`npm install`, `pnpm install`, or the package manager used by the project).
-3. Create a local `.env` file if environment variables are required.
-4. Start the development server and verify the main flow works end-to-end.
+## Local development
+```bash
+npm install
+npm run dev
+```
 
-## Repository Layout
-- `.cursor/`
-- `.idx/`
-- `appwrite-deploy/`
-- `appwrite-source-deploy/`
-- `docker/`
-- `docs/`
+Default dev port is `9002`.
 
-## Security Notes
-- Keep credentials in environment variables, never in tracked files.
-- Rotate and replace any key immediately if exposure is suspected.
-- Use least-privilege tokens for third-party integrations.
+Useful scripts:
+```bash
+npm run typecheck
+npm run build
+npm run logs:appwrite
+```
+
+## Repository structure
+- `src/app/` application routes (`dashboard`, `admin`, `all-subjects`, auth flows)
+- `src/components/` shared UI and feature components
+- `scripts/` operational and data scripts
+- `docs/` project documentation
+
+## Practical next improvements
+- Add e2e tests for core student journeys (onboarding -> practice -> progress).
+- Publish deployment architecture notes (env matrix + release flow).
+- Add route-level performance budgets for dashboard screens.
