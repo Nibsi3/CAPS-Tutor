@@ -1,289 +1,46 @@
-# CAPS Tutor
+# CAPS-Tutor
 
-**CAPS Tutor** is an AI-powered educational platform designed to provide personalized tutoring aligned with the South African Curriculum and Assessment Policy Statement (CAPS) for Grades 10-12. The platform offers comprehensive learning resources, interactive practice questions, AI-powered tutoring, and Grade 12 CAPS past papers with authentic exam layouts.
+## What this project is
+A portfolio project maintained by Cameron to demonstrate practical engineering work. This README was standardized for interview readiness.
 
-## 🌟 Features
+## Code used (high-level)
+- `.cursor`
+- `.idx`
+- `appwrite-deploy`
+- `appwrite-source-deploy`
+- `docker`
+- `docs`
+- `Documents`
+- `past-paper-extractor`
 
-### For Students
+## Tech stack
+- Node.js / JavaScript
+- TypeScript
+- Python
+- Docker
+- Next.js
+- Tailwind CSS
 
-- **AI-Powered Tutoring**: Interactive AI tutor that provides step-by-step explanations and personalized help 24/7
-- **Adaptive Practice Questions**: Personalized practice questions tailored to your grade, subject, and weak areas
-- **CAPS-Aligned Content**: All content meticulously mapped to the official CAPS curriculum for Grades 10-12
-- **Grade 12 Past Papers**: Access to authentic CAPS past papers (Paper 1, Paper 2, Memos) with proper exam structure
-- **Progress Tracking**: Comprehensive analytics tracking lessons completed, mastery per topic, time spent, and historical performance
-- **Interactive Lessons**: Searchable lesson hub with embedded practice questions and quizzes
-- **Achievement System**: Unlock achievements as you progress through your learning journey
-- **Multi-language Support**: Support for all 11 official South African languages
+## What still needs to be done
+- Add architecture notes for key modules.
+- Add tests and CI status (if missing).
+- Add environment variable documentation in .env.example.
+- Add screenshots or demo video link.
+- Add known limitations and roadmap milestones.
 
-### For Administrators
+## Local setup
+1. Clone the repository.
+2. Install dependencies based on detected stack.
+3. Configure required environment variables.
+4. Run the app/service and verify locally.
 
-- **Admin Dashboard**: Comprehensive monitoring and management tools
-- **Past Paper Management**: Upload and manage Grade 12 CAPS past papers (PDF or JSON formats)
-- **Content Control**: Manage practice questions, subject availability, and weekly tasks
-- **Student Management**: View class progress, identify problematic topics, and export reports
-- **Analytics & Reports**: Detailed insights into student engagement, performance, and mastery
-- **System Settings**: Configure announcements, features, and system-wide settings
+## Interview talking points
+- Problem solved and user value.
+- Main architecture decisions and tradeoffs.
+- Performance, reliability, and security considerations.
+- What you would improve with more time.
 
-## 📚 Subjects Supported
-
-The platform covers all major CAPS subjects for Grades 10-12:
-
-- **Mathematics**
-- **Physical Sciences**
-- **Life Sciences**
-- **Accounting**
-- **Business Studies**
-- **Economics**
-- **Geography**
-- **History**
-- **Information Technology**
-- **Computer Applications Technology (CAT)**
-- **English** (Home Language & First Additional Language)
-- **Afrikaans** (Huistaal & Eerste Addisionele Taal)
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **Next.js 15** (App Router) with TypeScript
-- **React 18** with React Hooks
-- **Tailwind CSS** for styling
-- **shadcn/ui** components (Radix UI primitives)
-- **Recharts** for data visualization
-- **Lucide React** for icons
-
-### Backend
-- **Appwrite** for database, authentication, and file storage
-- **Next.js API Routes** for server-side logic
-- **Groq API** for AI-powered question generation and tutoring
-
-### PDF Processing
-- **PyMuPDF (fitz)** for PDF extraction
-- **OpenCV** for image processing and diagram detection
-- **Python** scripts for PDF processing pipeline
-
-### Development Tools
-- **TypeScript** for type safety
-- **ESLint** for code quality
-- **Node.js** runtime
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js 18+ and npm/yarn
-- Appwrite account and project (for backend services)
-- Groq API key (for AI features)
-- (Optional) NewsAPI.org key (for educational news)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/Nibsi3/CAPS-Tutor.git
-   cd CAPS-Tutor
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   
-   Create a `.env.local` file in the root directory:
-   ```env
-   # Appwrite Configuration (Required)
-   NEXT_PUBLIC_APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1
-   NEXT_PUBLIC_APPWRITE_PROJECT_ID=your_project_id
-   NEXT_PUBLIC_APPWRITE_DATABASE_ID=capstutor
-   APPWRITE_API_KEY=your_api_key
-
-   # Groq API (Required for AI features)
-   GROQ_API_KEY=your_groq_api_key
-
-   # News API (Optional)
-   NEWS_API_KEY=your_news_api_key
-   ```
-
-4. **Set up Appwrite Collections**
-   
-   Follow the setup guide in `docs/APPWRITE_COLLECTIONS_SETUP.md` to create the required collections:
-   - `user` - User profiles
-   - `userprogress` - Student progress tracking
-   - `questions` - Practice questions
-   - `pastpapers` - Past paper metadata
-   - `admins` - Administrator accounts
-   - `announcements` - System announcements
-   - `systemsettings` - System configuration
-   - And more...
-
-5. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-
-   The app will be available at `http://localhost:9002`
-
-### Production Build
-
-```bash
-npm run build
-npm start
-```
-
-## 🐳 Docker + Appwrite Stack
-
-> This repository now ships with a self-hosted Appwrite stack plus the CAPS Tutor
-> Next.js site, all orchestrated through Docker Compose so you can lift local CPU
-> and RAM limits easily.
-
-1. **Copy the environment templates (or reuse `.env.local`)**
-   ```bash
-   cp docker/env.appwrite.example .env.appwrite
-   cp docker/env.docker.example .env.docker   # can be a trimmed copy of .env.local
-   ```
-   - Update `.env.appwrite` with fresh secrets (`_APP_OPENSSL_KEY_V1`, `_APP_DB_PASS`, `_APP_EXECUTOR_SECRET`, etc.).
-   - The `web` container loads `.env.local` (if present) and `.env.docker`, while the Docker
-     build itself reads `.env.docker` to embed `NEXT_PUBLIC_*` values into the Next.js bundle.
-     So you can either:
-       - copy your existing `.env.local` into `.env.docker`, or
-       - leave `.env.docker` for Docker-specific overrides only (e.g. `APPWRITE_ENDPOINT=http://appwrite/v1`)
-     Just make sure the browser-facing values continue pointing to the Traefik host,
-     e.g. `NEXT_PUBLIC_APPWRITE_ENDPOINT=http://localhost:9501/v1`.
-
-2. **Build and start the stack (front-end + Appwrite)**
-   ```bash
-   docker compose build
-   docker compose up -d
-   ```
-   The important ports are:
-   - `9002` → CAPS Tutor web app (Next.js)
-   - `9500` → Traefik dashboard / HTTP reverse proxy
-   - `9501` → Appwrite REST API
-   - `9502` → Appwrite Console
-   - `9503` → Mailcatcher web UI (local SMTP preview)
-
-3. **First-time Appwrite setup**
-   - Visit `http://localhost:9502/console`, create the root account, then create a
-     project that matches the IDs in `.env.docker`.
-   - Inside the console, create the API key with the scopes the app expects
-     (Databases, Users, Storage, Messaging, Functions). Update `.env.docker`
-     afterwards and redeploy with `docker compose up -d`.
-   - Run the collection setup scripts under `docs/APPWRITE_COLLECTIONS_SETUP.md`
-     if this is a brand-new Appwrite instance.
-
-4. **Controlling resources**
-   - Use Docker Desktop → Settings → Resources to raise global CPU/RAM caps.
-   - For per-container guard rails, set `WEB_CPUS`, `WEB_MEM_LIMIT`,
-     `APPWRITE_CPUS`, and `APPWRITE_MEM_LIMIT` in `.env.docker`
-     (defaults are 2 CPUs / 4 GB). Docker Compose reads these variables and
-     applies them to the `web` and `appwrite` services.
-
-5. **Stopping or cleaning up**
-   ```bash
-   docker compose down            # stop containers
-   docker compose down -v         # stop and remove volumes (data wipe)
-   ```
-
-> ℹ️ The Compose file mirrors the official Appwrite self-hosting layout (Traefik,
-> database, Redis, workers, runtimes). You can add future Appwrite upgrades by
-> editing `APPWRITE_VERSION` inside `.env.appwrite` and re-running `docker compose
-> up -d`.
-
-## 📁 Project Structure
-
-```
-CAPS-Tutor/
-├── src/
-│   ├── app/                    # Next.js App Router pages
-│   │   ├── admin/              # Admin dashboard pages
-│   │   ├── api/                # API routes
-│   │   ├── dashboard/          # Student dashboard pages
-│   │   └── ...
-│   ├── components/             # React components
-│   │   ├── admin/              # Admin components
-│   │   ├── dashboard/          # Dashboard components
-│   │   ├── home/               # Home page components
-│   │   └── ui/                 # shadcn/ui components
-│   ├── appwrite/               # Appwrite client configuration
-│   ├── ai/                     # AI/Groq integration
-│   ├── hooks/                  # Custom React hooks
-│   └── lib/                    # Utility libraries
-├── scripts/                    # Utility scripts
-│   ├── add-admin.mjs          # Add admin user
-│   ├── add-presets-to-appwrite.mjs
-│   └── ...
-├── docs/                       # Documentation
-│   ├── APPWRITE_COLLECTIONS_SETUP.md
-│   ├── TECH_STACK_OVERVIEW.md
-│   └── ...
-└── public/                     # Static assets
-```
-
-## 📖 Documentation
-
-Comprehensive documentation is available in the `docs/` directory:
-
-- **[Appwrite Collections Setup](docs/APPWRITE_COLLECTIONS_SETUP.md)** - Complete guide to setting up Appwrite collections
-- **[Tech Stack Overview](docs/TECH_STACK_OVERVIEW.md)** - Detailed technical documentation
-- **[Question Generation Guide](docs/QUESTION_GENERATION_GUIDE.md)** - How questions are generated
-- **[Past Paper Processing](docs/NEW_PDF_PROCESSING_PIPELINE.md)** - PDF processing pipeline
-- **[Migration Guide](docs/MIGRATION_GUIDE.md)** - Migration instructions
-
-## 🔧 Available Scripts
-
-- `npm run dev` - Start development server on port 9002
-- `npm run build` - Build for production
-- `npm start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run typecheck` - Run TypeScript type checking
-- `npm run generate-questions` - Generate practice questions
-- `npm run add-presets` - Add question presets to Appwrite
-
-## 🌐 Multi-language Support
-
-CAPS Tutor supports all 11 official South African languages:
-- English
-- Afrikaans
-- isiNdebele
-- isiXhosa
-- isiZulu
-- Sepedi
-- Sesotho
-- Setswana
-- siSwati
-- Tshivenḓa
-- Xitsonga
-
-## 🎯 Key Features Explained
-
-### AI Tutoring
-The AI tutor understands the CAPS curriculum and provides personalized help. Students can ask questions about any topic and receive step-by-step explanations tailored to their grade level.
-
-### Past Paper Practice
-Grade 12 students can practice with authentic CAPS past papers. The system maintains the exact structure, sections, and question types from official exam papers, including:
-- Multiple choice questions
-- Standard structured questions
-- Long-form responses
-- Diagrams and graphs
-- Data-response questions
-
-### Progress Tracking
-Students can track their progress across all subjects with detailed analytics showing:
-- Lessons completed
-- Average scores
-- Time spent studying
-- Weak areas identified
-- Historical performance trends
-
-### Admin Dashboard
-Administrators have access to comprehensive management tools for:
-- Monitoring student engagement
-- Managing past papers and content
-- Generating reports
-- Configuring system settings
-- Managing users and permissions
-
----
-
-**Built with ❤️ for South African students**
+## Security
+- No secrets should be committed.
+- Rotate any previously exposed keys immediately.
+- Use environment variables + secret managers for credentials.
